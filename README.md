@@ -1,2 +1,2 @@
 # middleware
-workout out how the middleware pipeline works in aspnetcore WebApplication
+working out how the middleware pipeline works in aspnetcore WebApplication
