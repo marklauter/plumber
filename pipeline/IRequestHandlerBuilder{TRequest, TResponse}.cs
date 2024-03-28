@@ -8,8 +8,9 @@ public interface IRequestHandlerBuilder<TRequest, TResponse>
     where TRequest : class
     where TResponse : class
 {
-    IConfiguration Configuration { get; }
-    IServiceCollection Services { get; }
+
+    RequestHandlerBuilder<TRequest, TResponse> BuildConfiguration(Action<IConfigurationBuilder> action);
+    RequestHandlerBuilder<TRequest, TResponse> ConfigureServices(Action<IServiceCollection, IConfiguration> action);
 
     RequestHandlerBuilder<TRequest, TResponse> AddEnvironmentVariables();
     RequestHandlerBuilder<TRequest, TResponse> AddUserSecrets(bool optional, bool reloadOnChange);

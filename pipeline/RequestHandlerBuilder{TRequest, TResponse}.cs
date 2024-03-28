@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
@@ -13,19 +12,32 @@ public class RequestHandlerBuilder<TRequest, TResponse>
 {
     public RequestHandlerBuilder()
     {
-        this.Configuration = this.configurationBuilder.Build();
+        this.configuration = this.configurationBuilder.Build();
     }
 
     private readonly ConfigurationBuilder configurationBuilder = new();
-    private readonly List<Func<RequestDelegate<TRequest, TResponse>, RequestDelegate<TRequest, TResponse>>> components = [];
+    private readonly List<Func<RequestDelegate<TRequest, TResponse>, RequestDelegate<TRequest, TResponse>>> middleware = [];
 
-    public IServiceCollection Services { get; } = new ServiceCollection();
+    private readonly IServiceCollection services = new ServiceCollection();
 
-    public IConfiguration Configuration { get; private set; } = null!;
+    private IConfiguration configuration;
+
+    public RequestHandlerBuilder<TRequest, TResponse> BuildConfiguration(Action<IConfigurationBuilder> action)
+    {
+        action?.Invoke(this.configurationBuilder);
+        this.configuration = this.configurationBuilder.Build();
+        return this;
+    }
+
+    public RequestHandlerBuilder<TRequest, TResponse> ConfigureServices(Action<IServiceCollection, IConfiguration> action)
+    {
+        action?.Invoke(this.services, this.configuration);
+        return this;
+    }
 
     public RequestHandlerBuilder<TRequest, TResponse> AddEnvironmentVariables()
     {
-        this.Configuration = this.configurationBuilder
+        this.configuration = this.configurationBuilder
             .AddEnvironmentVariables()
             .Build();
 
@@ -34,7 +46,7 @@ public class RequestHandlerBuilder<TRequest, TResponse>
 
     public RequestHandlerBuilder<TRequest, TResponse> AddUserSecrets(bool optional, bool reloadOnChange)
     {
-        this.Configuration = this.configurationBuilder
+        this.configuration = this.configurationBuilder
             .AddUserSecrets(Assembly.GetExecutingAssembly(), optional, reloadOnChange)
             .Build();
 
@@ -43,7 +55,7 @@ public class RequestHandlerBuilder<TRequest, TResponse>
 
     public RequestHandlerBuilder<TRequest, TResponse> AddUserSecrets(string userSecretId, bool reloadOnChange)
     {
-        this.Configuration = this.configurationBuilder
+        this.configuration = this.configurationBuilder
             .AddUserSecrets(userSecretId, reloadOnChange)
             .Build();
 
@@ -52,7 +64,7 @@ public class RequestHandlerBuilder<TRequest, TResponse>
 
     public RequestHandlerBuilder<TRequest, TResponse> AddCommandLineArgs(string[] args)
     {
-        this.Configuration = this.configurationBuilder
+        this.configuration = this.configurationBuilder
             .AddCommandLine(args)
             .Build();
 
@@ -61,7 +73,7 @@ public class RequestHandlerBuilder<TRequest, TResponse>
 
     public RequestHandlerBuilder<TRequest, TResponse> AddAppSettingsJsonFile(bool optional, bool reloadOnChange)
     {
-        this.Configuration = this.configurationBuilder
+        this.configuration = this.configurationBuilder
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
             .Build();
@@ -71,7 +83,7 @@ public class RequestHandlerBuilder<TRequest, TResponse>
 
     public RequestHandlerBuilder<TRequest, TResponse> AddAppSettingsJsonFile(bool optional, bool reloadOnChange, string environment)
     {
-        this.Configuration = this.configurationBuilder
+        this.configuration = this.configurationBuilder
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
             .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true)
@@ -82,7 +94,7 @@ public class RequestHandlerBuilder<TRequest, TResponse>
 
     public RequestHandlerBuilder<TRequest, TResponse> AddInMemoryCollection(IDictionary<string, string?> options)
     {
-        this.Configuration = this.configurationBuilder
+        this.configuration = this.configurationBuilder
             .AddInMemoryCollection(options)
             .Build();
 
@@ -91,7 +103,7 @@ public class RequestHandlerBuilder<TRequest, TResponse>
 
     public RequestHandlerBuilder<TRequest, TResponse> Use(Func<RequestDelegate<TRequest, TResponse>, RequestDelegate<TRequest, TResponse>> middleware)
     {
-        this.components.Add(middleware);
+        this.middleware.Add(middleware);
         return this;
     }
 
@@ -103,19 +115,15 @@ public class RequestHandlerBuilder<TRequest, TResponse>
     public RequestHandlerBuilder<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TMiddleware>()
         where TMiddleware : class, IMiddleware<TRequest, TResponse>
     {
-        // todo: item 2: once the item 1 todo is complete we can remove this line
-        this.Services.TryAddSingleton<TMiddleware>();
-
         return this.Use(
             next =>
             async context =>
             {
-                // todo: item 1: need to use service provider to resolve all middleware constructor args,
-                // then use ActivatorUtilities.CreateInstance to create the middleware passing the Next delegate as first item or something like that. 
-                // cause it's stupid to allow the Next delegate to be settable from outside the middleware.
                 using var serviceScope = context.Services.CreateScope();
-                var middleware = serviceScope.ServiceProvider.GetRequiredService<TMiddleware>();
-                middleware.Next ??= next;
+                var middleware = ActivatorUtilities
+                    .CreateInstance<TMiddleware>(
+                        serviceScope.ServiceProvider,
+                        next);
 
                 await middleware.InvokeAsync(context);
             });
@@ -128,9 +136,9 @@ public class RequestHandlerBuilder<TRequest, TResponse>
                 ? Task.FromCanceled<RequestContext<TRequest, TResponse>>(context.CancellationToken)
                 : Task.FromResult(context);
 
-        for (var i = this.components.Count - 1; i >= 0; --i)
+        for (var i = this.middleware.Count - 1; i >= 0; --i)
         {
-            pipeline = this.components[i](pipeline);
+            pipeline = this.middleware[i](pipeline);
         }
 
         return pipeline;
@@ -138,12 +146,12 @@ public class RequestHandlerBuilder<TRequest, TResponse>
 
     public RequestHandler<TRequest, TResponse> Build()
     {
-        var requestTimeout = this.Configuration.GetValue("RequestTimeout", TimeSpan.FromMinutes(5));
+        var requestTimeout = this.configuration.GetValue("RequestTimeout", TimeSpan.FromMinutes(5));
 
 #pragma warning disable IDISP004 // Don't ignore created IDisposable - RequestHandler lives for the duration of the application and so does service provider, so dispose is not required
         return new RequestHandler<TRequest, TResponse>(
             this.BuildPipeline(),
-            this.Services.BuildServiceProvider(),
+            this.services.BuildServiceProvider(),
             requestTimeout);
 #pragma warning restore IDISP004 // Don't ignore created IDisposable
     }

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Pipeline.Tests;
 
 //https://www.stevejgordon.co.uk/how-is-the-asp-net-core-middleware-pipeline-built
@@ -60,10 +62,11 @@ public class RequestHandlerTests
         Assert.Equal(request.ToLowerInvariant(), response);
     }
 
-    internal sealed class ToLowerMiddleware
+    internal sealed class ToLowerMiddleware(RequestDelegate<string, string> next)
         : IMiddleware<string, string>
     {
-        public RequestDelegate<string, string> Next { get; set; } = null!;
+        public RequestDelegate<string, string> Next { get; } = next
+            ?? throw new ArgumentNullException(nameof(next));
 
         public Task InvokeAsync(RequestContext<string, string> context)
         {
@@ -84,6 +87,39 @@ public class RequestHandlerTests
         var response = await handler.InvokeAsync(request);
 
         Assert.Equal(request.ToLowerInvariant(), response);
+    }
+
+    internal sealed class CtorMiddleware(RequestDelegate<string, string> next)
+        : IMiddleware<string, string>
+    {
+        public RequestDelegate<string, string> Next { get; } = next
+            ?? throw new ArgumentNullException(nameof(next));
+
+        public Task InvokeAsync(RequestContext<string, string> context)
+        {
+            context.Response = context.Request.ToLowerInvariant();
+            return this.Next(context);
+        }
+    }
+
+    // this is the right way to build the middleware
+    [Fact]
+    public async Task GetMiddlewareCtor()
+    {
+        RequestDelegate<string, string> next = context =>
+            context.CancellationToken.IsCancellationRequested
+                ? Task.FromCanceled<RequestContext<string, string>>(context.CancellationToken)
+                : Task.FromResult(context);
+
+        using var services = new ServiceCollection().BuildServiceProvider();
+
+        // uses the service provider to create all arguments other than the next delegate
+        var middleware = ActivatorUtilities.CreateInstance<CtorMiddleware>(services, next);
+        var request = "Hello, World!";
+        var context = new RequestContext<string, string>(request, services, CancellationToken.None);
+        await middleware.InvokeAsync(context);
+
+        Assert.Equal(request.ToLowerInvariant(), context.Response);
     }
 }
 
