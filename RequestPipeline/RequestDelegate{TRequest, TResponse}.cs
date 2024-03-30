@@ -1,4 +1,4 @@
-﻿namespace Pipeline.Tests;
+﻿namespace RequestPipeline;
 
 public delegate Task RequestDelegate<TRequest, TResponse>(
     RequestContext<TRequest, TResponse> context)

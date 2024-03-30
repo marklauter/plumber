@@ -1,4 +1,4 @@
-﻿namespace Pipeline.Tests;
+﻿namespace RequestPipeline;
 
 public record RequestContext<TRequest, TResponse>(
     TRequest Request,

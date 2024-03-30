@@ -1,4 +1,4 @@
-﻿namespace Pipeline.Tests;
+﻿namespace RequestPipeline;
 
 public interface IMiddleware<TRequest, TResponse>
     where TRequest : class
