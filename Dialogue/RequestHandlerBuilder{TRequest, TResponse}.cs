@@ -2,23 +2,24 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
 
-namespace RequestPipeline;
+namespace Dialogue;
 
+/// <inheritdoc/>
 internal sealed class RequestHandlerBuilder<TRequest, TResponse>
     : IRequestHandlerBuilder<TRequest, TResponse>
     where TRequest : class
     where TResponse : class
 {
+    private IConfiguration configuration;
+    private readonly ConfigurationBuilder configurationBuilder = new();
+    private readonly IServiceCollection services = new ServiceCollection();
+
     internal RequestHandlerBuilder(string[] args)
     {
         configuration = configurationBuilder
             .AddCommandLine(args)
             .Build();
     }
-
-    private IConfiguration configuration;
-    private readonly ConfigurationBuilder configurationBuilder = new();
-    private readonly IServiceCollection services = new ServiceCollection();
 
     /// <inheritdoc/>
     public IRequestHandlerBuilder<TRequest, TResponse> Configure(Action<IConfigurationBuilder> action)
@@ -37,6 +38,7 @@ internal sealed class RequestHandlerBuilder<TRequest, TResponse>
         ArgumentNullException.ThrowIfNull(action);
 
         action.Invoke(services, configuration);
+
         return this;
     }
 
@@ -44,9 +46,9 @@ internal sealed class RequestHandlerBuilder<TRequest, TResponse>
     [RequiresUnreferencedCode("Calls Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue<T>(String, T)")]
     public IRequestHandler<TRequest, TResponse> Build()
     {
-        var requestTimeout = configuration.GetValue("RequestTimeout", TimeSpan.FromMinutes(5));
+        var requestTimeout = configuration.GetValue("RequestTimeout", Timeout.InfiniteTimeSpan);
 
-#pragma warning disable IDISP004 // Don't ignore created IDisposable - service provider lives for the lifetime of the application
+#pragma warning disable IDISP004 // Don't ignore created IDisposable - service provider lifetime == lifetime of the application
         return new RequestHandler<TRequest, TResponse>(
             services.BuildServiceProvider(),
             requestTimeout);

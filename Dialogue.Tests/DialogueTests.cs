@@ -1,11 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace RequestPipeline.Tests;
+namespace Dialogue.Tests;
 
-//https://www.stevejgordon.co.uk/how-is-the-asp-net-core-middleware-pipeline-built
-//https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/write?view=aspnetcore-8.0
-
-public class RequestHandlerTests
+public class DialogueTests
 {
     [Fact]
     public async Task HandleRequestWithNoUserDefinedMiddlewareAsync()
@@ -63,16 +60,16 @@ public class RequestHandlerTests
         Assert.Equal(request.ToLowerInvariant(), response);
     }
 
-    internal sealed class ToLowerMiddleware(RequestDelegate<string, string> next)
+    internal sealed class ToLowerMiddleware(Handler<string, string> next)
         : IMiddleware<string, string>
     {
-        public RequestDelegate<string, string> Next { get; } = next
+        public Handler<string, string> Next { get; } = next
             ?? throw new ArgumentNullException(nameof(next));
 
-        public Task InvokeAsync(RequestContext<string, string> context)
+        public Task InvokeAsync(Context<string, string> context)
         {
             context.Response = context.Request.ToLowerInvariant();
-            return Next(context);
+            return next(context);
         }
     }
 
@@ -92,26 +89,28 @@ public class RequestHandlerTests
         Assert.Equal(request.ToLowerInvariant(), response);
     }
 
-    internal sealed class CtorMiddleware(RequestDelegate<string, string> next)
+    internal sealed class CtorMiddleware(Handler<string, string> next)
         : IMiddleware<string, string>
     {
-        public RequestDelegate<string, string> Next { get; } = next
+        public Handler<string, string> Next { get; } = next
             ?? throw new ArgumentNullException(nameof(next));
 
-        public Task InvokeAsync(RequestContext<string, string> context)
+        public Task InvokeAsync(Context<string, string> context)
         {
             context.Response = context.Request.ToLowerInvariant();
-            return Next(context);
+            return next(context);
         }
     }
 
-    // this is the right way to build the middleware
+    /// <summary>
+    /// prototype for constructing middleware with dependency injection
+    /// </summary>
     [Fact]
     public async Task GetMiddlewareCtorAsync()
     {
-        RequestDelegate<string, string> next = context =>
+        Handler<string, string> next = context =>
             context.CancellationToken.IsCancellationRequested
-                ? Task.FromCanceled<RequestContext<string, string>>(context.CancellationToken)
+                ? Task.FromCanceled<Context<string, string>>(context.CancellationToken)
                 : Task.FromResult(context);
 
         using var services = new ServiceCollection().BuildServiceProvider();
@@ -119,7 +118,12 @@ public class RequestHandlerTests
         // uses the service provider to create all arguments other than the next delegate
         var middleware = ActivatorUtilities.CreateInstance<CtorMiddleware>(services, next);
         var request = "Hello, World!";
-        var context = new RequestContext<string, string>(request, services, CancellationToken.None);
+        var context = new Context<string, string>(
+            request,
+            Ulid.NewUlid(),
+            DateTime.UtcNow,
+            services,
+            CancellationToken.None);
         await middleware.InvokeAsync(context);
 
         Assert.Equal(request.ToLowerInvariant(), context.Response);
