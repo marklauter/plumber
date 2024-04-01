@@ -83,7 +83,6 @@ public class DialogueTests
             .Use<ToLowerMiddleware>()
             .Prepare();
 
-        _ = await handler.InvokeAsync(request);
         var response = await handler.InvokeAsync(request);
 
         Assert.Equal(request.ToLowerInvariant(), response);
