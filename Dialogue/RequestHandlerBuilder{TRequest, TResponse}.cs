@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 
 namespace Dialogue;
 
@@ -8,51 +10,53 @@ namespace Dialogue;
 internal sealed class RequestHandlerBuilder<TRequest, TResponse>
     : IRequestHandlerBuilder<TRequest, TResponse>
     where TRequest : class
-    where TResponse : class
 {
-    private IConfiguration configuration;
-    private readonly ConfigurationBuilder configurationBuilder = new();
-    private readonly IServiceCollection services = new ServiceCollection();
+    private const string DevEnv = "Development";
+
+    /// <inheritdoc/>
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP006:Implement IDisposable", Justification = "it's registered as singleton in Build()")]
+    public IConfigurationManager Configuration { get; } = new ConfigurationManager();
+
+    /// <inheritdoc/>
+    public IServiceCollection Services { get; } = new ServiceCollection();
 
     internal RequestHandlerBuilder(string[] args)
     {
-        configuration = configurationBuilder
-            .AddCommandLine(args)
-            .Build();
-    }
+        var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? DevEnv;
+        _ = Configuration
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+            .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true)
+            .AddEnvironmentVariables("DOTNET_")
+            .AddEnvironmentVariables();
 
-    /// <inheritdoc/>
-    public IRequestHandlerBuilder<TRequest, TResponse> Configure(Action<IConfigurationBuilder> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
+        if (environment.Equals(DevEnv, StringComparison.OrdinalIgnoreCase))
+        {
+            _ = Configuration.AddUserSecrets(Assembly.GetExecutingAssembly(), true, true);
+        }
 
-        action.Invoke(configurationBuilder);
-        configuration = configurationBuilder.Build();
+        _ = Configuration
+            .AddCommandLine(args);
 
-        return this;
-    }
-
-    /// <inheritdoc/>
-    public IRequestHandlerBuilder<TRequest, TResponse> ConfigureServices(Action<IServiceCollection, IConfiguration> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-
-        action.Invoke(services, configuration);
-
-        return this;
+        _ = Services
+            .AddLogging();
     }
 
     /// <inheritdoc/>
     [RequiresUnreferencedCode("Calls Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue<T>(String, T)")]
     public IRequestHandler<TRequest, TResponse> Build()
     {
-        var requestTimeout = configuration.GetValue("RequestTimeout", Timeout.InfiniteTimeSpan);
+        var requestTimeout = Configuration.GetValue("RequestTimeout", Timeout.InfiniteTimeSpan);
+
+        Services.TryAddSingleton<IConfiguration>(Configuration);
 
 #pragma warning disable IDISP004 // Don't ignore created IDisposable - service provider lifetime == lifetime of the application
         return new RequestHandler<TRequest, TResponse>(
-            services.BuildServiceProvider(),
+            Services.BuildServiceProvider(),
             requestTimeout);
 #pragma warning restore IDISP004 // Don't ignore created IDisposable
     }
+
+    public IRequestHandlerBuilder<TRequest, TResponse> AddEnvironmentVariables() => throw new NotImplementedException();
 }
 

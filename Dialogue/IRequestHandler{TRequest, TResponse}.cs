@@ -9,7 +9,6 @@ namespace Dialogue;
 /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
 public interface IRequestHandler<TRequest, TResponse>
     where TRequest : class
-    where TResponse : class
 {
     /// <summary>
     /// Invokes the request handler's pipeline.
@@ -34,9 +33,9 @@ public interface IRequestHandler<TRequest, TResponse>
     /// <summary>
     /// Adds a middleware to the request handler's pipeline.
     /// </summary>
-    /// <param name="middleware"><see cref="Func{T1, T2, TResult}"/>, <see cref="Context{TRequest, TResponse}"/>, <see cref="Handler{TRequest, TResponse}"/>, <see cref="Task"/></param>
+    /// <param name="middleware"><see cref="Func{T1, T2, TResult}"/>, <see cref="RequestContext{TRequest, TResponse}"/>, <see cref="Handler{TRequest, TResponse}"/>, <see cref="Task"/></param>
     /// <returns><see cref="IRequestHandler{TRequest, TResponse}"/></returns>
-    IRequestHandler<TRequest, TResponse> Use(Func<Context<TRequest, TResponse>, Handler<TRequest, TResponse>, Task> middleware);
+    IRequestHandler<TRequest, TResponse> Use(Func<RequestContext<TRequest, TResponse>, Handler<TRequest, TResponse>, Task> middleware);
 
     /// <summary>
     /// Adds a middleware to the request handler's pipeline.

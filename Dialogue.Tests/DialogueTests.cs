@@ -26,6 +26,7 @@ public class DialogueTests
             .Build()
             .Use(async (context, next) =>
             {
+                context.CancellationToken.ThrowIfCancellationRequested();
                 context.Response = context.Request.ToUpperInvariant();
                 await next(context);
             })
@@ -45,11 +46,13 @@ public class DialogueTests
             .Build()
             .Use(async (context, next) =>
             {
+                context.CancellationToken.ThrowIfCancellationRequested();
                 context.Response = context.Request.ToUpperInvariant();
                 await next(context);
             })
             .Use(async (context, next) =>
             {
+                context.CancellationToken.ThrowIfCancellationRequested();
                 context.Response = context.Request.ToLowerInvariant();
                 await next(context);
             })
@@ -66,8 +69,9 @@ public class DialogueTests
         public Handler<string, string> Next { get; } = next
             ?? throw new ArgumentNullException(nameof(next));
 
-        public Task InvokeAsync(Context<string, string> context)
+        public Task InvokeAsync(RequestContext<string, string> context)
         {
+            context.CancellationToken.ThrowIfCancellationRequested();
             context.Response = context.Request.ToLowerInvariant();
             return next(context);
         }
@@ -94,8 +98,9 @@ public class DialogueTests
         public Handler<string, string> Next { get; } = next
             ?? throw new ArgumentNullException(nameof(next));
 
-        public Task InvokeAsync(Context<string, string> context)
+        public Task InvokeAsync(RequestContext<string, string> context)
         {
+            context.CancellationToken.ThrowIfCancellationRequested();
             context.Response = context.Request.ToLowerInvariant();
             return next(context);
         }
@@ -109,7 +114,7 @@ public class DialogueTests
     {
         Handler<string, string> next = context =>
             context.CancellationToken.IsCancellationRequested
-                ? Task.FromCanceled<Context<string, string>>(context.CancellationToken)
+                ? Task.FromCanceled<RequestContext<string, string>>(context.CancellationToken)
                 : Task.FromResult(context);
 
         using var services = new ServiceCollection().BuildServiceProvider();
@@ -117,7 +122,7 @@ public class DialogueTests
         // uses the service provider to create all arguments other than the next delegate
         var middleware = ActivatorUtilities.CreateInstance<CtorMiddleware>(services, next);
         var request = "Hello, World!";
-        var context = new Context<string, string>(
+        var context = new RequestContext<string, string>(
             request,
             Ulid.NewUlid(),
             DateTime.UtcNow,
@@ -126,6 +131,19 @@ public class DialogueTests
         await middleware.InvokeAsync(context);
 
         Assert.Equal(request.ToLowerInvariant(), context.Response);
+    }
+
+    [Fact]
+    public async Task VoidResponseType()
+    {
+        var request = "Hello, World!";
+
+        var handler = RequestHandlerBuilder.New<string, Void>()
+            .Build();
+
+        var response = await handler.InvokeAsync(request);
+
+        Assert.Equal(typeof(Void), response.GetType());
     }
 }
 

@@ -9,7 +9,6 @@ internal sealed class RequestHandler<TRequest, TResponse>(
     TimeSpan timeout)
     : IRequestHandler<TRequest, TResponse>
     where TRequest : class
-    where TResponse : class
 {
     private readonly ServiceProvider services = services
         ?? throw new ArgumentNullException(nameof(services));
@@ -34,11 +33,13 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         TRequest request,
         Handler<TRequest, TResponse> handler)
     {
-        var context = new Context<TRequest, TResponse>(
+        using var serviceScope = services.CreateScope();
+
+        var context = new RequestContext<TRequest, TResponse>(
             request,
             Ulid.NewUlid(),
             DateTime.UtcNow,
-            services,
+            serviceScope.ServiceProvider,
             CancellationToken.None);
 
         await handler(context);
@@ -51,14 +52,14 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         Handler<TRequest, TResponse> handler,
         TimeSpan timeout)
     {
-        using var timeoutTokenSource = new CancellationTokenSource();
-        timeoutTokenSource.CancelAfter(timeout);
+        using var serviceScope = services.CreateScope();
+        using var timeoutTokenSource = new CancellationTokenSource(timeout);
 
-        var context = new Context<TRequest, TResponse>(
+        var context = new RequestContext<TRequest, TResponse>(
             request,
             Ulid.NewUlid(),
             DateTime.UtcNow,
-            services,
+            serviceScope.ServiceProvider,
             timeoutTokenSource.Token);
 
         await handler(context);
@@ -77,7 +78,7 @@ internal sealed class RequestHandler<TRequest, TResponse>(
     {
         Handler<TRequest, TResponse> pipeline = context =>
             context.CancellationToken.IsCancellationRequested
-                ? Task.FromCanceled<Context<TRequest, TResponse>>(context.CancellationToken)
+                ? Task.FromCanceled<RequestContext<TRequest, TResponse>>(context.CancellationToken)
                 : Task.FromResult(context);
 
         for (var i = components.Count - 1; i >= 0; --i)
@@ -96,7 +97,7 @@ internal sealed class RequestHandler<TRequest, TResponse>(
     }
 
     /// <inheritdoc/>
-    public IRequestHandler<TRequest, TResponse> Use(Func<Context<TRequest, TResponse>, Handler<TRequest, TResponse>, Task> middleware) =>
+    public IRequestHandler<TRequest, TResponse> Use(Func<RequestContext<TRequest, TResponse>, Handler<TRequest, TResponse>, Task> middleware) =>
         Use(next => context => middleware(context, next));
 
     /// <inheritdoc/>
