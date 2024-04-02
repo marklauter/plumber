@@ -3,7 +3,9 @@ name: .NET Publish
 on:
   push:
     branches: [ "main" ]
-    
+permissions:
+  contents: write    
+
 jobs:
   test:
     runs-on: ubuntu-latest
