@@ -15,15 +15,8 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
-    - name: Restore dependencies
-      working-directory: Dialogue
-      run: dotnet restore
-    - name: Build
-      working-directory: Dialogue
-      run: dotnet build --no-restore
     - name: Test
-      working-directory: Dialogue
-      run: dotnet test --no-build --verbosity normal
+      run: dotnet test --verbosity normal
 
   version:
     needs: test
