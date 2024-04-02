@@ -12,13 +12,15 @@ To install, use the following command: `dotnet add package Dialogue`
 
 ## Usage
 1. Create an `IRequestHandlerBuilder<TRequest, TResponse>` by calling one of the static `RequestHandlerBuilder.New` methods. 
-2. Load configuration by calling the `Configure` method on the builder.
-3. Register services with `IServiceCollection` by calling `ConfigureServices` on the builder.
-4. Use the `Build` method to create an `IRequestHandler<TRequest, TResponse>` instance.
-5. Configure the request delegate pipeline by calling one of the `Use` methods on the request handler.
-6. Call the `Prepare` method on the request handler to compile the pipeline. If you don't call `Prepare`, the pipeline will be compiled when the first request is processed.
-7. Call the `InvokeAsync` method on the request handler to process a request.
-8. Within your middleware delegates, or `IMiddleware` implementations, call the `Next` method to pass the request context to the next middleware in the pipeline.
+1. Builder adds configuration providers for appsettings files, environment variables, command line args, and user secrets by default.
+1. Handle additional configuration scenarios through the  `IConfigurationManager Configuration` property on the builder.
+1. Register services with the `IServiceCollection Servics` property.
+1. Use the `Build` method to create an `IRequestHandler<TRequest, TResponse>` instance.
+1. Configure the request delegate pipeline by calling one of the `Use` methods on the request handler.
+1. Call the `Prepare` method on the request handler to compile the pipeline. If you don't call `Prepare`, the pipeline will be compiled when the first request is processed.
+1. Call the `InvokeAsync` method on the request handler to process a request.
+1. Within your middleware delegates, or `IMiddleware` implementations, invoke `Next` to pass the request context to the next middleware in the pipeline.
+1. Always call `context.CancelationToken.ThrowIfCancellationRequested()` to check for cancellation requests before processing the request or invoking `Next`.
 
 ## Samples
 
@@ -45,6 +47,7 @@ var handler = RequestHandlerBuilder.New<string, string>()
     .Build()
     .Use(async (context, next) =>
     {
+        context.CancelationToken.ThrowIfCancellationRequested();
         context.Response = context.Request.ToUpperInvariant();
         await next(context); // call next to pass the request context to next delegate in the pipeline
     })
@@ -69,6 +72,7 @@ internal sealed class ToLowerMiddleware(Handler<string, string> next)
 
     public Task InvokeAsync(Context<string, string> context)
     {
+        context.CancelationToken.ThrowIfCancellationRequested();
         context.Response = context.Request.ToLowerInvariant();
         return next(context); // call next to pass the request context to next delegate in the pipeline
     }
@@ -93,30 +97,31 @@ Assert.Equal(request.ToLowerInvariant(), response);
 Call the `Configure` method on the builder to load configuration from `appsettings.json`, environment variables, user secrets, etc.
 Call `Configure` before calling `ConfigureServices`.
 ```csharp
-var handler = RequestHandlerBuilder.New<string, string>()
-    .Configure(config =>
-    {
-        config
-            .AddJsonFile("appsettings.json")
-            .AddEnvironmentVariables();
-    })
-    .Build();
+var builder = RequestHandlerBuilder.New<string, string>();
+
+builder.Configuration
+    .AddInMemoryCollection(new Dictionary<string, string> { { "MyKey", "MyValue" } });
+
+var handler = builder.Build();
 ```
 
 ### Builder ConfigureServices Example
 Call the `ConfigureServices` method on the builder to register services with `IServiceCollection`.
 Call `Configure` before calling `ConfigureServices`.
 ```csharp
-var handler = RequestHandlerBuilder.New<string, string>()
-    .Configure(config =>
-    {
-        config.AddEnvironmentVariables();
-    })
-    .ConfigureServices((services, config) =>
-    {
-        services
-            .AddLogging()
-            .AddSingleton<IMyService, MyService>();
-    })
-    .Build();
+var builder = RequestHandlerBuilder.New<string, string>();
+
+builder.Services
+    .AddSingleton<IMyService, MyService>()
+    .AddSerilog();
+
+var handler = builder.Build();
+```
+
+### Void Response Example
+For request handlers that don't return a response, use `Void` as the response type.
+```csharp
+var handler = RequestHandlerBuilder.New<string, Void>() // TResponse of type Void
+    .Build()
+    .Prepare();
 ```
