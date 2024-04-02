@@ -15,8 +15,15 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
+    - name: Restore dependencies
+      working-directory: Dialogue
+      run: dotnet restore
+    - name: Build
+      working-directory: Dialogue
+      run: dotnet build --no-restore -c Debug
     - name: Test
-      run: dotnet test --verbosity normal
+      working-directory: Dialogue
+      run: dotnet test --no-build --verbosity normal
 
   version:
     needs: test
@@ -53,9 +60,17 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
+    - name: Restore dependencies
+      working-directory: Dialogue
+      run: dotnet restore
+    - name: Build
+      working-directory: Dialogue
+      run: dotnet build --no-restore -c Release        
     - name: Package Version
       run: echo ${{ needs.version.outputs.PACKAGE_VERSION }}
     - name: Pack
+      working-directory: Dialogue
       run: dotnet pack -c Release -o nuget -p:PackageVersion=${{ needs.version.outputs.PACKAGE_VERSION }}
     - name: Deploy Nuget
+      working-directory: Dialogue
       run: dotnet nuget push nuget/*.nupkg --skip-duplicate -k ${{ secrets.GITHUB_TOKEN }} -s https://nuget.pkg.github.com/marklauter/index.json
