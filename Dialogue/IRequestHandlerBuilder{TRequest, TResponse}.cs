@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.Metrics;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
@@ -21,6 +22,11 @@ public interface IRequestHandlerBuilder<TRequest, TResponse>
     /// </summary>
     /// <remarks><seealso href="https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration/?view=aspnetcore-8.0"/></remarks>
     IConfigurationManager Configuration { get; }
+
+    /// <summary>
+    /// The <see cref="IServiceCollection"/> for the request handler.
+    /// </summary>
+    new IServiceCollection Services { get; }
 
     /// <summary>
     /// Call Build to create an instance of <see cref="IRequestHandler{TRequest, TResponse}"/>.

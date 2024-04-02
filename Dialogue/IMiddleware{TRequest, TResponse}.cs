@@ -11,7 +11,7 @@ public interface IMiddleware<TRequest, TResponse>
     /// <summary>
     /// The next delegate in the pipeline.
     /// </summary>
-    Handler<string, string> Next { get; }
+    Handler<TRequest, TResponse> Next { get; }
 
     /// <summary>
     /// Request handling method.
