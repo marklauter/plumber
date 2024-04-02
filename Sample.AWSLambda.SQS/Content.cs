@@ -1,4 +1,4 @@
-﻿namespace Sample.AWSLambda.SQS.Middleware;
+﻿namespace Sample.AWSLambda.SQS;
 
 public class Content
 {

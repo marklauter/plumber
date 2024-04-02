@@ -1,6 +1,5 @@
 using Amazon.Lambda.SQSEvents;
 using Amazon.Lambda.TestUtilities;
-using Sample.AWSLambda.SQS.Middleware;
 using Xunit;
 
 namespace Sample.AWSLambda.SQS.Tests;
