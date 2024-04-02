@@ -4,7 +4,8 @@ on:
   push:
     branches: [ "main" ]
 permissions:
-  contents: write    
+  contents: write
+working 
 
 jobs:
   test:
@@ -12,14 +13,17 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
     - name: Restore dependencies
+      working-directory: Dialogue
       run: dotnet restore
     - name: Build
+      working-directory: Dialogue
       run: dotnet build --no-restore
     - name: Test
+      working-directory: Dialogue
       run: dotnet test --no-build --verbosity normal
 
   version:
@@ -54,14 +58,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
     - name: Package Version
       run: echo ${{ needs.version.outputs.PACKAGE_VERSION }}
     - name: Pack
-      working-directory: Dialogue
       run: dotnet pack -c Release -o nuget -p:PackageVersion=${{ needs.version.outputs.PACKAGE_VERSION }}
     - name: Deploy Nuget
-      working-directory: Dialogue
       run: dotnet nuget push nuget/*.nupkg --skip-duplicate -k ${{ secrets.GITHUB_TOKEN }} -s https://nuget.pkg.github.com/marklauter/index.json
