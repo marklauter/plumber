@@ -24,6 +24,11 @@ To install, use the following command: `dotnet add package Dialogue`
 
 ## Samples
 
+### Projects
+#### AWS Lambda (SQS) 
+- [Dialogue.Samples.Lambda.SQS](Sample.AWSLambda.SQS)
+- [Dialogue.Samples.Lambda.SQS.Tests](Sample.AWSLambda.SQS.Tests)
+
 ### Simplest Example - no config, no services, no middleware
 In this sample, we create a request handler that does nothing with no configuration, no service registration, and no user-defined middleware. This is the simplest possible example.
 ```csharp
