@@ -14,7 +14,7 @@ public class FunctionTest
             Records =
             [
                 new() {
-                    Body = Content.TestBody
+                    Body = "Jello, Baby."
                 }
             ]
         };
