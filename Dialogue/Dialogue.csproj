@@ -11,6 +11,9 @@
 
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<Title>Dialogue</Title>
+		<PackageId>Dialogue</PackageId>
+		<ProductName>Dialogue</ProductName>
+		<Authors>Mark Lauter</Authors>
 		<Description>Dialogue is a request pipeline library that supports delegate-based and class-based middleware components.</Description>
 		<Copyright>Copyright (c) 2024 Mark Lauter</Copyright>
 		<PackageProjectUrl>https://github.com/marklauter/Dialogue</PackageProjectUrl>
