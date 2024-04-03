@@ -12,5 +12,5 @@
   "function-runtime": "dotnet8",
   "function-memory-size": 512,
   "function-timeout": 30,
-  "function-handler": "Sample.AWSLambda.APIGateway::Sample.AWSLambda.APIGateway.Function::FunctionHandler"
+  "function-handler": "Sample.AWSLambda.APIGateway::Sample.AWSLambda.APIGateway.APIGatewayFunction::ForwardRequestAsync"
 }
