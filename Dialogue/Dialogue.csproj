@@ -9,7 +9,6 @@
 
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 
-		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<Title>Dialogue</Title>
 		<PackageId>Dialogue</PackageId>
 		<ProductName>Dialogue</ProductName>
@@ -39,19 +38,6 @@
 		<IsAotCompatible>True</IsAotCompatible>
 		<WarningLevel>9999</WarningLevel>
 	</PropertyGroup>
-
-	<ItemGroup>
-		<Content Include="..\LICENSE">
-			<Pack>True</Pack>
-			<PackagePath>\</PackagePath>
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</Content>
-		<Content Include="..\readme.md">
-			<Pack>True</Pack>
-			<PackagePath>\</PackagePath>
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</Content>
-	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="IDisposableAnalyzers" Version="4.0.7">
