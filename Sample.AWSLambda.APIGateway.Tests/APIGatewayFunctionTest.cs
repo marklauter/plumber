@@ -1,3 +1,4 @@
+using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Lambda.TestUtilities;
 using Serilog;
 using Serilog.Formatting.Compact;
@@ -13,7 +14,22 @@ public class APIGatewayFunctionTest(ITestOutputHelper output)
     [Fact]
     public async Task TestToUpperFunction()
     {
-        var request = "Jello, Baby.";
+        var request = new APIGatewayHttpApiV2ProxyRequest
+        {
+            Body = "Jello, Baby.",
+            IsBase64Encoded = false,
+            RawPath = "/echo",
+            RouteKey = "POST /echo",
+            RequestContext = new APIGatewayHttpApiV2ProxyRequest.ProxyRequestContext
+            {
+                Http = new APIGatewayHttpApiV2ProxyRequest.HttpDescription
+                {
+                    Method = "POST",
+                    Path = "/echo",
+                },
+                RequestId = Ulid.NewUlid().ToString(),
+            },
+        };
 
         var lambdaContext = new TestLambdaContext
         {
@@ -28,7 +44,7 @@ public class APIGatewayFunctionTest(ITestOutputHelper output)
         Assert.False(String.IsNullOrWhiteSpace(stdout));
         Assert.Contains(lambdaContext.AwsRequestId, stdout);
 
-        Assert.Equal($"Echo({request})", response);
+        Assert.Equal($"Echo({request.Body})", response.Body);
     }
 
     private void ConfigureLogger(LoggerConfiguration configuration) => configuration

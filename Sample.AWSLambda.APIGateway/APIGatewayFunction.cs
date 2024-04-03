@@ -1,3 +1,4 @@
+using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Lambda.Core;
 using Dialogue;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,7 +13,7 @@ namespace Sample.AWSLambda.APIGateway;
 
 public class APIGatewayFunction
 {
-    private readonly IRequestHandler<APIGatewayProxyContext, string> requestHandler;
+    private readonly IRequestHandler<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse> requestHandler;
 
     // The default constructor is called by Lambda host service once for the lifetime of the function instance, which could be up to a couple of hours.
     // That's once per cold-start, so you want to get all your setup done here.
@@ -29,7 +30,7 @@ public class APIGatewayFunction
 
         // create a request handler builder
         var builder = RequestHandlerBuilder
-            .New<APIGatewayProxyContext, string>();
+            .New<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse>();
 
         // add services
         _ = builder.Services.AddLogging(loggingBuilder =>
@@ -46,8 +47,9 @@ public class APIGatewayFunction
     // This method is called for every Lambda invocation.
     // Invoke the request handler to execute the pipeline.
     // In this simplifed scenario we're passing a a request context.
-    public Task<string?> ForwardRequestAsync(string input, ILambdaContext context) =>
-        requestHandler.InvokeAsync(new APIGatewayProxyContext(input, context));
+    public async Task<APIGatewayHttpApiV2ProxyResponse> ForwardRequestAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context) =>
+        await requestHandler.InvokeAsync(new APIGatewayHttpProxyContext(request, context))
+            ?? throw new InvalidOperationException("response was unassigned");
 
     // for unit tests only - allows unit test to override writeto TestOutputHelper
     internal APIGatewayFunction(Action<LoggerConfiguration> configureLogger)
@@ -62,7 +64,7 @@ public class APIGatewayFunction
 
         // create a request handler builder
         var builder = RequestHandlerBuilder
-            .New<APIGatewayProxyContext, string>();
+            .New<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse>();
 
         // add services
         _ = builder.Services.AddLogging(loggingBuilder => loggingBuilder.AddSerilog(Log.Logger));
