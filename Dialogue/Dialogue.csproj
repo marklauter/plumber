@@ -20,7 +20,8 @@
 		<PackageTags>request pipeline;middleware;pipeline;dialogue;dialog</PackageTags>
 		<PackAsTool>True</PackAsTool>
 		<NeutralLanguage>en</NeutralLanguage>
-		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<PackageLicenseUrl>https://github.com/marklauter/Dialogue/blob/main/LICENSE</PackageLicenseUrl>
+		<PackageReadmeUrl>https://github.com/marklauter/Dialogue/blob/main/README.md</PackageReadmeUrl>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 	</PropertyGroup>
 
@@ -37,14 +38,16 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<None Include="..\LICENSE">
+		<Content Include="..\LICENSE">
 			<Pack>True</Pack>
 			<PackagePath>\</PackagePath>
-		</None>
-		<None Include="..\readme.md">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\readme.md">
 			<Pack>True</Pack>
 			<PackagePath>\</PackagePath>
-		</None>
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
 	</ItemGroup>
 
 	<ItemGroup>
