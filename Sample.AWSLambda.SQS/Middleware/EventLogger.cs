@@ -1,4 +1,5 @@
-﻿using Dialogue;
+﻿using Amazon.Lambda.SQSEvents;
+using Dialogue;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
@@ -17,7 +18,7 @@ internal sealed class EventLogger(
 
     public async Task InvokeAsync(RequestContext<SQSEventContext, Dialogue.Void> context)
     {
-        using var logscope = logger.BeginScope(Guid.NewGuid().ToString());
+        using var logscope = logger.BeginScope($"{nameof(SQSEvent)}::{context.Request.LambdaContext.InvokedFunctionArn}::{context.Request.LambdaContext.AwsRequestId}");
 
         var timer = Stopwatch.StartNew();
         try
@@ -33,7 +34,11 @@ internal sealed class EventLogger(
         }
         finally
         {
-            logger.LogInformation("{MessageCount} SQS messages processed in {ElapsedMilliseconds}ms", context.Request.SQSEvent.Records.Count, timer.ElapsedMilliseconds);
+            logger.LogInformation(
+                "{MessageCount} SQS messages processed in {ElapsedMilliseconds}ms with {RemainingMilliseconds}ms remaining.",
+                context.Request.SQSEvent.Records.Count,
+                timer.ElapsedMilliseconds,
+                context.Request.LambdaContext.RemainingTime.TotalMilliseconds);
         }
     }
 }

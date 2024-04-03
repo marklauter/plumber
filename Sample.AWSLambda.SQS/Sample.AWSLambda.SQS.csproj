@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
@@ -12,6 +12,7 @@
 		<!-- Generate ready to run images during publishing to improve cold start time. -->
 		<PublishReadyToRun>true</PublishReadyToRun>
 	</PropertyGroup>
+	
 	<ItemGroup>
 		<PackageReference Include="Amazon.Lambda.Core" Version="2.2.0" />
 		<PackageReference Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.1" />
@@ -19,9 +20,21 @@
 		<PackageReference Include="IDisposableAnalyzers" Version="4.0.7">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>		
+		</PackageReference>
+		<PackageReference Include="Serilog" Version="3.1.1" />
+		<PackageReference Include="Serilog.Exceptions" Version="8.4.0" />
+		<PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
+		<PackageReference Include="Serilog.Formatting.Compact" Version="2.0.0" />
+		<PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
 	</ItemGroup>
+	
 	<ItemGroup>
 	  <ProjectReference Include="..\Dialogue\Dialogue.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+			<_Parameter1>$(AssemblyName).Tests</_Parameter1>
+		</AssemblyAttribute>
 	</ItemGroup>
 </Project>

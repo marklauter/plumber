@@ -3,6 +3,9 @@ using Amazon.Lambda.SQSEvents;
 using Dialogue;
 using Microsoft.Extensions.DependencyInjection;
 using Sample.AWSLambda.SQS.Middleware;
+using Serilog;
+using Serilog.Exceptions;
+using Serilog.Formatting.Compact;
 
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
 
@@ -22,8 +25,15 @@ public class SQSEventFunction
         var builder = RequestHandlerBuilder
             .New<SQSEventContext, Dialogue.Void>();
 
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Verbose()
+            .Enrich.FromLogContext()
+            .Enrich.WithExceptionDetails()
+            .WriteTo.Console(new CompactJsonFormatter())
+            .CreateLogger();
+
         // add services
-        _ = builder.Services.AddLogging();
+        _ = builder.Services.AddLogging(loggingBuilder => loggingBuilder.AddSerilog(Log.Logger));
 
         // build the request handler, add middleware, and prepare the pipeline
         requestHandler = builder
@@ -40,4 +50,31 @@ public class SQSEventFunction
     // In a real-world scenario you'd probably create context instance per record on the event and invoke the handler for each one.
     public async Task HandleEventAsync(SQSEvent e, ILambdaContext context) =>
         _ = await requestHandler.InvokeAsync(new SQSEventContext(e, context));
+
+    // for unit tests only - allows unit test to override writeto TestOutputHelper
+    internal SQSEventFunction(Action<LoggerConfiguration> configureLogger)
+    {
+        // create a request handler builder
+        var builder = RequestHandlerBuilder
+            .New<SQSEventContext, Dialogue.Void>();
+
+        var loggerConfig = new LoggerConfiguration()
+            .MinimumLevel.Verbose()
+            .Enrich.FromLogContext()
+            .Enrich.WithExceptionDetails();
+        configureLogger(loggerConfig);
+        Log.Logger = loggerConfig
+            .CreateLogger();
+
+        // add services
+        _ = builder.Services.AddLogging(loggingBuilder => loggingBuilder.AddSerilog(Log.Logger));
+
+        // build the request handler, add middleware, and prepare the pipeline
+        requestHandler = builder
+           .Build()
+           .Use<EventLogger>()
+           .Use<MessageValidator>()
+           .Use<RecordSink>()
+           .Prepare();
+    }
 }
