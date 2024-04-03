@@ -10,13 +10,13 @@
 
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<Title>Dialogue</Title>
-		<Description>Dialogue is a request pipeline supporting middleware delegates and classes.</Description>
+		<Description>Dialogue is a request pipeline library that supports delegate-based and class-based middleware components.</Description>
 		<Copyright>Copyright (c) 2024 Mark Lauter</Copyright>
-		<PackageProjectUrl>https://github.com/marklauter/middleware</PackageProjectUrl>
+		<PackageProjectUrl>https://github.com/marklauter/Dialogue</PackageProjectUrl>
 		<PackageReadmeFile>readme.md</PackageReadmeFile>
-		<RepositoryUrl>https://github.com/marklauter/middleware</RepositoryUrl>
+		<RepositoryUrl>https://github.com/marklauter/Dialogue</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<PackageTags>request pipeline;middleware;pipeline</PackageTags>
+		<PackageTags>request pipeline;middleware;pipeline;dialogue;dialog</PackageTags>
 		<PackAsTool>True</PackAsTool>
 		<NeutralLanguage>en</NeutralLanguage>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
