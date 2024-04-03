@@ -19,7 +19,6 @@
 		<RepositoryUrl>https://github.com/marklauter/Dialogue</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>request pipeline;middleware;pipeline;dialogue;dialog</PackageTags>
-		<PackAsTool>True</PackAsTool>
 		<NeutralLanguage>en</NeutralLanguage>
 		<PackageLicenseUrl>https://github.com/marklauter/Dialogue/blob/main/LICENSE</PackageLicenseUrl>
 		<PackageReadmeUrl>https://github.com/marklauter/Dialogue/blob/main/README.md</PackageReadmeUrl>
