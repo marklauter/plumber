@@ -16,11 +16,13 @@ To install, use the following command: `dotnet add package Dialogue`
 1. Handle additional configuration scenarios through the  `IConfigurationManager Configuration` property on the builder.
 1. Register services with the `IServiceCollection Servics` property.
 1. Use the `Build` method to create an `IRequestHandler<TRequest, TResponse>` instance.
-1. Configure the request delegate pipeline by calling one of the `Use` methods on the request handler.
+1. Configure the request delegate pipeline by calling the `Use` methods on the request handler.
 1. Call the `Prepare` method on the request handler to compile the pipeline. If you don't call `Prepare`, the pipeline will be compiled when the first request is processed.
-1. Call the `InvokeAsync` method on the request handler to process a request.
-1. Within your middleware delegates, or `IMiddleware` implementations, invoke `Next` to pass the request context to the next middleware in the pipeline.
+1. Call the `InvokeAsync` method on the request handler to forward the request to the pipeline.
+1. Within your middleware delegates, or `IMiddleware` implementations, always invoke `Next` to pass the request context to the next delegate in the pipeline.
 1. Always call `context.CancelationToken.ThrowIfCancellationRequested()` to check for cancellation requests before processing the request or invoking `Next`.
+1. To terminate, or "short circuit", the pipeline don't invoke `Next`.
+1. In your terminal delegate, set the response value in the request context.
 
 ## Samples
 
@@ -28,6 +30,9 @@ To install, use the following command: `dotnet add package Dialogue`
 #### AWS Lambda (SQS) 
 - [Dialogue.Samples.Lambda.SQS](Sample.AWSLambda.SQS)
 - [Dialogue.Samples.Lambda.SQS.Tests](Sample.AWSLambda.SQS.Tests)
+- [Dialogue.Samples.Lambda.APIGateway](Sample.AWSLambda.APIGateway)
+- [Dialogue.Samples.Lambda.APIGateway.Tests](Sample.AWSLambda.APIGateway.Tests)
+
 
 ### Simplest Example - no config, no services, no middleware
 In this sample, we create a request handler that does nothing with no configuration, no service registration, and no user-defined middleware. This is the simplest possible example.
