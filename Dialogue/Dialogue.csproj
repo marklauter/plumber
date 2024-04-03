@@ -16,7 +16,6 @@
 		<Description>Dialogue is a request pipeline library that supports delegate-based and class-based middleware components.</Description>
 		<Copyright>Copyright (c) 2024 Mark Lauter</Copyright>
 		<PackageProjectUrl>https://github.com/marklauter/Dialogue</PackageProjectUrl>
-		<PackageReadmeFile>readme.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/marklauter/Dialogue</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>request pipeline;middleware;pipeline;dialogue;dialog</PackageTags>
