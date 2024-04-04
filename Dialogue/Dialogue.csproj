@@ -9,19 +9,21 @@
 
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 
-		<Title>Dialogue</Title>
-		<PackageId>Dialogue</PackageId>
-		<ProductName>Dialogue</ProductName>
+		<Title>Dialogue: A Request/Response Pipeline</Title>
+		<PackageId>MSL.Dialogue.RequestPipeline</PackageId>
+		<ProductName>Dialogue: A Request/Response Pipeline</ProductName>
 		<Authors>Mark Lauter</Authors>
-		<Description>Dialogue is a request pipeline library that supports delegate-based and class-based middleware components.</Description>
+		<Description>Dialogue is a request/response pipeline library that supports delegate-based and class-based middleware components.</Description>
 		<Copyright>Copyright (c) 2024 Mark Lauter</Copyright>
 		<PackageProjectUrl>https://github.com/marklauter/Dialogue</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/marklauter/Dialogue</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>request pipeline;middleware;pipeline;dialogue;dialog</PackageTags>
-		<NeutralLanguage>en</NeutralLanguage>
+		<NeutralLanguage>en-US</NeutralLanguage>
 		<PackageLicenseUrl>https://github.com/marklauter/Dialogue/blob/main/LICENSE</PackageLicenseUrl>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<PackageReadmeUrl>https://github.com/marklauter/Dialogue/blob/main/README.md</PackageReadmeUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 	</PropertyGroup>
 
@@ -36,6 +38,11 @@
 		<IsAotCompatible>True</IsAotCompatible>
 		<WarningLevel>9999</WarningLevel>
 	</PropertyGroup>
+
+	<ItemGroup>
+	  <None Remove="LICENSE" />
+	  <None Remove="README.md" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="IDisposableAnalyzers" Version="4.0.7">
@@ -57,6 +64,15 @@
 		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
 			<_Parameter1>$(AssemblyName).Tests</_Parameter1>
 		</AssemblyAttribute>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Content Include="LICENSE">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </Content>
+	  <Content Include="README.md">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </Content>
 	</ItemGroup>
 
 </Project>

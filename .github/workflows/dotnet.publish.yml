@@ -50,7 +50,7 @@ jobs:
           git push --tags
           echo "PACKAGE_VERSION=$package_version" >> $GITHUB_OUTPUT
   
-  deploy:
+  publish:
     needs: 
     - test
     - version
@@ -61,17 +61,26 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
+
+    - name: Echo Package Version
+      run: echo ${{ needs.version.outputs.PACKAGE_VERSION }}
+
     - name: Restore dependencies
       working-directory: Dialogue
       run: dotnet restore
+
     - name: Build
       working-directory: Dialogue
-      run: dotnet build --no-restore -c Release        
-    - name: Package Version
-      run: echo ${{ needs.version.outputs.PACKAGE_VERSION }}
+      run: dotnet build --no-restore -c Release -p:Version=${{ needs.version.outputs.PACKAGE_VERSION }}
+
     - name: Pack
       working-directory: Dialogue
-      run: dotnet pack -c Release -o nuget -p:PackageVersion=${{ needs.version.outputs.PACKAGE_VERSION }}
-    - name: Deploy Nuget
+      run: dotnet pack -c Release -o nuget -p:PackageVersion=${{ needs.version.outputs.PACKAGE_VERSION }} -p:Version=${{ needs.version.outputs.PACKAGE_VERSION }}
+
+    - name: Publish to nuget.pkg.github.com
       working-directory: Dialogue
       run: dotnet nuget push nuget/*.nupkg --skip-duplicate -k ${{ secrets.GITHUB_TOKEN }} -s https://nuget.pkg.github.com/marklauter/index.json
+
+    - name: Publish to api.nuget.org
+      working-directory: Dialogue
+      run: dotnet nuget push nuget/*.nupkg --skip-duplicate -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
