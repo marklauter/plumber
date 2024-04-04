@@ -10,7 +10,7 @@
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 
 		<Title>Dialogue: A Request/Response Pipeline</Title>
-		<PackageId>MSL.Dialogue.RequestPipeline</PackageId>
+		<PackageId>MSL.$(AssemblyName).Pipeline</PackageId>
 		<ProductName>Dialogue: A Request/Response Pipeline</ProductName>
 		<Authors>Mark Lauter</Authors>
 		<Description>Dialogue is a request/response pipeline library that supports delegate-based and class-based middleware components.</Description>
@@ -20,9 +20,10 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>request pipeline;middleware;pipeline;dialogue;dialog</PackageTags>
 		<NeutralLanguage>en-US</NeutralLanguage>
+		<IncludeContentInPack>true</IncludeContentInPack>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
-		<PackageReadmeUrl>https://github.com/marklauter/Dialogue/blob/main/README.md</PackageReadmeUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageReadmeUrl>https://github.com/marklauter/Dialogue/blob/main/README.md</PackageReadmeUrl>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 	</PropertyGroup>
 
@@ -39,8 +40,16 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <None Remove="LICENSE" />
-	  <None Remove="README.md" />
+		<None Include="LICENSE">
+			<Pack>true</Pack>
+			<PackagePath></PackagePath>
+			<Visible>True</Visible>
+		</None>
+		<None Include="README.md">
+			<Pack>true</Pack>
+			<PackagePath></PackagePath>
+			<Visible>True</Visible>
+		</None>
 	</ItemGroup>
 
 	<ItemGroup>
@@ -66,12 +75,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Content Include="LICENSE">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </Content>
-	  <Content Include="README.md">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </Content>
+		<Content Include="LICENSE">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+		<Content Include="README.md">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
 	</ItemGroup>
 
 </Project>
