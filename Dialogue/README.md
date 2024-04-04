@@ -8,7 +8,7 @@ Dialogue is a request pipeline that supports middleware delegates and classes. I
 If you're not familiar with middleware pipelines, Microsoft has a [good primer on how middleware works in ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/?view=aspnetcore-8.0).
 
 ## Installing
-To install, use the following command: `dotnet add package Dialogue`
+To install, use the following command: `dotnet add package MSL.Dialogue.Pipeline`
 
 ## Usage
 1. Create an `IRequestHandlerBuilder<TRequest, TResponse>` by calling one of the static `RequestHandlerBuilder.New` methods. 
