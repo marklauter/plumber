@@ -24,11 +24,11 @@ public class DialogueTests
 
         var handler = RequestHandlerBuilder.New<string, string>()
             .Build()
-            .Use(async (context, next) =>
+            .Use((context, next) =>
             {
                 context.CancellationToken.ThrowIfCancellationRequested();
                 context.Response = context.Request.ToUpperInvariant();
-                await next(context);
+                return next(context);
             })
             .Prepare();
 
@@ -44,17 +44,17 @@ public class DialogueTests
 
         var handler = RequestHandlerBuilder.New<string, string>()
             .Build()
-            .Use(async (context, next) =>
+            .Use((context, next) =>
             {
                 context.CancellationToken.ThrowIfCancellationRequested();
                 context.Response = context.Request.ToUpperInvariant();
-                await next(context);
+                return next(context);
             })
-            .Use(async (context, next) =>
+            .Use((context, next) =>
             {
                 context.CancellationToken.ThrowIfCancellationRequested();
                 context.Response = context.Request.ToLowerInvariant();
-                await next(context);
+                return next(context);
             })
             .Prepare();
 
