@@ -9,11 +9,6 @@ public interface IMiddleware<TRequest, TResponse>
     where TRequest : class
 {
     /// <summary>
-    /// The next delegate in the pipeline.
-    /// </summary>
-    Handler<TRequest, TResponse> Next { get; }
-
-    /// <summary>
     /// Request handling method.
     /// Invoke Next to pass the context to the next middleware in the pipeline.
     /// </summary>

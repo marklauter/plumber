@@ -16,7 +16,7 @@ To install, use the following command: `dotnet add package Dialogue`
 1. Builder adds configuration providers for appsettings files, environment variables, command line args, and user secrets by default.
 1. Handle additional configuration scenarios through the  `IConfigurationManager Configuration` property on the builder.
 1. Register services with the `IServiceCollection Servics` property.
-1. Use the `Build` method to create an `IRequestHandler<TRequest, TResponse>` instance.
+1. Use the `Build` method to create an `IRequestRequestDelegate<TRequest, TResponse>` instance.
 1. Configure the request delegate pipeline by calling the `Use` methods on the request handler.
 1. Call the `Prepare` method on the request handler to compile the pipeline. If you don't call `Prepare`, the pipeline will be compiled when the first request is processed.
 1. Call the `InvokeAsync` method on the request handler to forward the request to the pipeline.
@@ -73,12 +73,17 @@ Assert.Equal(request.ToUpperInvariant(), response);
 ### Middleware Class Example
 In this sample, we create a request handler with a user-defined `IMiddleware` implementation that converts the request to lowercase.
 
-First, we define the middleware class.
+First, we define the middleware class, which receives the next middleware delegate in the pipeline in its constructor.
+The middleware is responsible for calling the next delegate unless the middleware needs to short-circuiting the pipeline.
+An example short-circuit scenario might be a request validation middleware that returns an error response if the request is invalid.
+
+IMiddleware implementations support constructor-based dependency injection. 
+The next delegate must be the first argument in the contstructor.
 ```csharp
-internal sealed class ToLowerMiddleware(Handler<string, string> next)
+internal sealed class ToLowerMiddleware(RequestMiddleware<string, string> next)
     : IMiddleware<string, string>
 {
-    public Handler<string, string> Next { get; } = next
+    private readonly RequestMiddleware<string, string> next = next
         ?? throw new ArgumentNullException(nameof(next));
 
     public Task InvokeAsync(Context<string, string> context)

@@ -6,10 +6,10 @@ namespace Sample.AWSLambda.APIGateway.Middleware;
 // This user-defined middleware component is the last to be added to the pipeline. In a real-world use case, it would do the actual work of processing the SQS event.
 // This simplied example is just a sink that does nothing.
 internal sealed class RequestHandler(
-    Handler<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse> next)
+    RequestMiddleware<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse> next)
     : IMiddleware<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse>
 {
-    public Handler<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse> Next { get; } = next ?? throw new ArgumentNullException(nameof(next));
+    private readonly RequestMiddleware<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse> next = next ?? throw new ArgumentNullException(nameof(next));
 
     public Task InvokeAsync(RequestContext<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse> context)
     {
@@ -28,7 +28,7 @@ internal sealed class RequestHandler(
             IsBase64Encoded = false,
         };
 
-        return Task.CompletedTask;
+        return next(context);
     }
 }
 

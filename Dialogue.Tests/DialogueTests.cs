@@ -63,10 +63,10 @@ public class DialogueTests
         Assert.Equal(request.ToLowerInvariant(), response);
     }
 
-    internal sealed class ToLowerMiddleware(Handler<string, string> next)
+    internal sealed class ToLowerMiddleware(RequestMiddleware<string, string> next)
         : IMiddleware<string, string>
     {
-        public Handler<string, string> Next { get; } = next
+        public RequestMiddleware<string, string> next = next
             ?? throw new ArgumentNullException(nameof(next));
 
         public Task InvokeAsync(RequestContext<string, string> context)
@@ -92,10 +92,10 @@ public class DialogueTests
         Assert.Equal(request.ToLowerInvariant(), response);
     }
 
-    internal sealed class CtorMiddleware(Handler<string, string> next)
+    internal sealed class CtorMiddleware(RequestMiddleware<string, string> next)
         : IMiddleware<string, string>
     {
-        public Handler<string, string> Next { get; } = next
+        public RequestMiddleware<string, string> next = next
             ?? throw new ArgumentNullException(nameof(next));
 
         public Task InvokeAsync(RequestContext<string, string> context)
@@ -112,7 +112,7 @@ public class DialogueTests
     [Fact]
     public async Task GetMiddlewareCtorAsync()
     {
-        Handler<string, string> next = context =>
+        RequestMiddleware<string, string> next = context =>
             context.CancellationToken.IsCancellationRequested
                 ? Task.FromCanceled<RequestContext<string, string>>(context.CancellationToken)
                 : Task.FromResult(context);

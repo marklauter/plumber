@@ -8,24 +8,25 @@ namespace Sample.AWSLambda.SQS.Middleware;
 // This sample event logger is similar to the Serilog web request logger that can be used in ASP.NET Core.
 // Register the event logger ahead of the other middleware components.
 internal sealed class EventLogger(
-    Handler<SQSEventContext, Dialogue.Void> next,
+    RequestMiddleware<SQSEventContext, Dialogue.Void> next,
     ILogger<EventLogger> logger)
     : IMiddleware<SQSEventContext, Dialogue.Void>
 {
     private readonly ILogger<EventLogger> logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-    public Handler<SQSEventContext, Dialogue.Void> Next { get; } = next ?? throw new ArgumentNullException(nameof(next));
+    private readonly RequestMiddleware<SQSEventContext, Dialogue.Void> next = next ?? throw new ArgumentNullException(nameof(next));
 
     public async Task InvokeAsync(RequestContext<SQSEventContext, Dialogue.Void> context)
     {
-        using var logscope = logger.BeginScope($"{nameof(SQSEvent)}::{context.Request.LambdaContext.InvokedFunctionArn}::{context.Request.LambdaContext.AwsRequestId}");
+        using var logscope = logger
+            .BeginScope($"{nameof(SQSEvent)}::{context.Request.LambdaContext.InvokedFunctionArn}::{context.Request.LambdaContext.AwsRequestId}");
 
         var timer = Stopwatch.StartNew();
         try
         {
             // always check for cancellation
             context.CancellationToken.ThrowIfCancellationRequested();
-            await Next(context); // have to await because of the using block started on line 20
+            await next(context); // have to await because of the using block started on line 20
         }
         catch (Exception ex)
         {

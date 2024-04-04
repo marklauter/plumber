@@ -21,10 +21,10 @@
 		<PackageTags>request pipeline;middleware;pipeline;dialogue;dialog</PackageTags>
 		<NeutralLanguage>en-US</NeutralLanguage>
 		<IncludeContentInPack>true</IncludeContentInPack>
-		<PackageLicenseFile>LICENSE</PackageLicenseFile>
-		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReadmeUrl>https://github.com/marklauter/Dialogue/blob/main/README.md</PackageReadmeUrl>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageIcon>MSL.png</PackageIcon>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -38,19 +38,6 @@
 		<IsAotCompatible>True</IsAotCompatible>
 		<WarningLevel>9999</WarningLevel>
 	</PropertyGroup>
-
-	<ItemGroup>
-		<None Include="LICENSE">
-			<Pack>true</Pack>
-			<PackagePath></PackagePath>
-			<Visible>True</Visible>
-		</None>
-		<None Include="README.md">
-			<Pack>true</Pack>
-			<PackagePath></PackagePath>
-			<Visible>True</Visible>
-		</None>
-	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="IDisposableAnalyzers" Version="4.0.7">
@@ -75,12 +62,18 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Content Include="LICENSE">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</Content>
-		<Content Include="README.md">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</Content>
+	  <None Include="..\MSL.png">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	  <None Include="..\README.md">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+		<None Include="..\LICENSE">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
 	</ItemGroup>
 
 </Project>

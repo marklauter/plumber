@@ -4,10 +4,10 @@ namespace Sample.AWSLambda.SQS.Middleware;
 
 // This sample message validator middleware checks for empty request bodies. In a real-world scenario, you might validate the MD5 hash, check the message size, or verify the message signature.
 internal sealed class MessageValidator(
-    Handler<SQSEventContext, Dialogue.Void> next)
+    RequestMiddleware<SQSEventContext, Dialogue.Void> next)
     : IMiddleware<SQSEventContext, Dialogue.Void>
 {
-    public Handler<SQSEventContext, Dialogue.Void> Next { get; } = next ?? throw new ArgumentNullException(nameof(next));
+    private readonly RequestMiddleware<SQSEventContext, Dialogue.Void> next = next ?? throw new ArgumentNullException(nameof(next));
 
     public Task InvokeAsync(RequestContext<SQSEventContext, Dialogue.Void> context)
     {
@@ -23,6 +23,6 @@ internal sealed class MessageValidator(
             }
         }
 
-        return Next(context);
+        return next(context);
     }
 }

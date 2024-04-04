@@ -26,16 +26,16 @@ public interface IRequestHandler<TRequest, TResponse>
     /// <summary>
     /// Adds a middleware to the request handler's pipeline.
     /// </summary>
-    /// <param name="middleware"><see cref="Func{T, TResult}"/>, <see cref="Handler{TRequest, TResponse}"/></param>
+    /// <param name="middleware"><see cref="Func{T, TResult}"/>, <see cref="RequestMiddleware{TRequest, TResponse}"/></param>
     /// <returns><see cref="IRequestHandler{TRequest, TResponse}"/></returns>
-    IRequestHandler<TRequest, TResponse> Use(Func<Handler<TRequest, TResponse>, Handler<TRequest, TResponse>> middleware);
+    IRequestHandler<TRequest, TResponse> Use(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware);
 
     /// <summary>
     /// Adds a middleware to the request handler's pipeline.
     /// </summary>
-    /// <param name="middleware"><see cref="Func{T1, T2, TResult}"/>, <see cref="RequestContext{TRequest, TResponse}"/>, <see cref="Handler{TRequest, TResponse}"/>, <see cref="Task"/></param>
+    /// <param name="middleware"><see cref="Func{T1, T2, TResult}"/>, <see cref="RequestContext{TRequest, TResponse}"/>, <see cref="RequestMiddleware{TRequest, TResponse}"/>, <see cref="Task"/></param>
     /// <returns><see cref="IRequestHandler{TRequest, TResponse}"/></returns>
-    IRequestHandler<TRequest, TResponse> Use(Func<RequestContext<TRequest, TResponse>, Handler<TRequest, TResponse>, Task> middleware);
+    IRequestHandler<TRequest, TResponse> Use(Func<RequestContext<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>, Task> middleware);
 
     /// <summary>
     /// Adds a middleware to the request handler's pipeline.

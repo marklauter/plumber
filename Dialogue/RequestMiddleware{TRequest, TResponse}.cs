@@ -7,6 +7,6 @@
 /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
 /// <param name="context"></param>
 /// <returns></returns>
-public delegate Task Handler<TRequest, TResponse>(
+public delegate Task RequestMiddleware<TRequest, TResponse>(
     RequestContext<TRequest, TResponse> context)
     where TRequest : class;

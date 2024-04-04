@@ -13,9 +13,9 @@ internal sealed class RequestHandler<TRequest, TResponse>(
     private readonly ServiceProvider services = services
         ?? throw new ArgumentNullException(nameof(services));
     private readonly TimeSpan timeout = timeout;
-    private readonly List<Func<Handler<TRequest, TResponse>, Handler<TRequest, TResponse>>> components = [];
+    private readonly List<Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>>> components = [];
 
-    private Handler<TRequest, TResponse>? handler;
+    private RequestMiddleware<TRequest, TResponse>? handler;
 
     /// <inheritdoc/>
     public Task<TResponse?> InvokeAsync(TRequest request)
@@ -31,7 +31,7 @@ internal sealed class RequestHandler<TRequest, TResponse>(
 
     private async Task<TResponse?> InvokeInternalAsync(
         TRequest request,
-        Handler<TRequest, TResponse> handler)
+        RequestMiddleware<TRequest, TResponse> handler)
     {
         using var serviceScope = services.CreateScope();
 
@@ -49,7 +49,7 @@ internal sealed class RequestHandler<TRequest, TResponse>(
 
     private async Task<TResponse?> InvokeInternalAsync(
         TRequest request,
-        Handler<TRequest, TResponse> handler,
+        RequestMiddleware<TRequest, TResponse> handler,
         TimeSpan timeout)
     {
         using var serviceScope = services.CreateScope();
@@ -74,9 +74,9 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         return this;
     }
 
-    private Handler<TRequest, TResponse> BuildPipeline()
+    private RequestMiddleware<TRequest, TResponse> BuildPipeline()
     {
-        Handler<TRequest, TResponse> pipeline = context =>
+        RequestMiddleware<TRequest, TResponse> pipeline = context =>
             context.CancellationToken.IsCancellationRequested
                 ? Task.FromCanceled<RequestContext<TRequest, TResponse>>(context.CancellationToken)
                 : Task.FromResult(context);
@@ -90,21 +90,21 @@ internal sealed class RequestHandler<TRequest, TResponse>(
     }
 
     /// <inheritdoc/>
-    public IRequestHandler<TRequest, TResponse> Use(Func<Handler<TRequest, TResponse>, Handler<TRequest, TResponse>> middleware)
+    public IRequestHandler<TRequest, TResponse> Use(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware)
     {
         components.Add(middleware);
         return this;
     }
 
     /// <inheritdoc/>
-    public IRequestHandler<TRequest, TResponse> Use(Func<RequestContext<TRequest, TResponse>, Handler<TRequest, TResponse>, Task> middleware) =>
+    public IRequestHandler<TRequest, TResponse> Use(Func<RequestContext<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>, Task> middleware) =>
         Use(next => context => middleware(context, next));
 
     /// <inheritdoc/>
     public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TMiddleware>()
         where TMiddleware : class, IMiddleware<TRequest, TResponse>
     {
-        Handler<TRequest, TResponse> Component(Handler<TRequest, TResponse> next)
+        RequestMiddleware<TRequest, TResponse> Component(RequestMiddleware<TRequest, TResponse> next)
         {
             var component = CreateMiddleware(typeof(TMiddleware), next);
             return component.Invoke;
@@ -113,9 +113,9 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         return Use(Component);
     }
 
-    private Handler<TRequest, TResponse> CreateMiddleware(
+    private RequestMiddleware<TRequest, TResponse> CreateMiddleware(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] Type type,
-        Handler<TRequest, TResponse> next)
+        RequestMiddleware<TRequest, TResponse> next)
     {
         var middleware = ActivatorUtilities
             .CreateInstance(
