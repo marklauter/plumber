@@ -2,6 +2,7 @@
 Dialogue is a request pipeline that supports middleware delegates and classes. It provides configuration, dependency injection, and middleware pipeline services for AWS Lambda functions or Azure functions.
 
 ## References
+Dialogue is based this article:
 [How is the ASP.NET Core Middleware Pipeline Built - Steve Gorden, July 2020](https://www.stevejgordon.co.uk/how-is-the-asp-net-core-middleware-pipeline-built)
 
 ## Getting Started
