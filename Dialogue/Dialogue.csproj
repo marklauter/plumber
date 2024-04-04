@@ -23,7 +23,7 @@
 		<IncludeContentInPack>true</IncludeContentInPack>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<PackageIcon>MSL.png</PackageIcon>
 	</PropertyGroup>
 
