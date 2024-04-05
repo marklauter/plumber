@@ -1,7 +1,6 @@
 ﻿using Amazon.Lambda.APIGatewayEvents;
 using Dialogue;
 using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 
 namespace Sample.AWSLambda.APIGateway.Middleware;
 
@@ -22,7 +21,6 @@ internal sealed class RequestLogger(
         using var logscope = logger
             .BeginScope($"{nameof(APIGateway)}::{context.Request.LambdaContext.InvokedFunctionArn}::{context.Request.LambdaContext.AwsRequestId}");
 
-        var timer = Stopwatch.StartNew();
         try
         {
             // always check for cancellation
@@ -40,7 +38,7 @@ internal sealed class RequestLogger(
             logger.LogInformation(
                 "request id {RequestId} processed in {ElapsedMilliseconds}ms with {RemainingMilliseconds}ms remaining. {Path}",
                 context.Request.HttpRequest.RequestContext.RequestId,
-                timer.ElapsedMilliseconds,
+                context.Elapsed.TotalMilliseconds,
                 context.Request.LambdaContext.RemainingTime.TotalMilliseconds,
                 context.Request.HttpRequest.RawPath);
         }

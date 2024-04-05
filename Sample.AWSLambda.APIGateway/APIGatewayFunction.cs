@@ -11,7 +11,7 @@ using Serilog.Formatting.Compact;
 
 namespace Sample.AWSLambda.APIGateway;
 
-public class APIGatewayFunction
+public sealed partial class APIGatewayFunction
 {
     private readonly IRequestHandler<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse> requestHandler;
 
@@ -50,30 +50,4 @@ public class APIGatewayFunction
     public async Task<APIGatewayHttpApiV2ProxyResponse> ForwardRequestAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context) =>
         await requestHandler.InvokeAsync(new APIGatewayHttpProxyContext(request, context))
             ?? throw new InvalidOperationException("response was unassigned");
-
-    // for unit tests only - allows unit test to override writeto TestOutputHelper
-    internal APIGatewayFunction(Action<LoggerConfiguration> configureLogger)
-    {
-        var loggerConfig = new LoggerConfiguration()
-            .MinimumLevel.Verbose()
-            .Enrich.FromLogContext()
-            .Enrich.WithExceptionDetails();
-        configureLogger(loggerConfig);
-        Log.Logger = loggerConfig
-            .CreateLogger();
-
-        // create a request handler builder
-        var builder = RequestHandlerBuilder
-            .New<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse>();
-
-        // add services
-        _ = builder.Services.AddLogging(loggingBuilder => loggingBuilder.AddSerilog(Log.Logger));
-
-        // build the request handler, add middleware, and prepare the pipeline
-        requestHandler = builder
-           .Build()
-           .Use<RequestLogger>()
-           .Use<RequestHandler>()
-           .Prepare();
-    }
 }

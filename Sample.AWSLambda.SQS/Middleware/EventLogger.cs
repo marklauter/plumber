@@ -1,7 +1,6 @@
 ﻿using Amazon.Lambda.SQSEvents;
 using Dialogue;
 using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 
 namespace Sample.AWSLambda.SQS.Middleware;
 
@@ -21,12 +20,11 @@ internal sealed class EventLogger(
         using var logscope = logger
             .BeginScope($"{nameof(SQSEvent)}::{context.Request.LambdaContext.InvokedFunctionArn}::{context.Request.LambdaContext.AwsRequestId}");
 
-        var timer = Stopwatch.StartNew();
         try
         {
             // always check for cancellation
             context.CancellationToken.ThrowIfCancellationRequested();
-            await next(context); // have to await because of the using block started on line 20
+            await next(context); // have to await because of the using block started on line 21
         }
         catch (Exception ex)
         {
@@ -38,7 +36,7 @@ internal sealed class EventLogger(
             logger.LogInformation(
                 "{MessageCount} SQS messages processed in {ElapsedMilliseconds}ms with {RemainingMilliseconds}ms remaining.",
                 context.Request.SQSEvent.Records.Count,
-                timer.ElapsedMilliseconds,
+                context.Elapsed.TotalMilliseconds,
                 context.Request.LambdaContext.RemainingTime.TotalMilliseconds);
         }
     }

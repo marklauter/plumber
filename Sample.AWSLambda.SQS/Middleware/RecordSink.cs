@@ -17,7 +17,8 @@ internal sealed class RecordSink(
 
         // real work would go here, but this is a sink so we just eat the records
 
-        // the sink is the end of the user defined pipeline, but we still call next because the terminal middleware component is defined by the request handler.
+        // this invocation is options because this is the last middleware in the pipeline
+        // you could also return Task.CompletedTask to short-circuit the pipeline
         return next(context);
     }
 }

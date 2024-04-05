@@ -27,4 +27,9 @@ public record RequestContext<TRequest, TResponse>(
     /// The response.
     /// </summary>
     public TResponse? Response { get; set; }
+
+    /// <summary>
+    /// Time since the request was created.
+    /// </summary>
+    public TimeSpan Elapsed => DateTime.UtcNow - Timestamp;
 }

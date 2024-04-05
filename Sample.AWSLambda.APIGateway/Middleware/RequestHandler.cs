@@ -28,6 +28,8 @@ internal sealed class RequestHandler(
             IsBase64Encoded = false,
         };
 
+        // this invocation is options because this is the last middleware in the pipeline
+        // you could also return Task.CompletedTask to short-circuit the pipeline
         return next(context);
     }
 }
