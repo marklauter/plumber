@@ -33,11 +33,10 @@ internal sealed class RequestLogger<TRequest, TResponse>(
         }
         finally
         {
+            // todo: add some log stuff
             logger.LogInformation(
-                "RequestId {RequestId} complete .",
-                context.Request.SQSEvent.Records.Count,
-                context.Elapsed.TotalMilliseconds,
-                context.Request.LambdaContext.RemainingTime.TotalMilliseconds);
+                "");
+
         }
     }
 }
@@ -47,10 +46,7 @@ public static class SerilogExtensions
     public static IRequestHandler<TRequest, TResponse> UseSerilogRequestlogging<TRequest, TResponse>(this IRequestHandler<TRequest, TResponse> handler)
         where TRequest : class
     {
-        _ = handler.Use((context, next) =>
-        {
-            return Task.CompletedTask;
-        });
+        _ = handler.Use((context, next) => Task.CompletedTask);
 
         return handler;
     }
