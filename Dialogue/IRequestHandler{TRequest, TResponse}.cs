@@ -3,7 +3,7 @@
 namespace Dialogue;
 
 /// <summary>
-/// An interface that defines the mechanisms to setup a request handler's pipeline.
+/// Use IRequestHandler to setup and invoke the request/response pipeline.
 /// </summary>
 /// <typeparam name="TRequest">The type of request handled by the pipeline.</typeparam>
 /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
