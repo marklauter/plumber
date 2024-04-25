@@ -13,7 +13,7 @@ To install, use the following command: `dotnet add package MSL.Dialogue.Pipeline
 
 ## Usage
 1. Create an `IRequestHandlerBuilder<TRequest, TResponse>` by calling one of the static `RequestHandlerBuilder.New` methods. 
-1. Builder adds configuration providers for appsettings files, environment variables, command line args, and user secrets by default.
+1. The request handler builder adds default configuration providers for appsettings files, environment variables, command line args, and user secrets.
 1. Handle additional configuration scenarios through the  `IConfigurationManager Configuration` property on the builder.
 1. Register services with the `IServiceCollection Servics` property.
 1. Use the `Build` method to create an `IRequestRequestDelegate<TRequest, TResponse>` instance.
@@ -25,15 +25,14 @@ To install, use the following command: `dotnet add package MSL.Dialogue.Pipeline
 1. To terminate, or "short circuit", the pipeline don't invoke `Next`.
 1. In your terminal delegate, set the response value in the request context.
 
-## Samples
+## Sample AWS Lambda Projects
+- [Dialogue.Samples.Lambda.SQS](https://github.com/marklauter/Dialogue/tree/main/Sample.AWSLambda.SQS)
+- [Dialogue.Samples.Lambda.SQS.Tests](https://github.com/marklauter/Dialogue/tree/main/Sample.AWSLambda.SQS.Tests)
+- [Dialogue.Samples.Lambda.APIGateway](https://github.com/marklauter/Dialogue/tree/main/Sample.AWSLambda.APIGateway)
+- [Dialogue.Samples.Lambda.APIGateway.Tests](https://github.com/marklauter/Dialogue/tree/main/Sample.AWSLambda.APIGateway.Tests)
 
-### Projects
-#### AWS Lambda (SQS) 
-- [Dialogue.Samples.Lambda.SQS](Sample.AWSLambda.SQS)
-- [Dialogue.Samples.Lambda.SQS.Tests](Sample.AWSLambda.SQS.Tests)
-- [Dialogue.Samples.Lambda.APIGateway](Sample.AWSLambda.APIGateway)
-- [Dialogue.Samples.Lambda.APIGateway.Tests](Sample.AWSLambda.APIGateway.Tests)
-
+## Examples
+The following examples demonstrate common usage scenarios.
 
 ### Simplest Example - no config, no services, no middleware
 In this sample, we create a request handler that does nothing with no configuration, no service registration, and no user-defined middleware. This is the simplest possible example.
@@ -60,7 +59,7 @@ var handler = RequestHandlerBuilder.New<string, string>()
     {
         context.CancelationToken.ThrowIfCancellationRequested();
         context.Response = context.Request.ToUpperInvariant();
-        await next(context); // call next to pass the request context to next delegate in the pipeline
+        await next(context); // call next to pass the request context to the next delegate in the pipeline
     })
     .Prepare();
 
@@ -69,7 +68,6 @@ var response = await handler.InvokeAsync(request);
 Assert.Equal(request.ToUpperInvariant(), response);
 ```
 
-
 ### Middleware Class Example
 In this sample, we create a request handler with a user-defined `IMiddleware` implementation that converts the request to lowercase.
 
@@ -77,8 +75,8 @@ First, we define the middleware class, which receives the next middleware delega
 The middleware is responsible for calling the next delegate unless the middleware needs to short-circuiting the pipeline.
 An example short-circuit scenario might be a request validation middleware that returns an error response if the request is invalid.
 
-IMiddleware implementations support constructor-based dependency injection. 
-The next delegate must be the first argument in the contstructor.
+Constructor-based dependency injection is supported for `IMiddleware` implementations, 
+with the condition that the `next` delegate must be the first argument in the constructor.
 ```csharp
 internal sealed class ToLowerMiddleware(RequestMiddleware<string, string> next)
     : IMiddleware<string, string>
@@ -90,12 +88,12 @@ internal sealed class ToLowerMiddleware(RequestMiddleware<string, string> next)
     {
         context.CancelationToken.ThrowIfCancellationRequested();
         context.Response = context.Request.ToLowerInvariant();
-        return next(context); // call next to pass the request context to next delegate in the pipeline
+        return next(context); // call next to pass the request context to the next delegate in the pipeline
     }
 }
 ```
 
-Then we register it with the request handler.
+Then we register the middleware with the request handler with the `Use<T>` method.
 ```csharp
 var request = "Hello, World!";
 
@@ -110,8 +108,7 @@ Assert.Equal(request.ToLowerInvariant(), response);
 ```
 
 ### Builder Configure Example
-Call the `Configure` method on the builder to load configuration from `appsettings.json`, environment variables, user secrets, etc.
-Call `Configure` before calling `ConfigureServices`.
+Use the `Configuration` property on the builder to add configuration providers.
 ```csharp
 var builder = RequestHandlerBuilder.New<string, string>();
 
@@ -135,9 +132,13 @@ var handler = builder.Build();
 ```
 
 ### Void Response Example
+Use Void as a response type for request handlers that don't return a value.
+```csharp
+public readonly struct Void { }
+```
 For request handlers that don't return a response, use `Void` as the response type.
 ```csharp
-var handler = RequestHandlerBuilder.New<string, Void>() // TResponse of type Void
+var handler = RequestHandlerBuilder.New<string, Void>() // Void TResponse type
     .Build()
     .Prepare();
 ```
