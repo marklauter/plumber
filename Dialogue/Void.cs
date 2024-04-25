@@ -1,8 +1,11 @@
 ﻿namespace Dialogue;
 
 /// <summary>
-/// A type that represents the absence of a response type. Useful type for TResponse generic param when request scenario doesn't require a response.
-/// Examples: IRequestHandlerBuilder{string, Void}, RequestContext{string, Void}, etc.
+/// A type that represents the absence of a response type. 
 /// </summary>
+/// <remarks>
+/// This type is useful for the TResponse generic parameter when the request scenario doesn't require a response.
+/// Examples include IRequestHandlerBuilder{string, Void}, RequestContext{string, Void}, etc.
+/// </remarks>
 public readonly struct Void { }
 
