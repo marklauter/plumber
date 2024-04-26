@@ -31,7 +31,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sample.AWSLambda.APIGateway
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Serilog", "Serilog", "{F27AF2C4-648E-4F3B-ACA1-8FD64D8DE196}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dialog.Serilog.RequestLogger", "Dialog.Serilog.RequestLogger\Dialog.Serilog.RequestLogger.csproj", "{C5E8FAAE-38F9-48DC-BA4D-2AB41FB51EDD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dialog.Serilog", "Dialog.Serilog.RequestLogger\Dialog.Serilog.csproj", "{C5E8FAAE-38F9-48DC-BA4D-2AB41FB51EDD}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "github-workflows", "github-workflows", "{BDAC7535-8310-47F2-98A8-A8A3AEF0724C}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\dotnet.publish.yml = .github\workflows\dotnet.publish.yml
+		.github\workflows\dotnet.tests.yml = .github\workflows\dotnet.tests.yml
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dialog.Serilog.Tests", "Dialog.Serilog.RequestLogger.Tests\Dialog.Serilog.Tests.csproj", "{00A6373C-234A-4DFE-B3F2-C867E3CF1690}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -67,6 +75,10 @@ Global
 		{C5E8FAAE-38F9-48DC-BA4D-2AB41FB51EDD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C5E8FAAE-38F9-48DC-BA4D-2AB41FB51EDD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C5E8FAAE-38F9-48DC-BA4D-2AB41FB51EDD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{00A6373C-234A-4DFE-B3F2-C867E3CF1690}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00A6373C-234A-4DFE-B3F2-C867E3CF1690}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00A6373C-234A-4DFE-B3F2-C867E3CF1690}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00A6373C-234A-4DFE-B3F2-C867E3CF1690}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -79,6 +91,8 @@ Global
 		{B38C10CA-DEAB-4947-85B5-935BD6170BDA} = {686CE1DC-AAD3-455D-A9D9-A5B2848A632B}
 		{8774EA67-591F-4F5B-862D-8B538579D1CB} = {686CE1DC-AAD3-455D-A9D9-A5B2848A632B}
 		{C5E8FAAE-38F9-48DC-BA4D-2AB41FB51EDD} = {F27AF2C4-648E-4F3B-ACA1-8FD64D8DE196}
+		{BDAC7535-8310-47F2-98A8-A8A3AEF0724C} = {90AAF485-2231-412E-B176-536093F4C8AE}
+		{00A6373C-234A-4DFE-B3F2-C867E3CF1690} = {F27AF2C4-648E-4F3B-ACA1-8FD64D8DE196}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C6727B7F-0893-4C94-9743-EC61DAFDCA73}
