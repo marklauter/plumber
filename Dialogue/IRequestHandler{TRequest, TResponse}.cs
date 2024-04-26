@@ -44,5 +44,8 @@ public interface IRequestHandler<TRequest, TResponse>
     /// <returns><see cref="IRequestHandler{TRequest, TResponse}"/></returns>
     IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TMiddleware>()
         where TMiddleware : class, IMiddleware<TRequest, TResponse>;
+
+    IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TMiddleware>(params object[] parameters)
+        where TMiddleware : class, IMiddleware<TRequest, TResponse>;
 }
 

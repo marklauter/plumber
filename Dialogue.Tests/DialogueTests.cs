@@ -63,20 +63,6 @@ public class DialogueTests
         Assert.Equal(request.ToLowerInvariant(), response);
     }
 
-    internal sealed class ToLowerMiddleware(RequestMiddleware<string, string> next)
-        : IMiddleware<string, string>
-    {
-        public RequestMiddleware<string, string> next = next
-            ?? throw new ArgumentNullException(nameof(next));
-
-        public Task InvokeAsync(RequestContext<string, string> context)
-        {
-            context.CancellationToken.ThrowIfCancellationRequested();
-            context.Response = context.Request.ToLowerInvariant();
-            return next(context);
-        }
-    }
-
     [Fact]
     public async Task HandleRequestWithMiddlewareClassAsync()
     {
@@ -92,18 +78,20 @@ public class DialogueTests
         Assert.Equal(request.ToLowerInvariant(), response);
     }
 
-    internal sealed class CtorMiddleware(RequestMiddleware<string, string> next)
-        : IMiddleware<string, string>
+    [Fact]
+    public async Task HandleRequestWithMiddlewareClassWithCtorParameterAsync()
     {
-        public RequestMiddleware<string, string> next = next
-            ?? throw new ArgumentNullException(nameof(next));
+        var request = "Hello, World!";
+        var parameter = "parameter";
 
-        public Task InvokeAsync(RequestContext<string, string> context)
-        {
-            context.CancellationToken.ThrowIfCancellationRequested();
-            context.Response = context.Request.ToLowerInvariant();
-            return next(context);
-        }
+        var handler = RequestHandlerBuilder.New<string, string>()
+            .Build()
+            .Use<ToLowerMiddlewareWithParameter>(parameter)
+            .Prepare();
+
+        var response = await handler.InvokeAsync(request);
+
+        Assert.Equal($"{parameter}-{request.ToLowerInvariant()}", response);
     }
 
     /// <summary>

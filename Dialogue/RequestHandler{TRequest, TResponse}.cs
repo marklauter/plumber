@@ -22,11 +22,9 @@ internal sealed class RequestHandler<TRequest, TResponse>(
     {
         _ = Prepare();
 
-        return handler is null
-            ? throw new InvalidOperationException("Handler not prepared.")
-            : timeout == Timeout.InfiniteTimeSpan
-                ? InvokeInternalAsync(request, handler)
-                : InvokeInternalAsync(request, handler, timeout);
+        return timeout == Timeout.InfiniteTimeSpan
+                ? InvokeInternalAsync(request, handler!)
+                : InvokeInternalAsync(request, handler!, timeout);
     }
 
     private async Task<TResponse?> InvokeInternalAsync(
@@ -106,7 +104,19 @@ internal sealed class RequestHandler<TRequest, TResponse>(
     {
         RequestMiddleware<TRequest, TResponse> Component(RequestMiddleware<TRequest, TResponse> next)
         {
-            var component = CreateMiddleware(typeof(TMiddleware), next);
+            var component = CreateMiddleware(typeof(TMiddleware), next, null);
+            return component.Invoke;
+        }
+
+        return Use(Component);
+    }
+
+    public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TMiddleware>(params object[] parameters)
+        where TMiddleware : class, IMiddleware<TRequest, TResponse>
+    {
+        RequestMiddleware<TRequest, TResponse> Component(RequestMiddleware<TRequest, TResponse> next)
+        {
+            var component = CreateMiddleware(typeof(TMiddleware), next, parameters);
             return component.Invoke;
         }
 
@@ -115,13 +125,18 @@ internal sealed class RequestHandler<TRequest, TResponse>(
 
     private RequestMiddleware<TRequest, TResponse> CreateMiddleware(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] Type type,
-        RequestMiddleware<TRequest, TResponse> next)
+        RequestMiddleware<TRequest, TResponse> next,
+        object[]? parameters)
     {
+        parameters = parameters is null
+            ? [next]
+            : parameters.Prepend(next).ToArray();
+
         var middleware = ActivatorUtilities
             .CreateInstance(
                 services,
                 type,
-                next);
+                parameters);
 
         var method = type.GetMethod("InvokeAsync");
         return method is null
