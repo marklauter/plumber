@@ -1,7 +1,7 @@
 ﻿namespace Dialogue.Tests;
 
 internal sealed class ToLowerMiddlewareWithParameter(RequestMiddleware<string, string> next, string parameter)
-        : IMiddleware<string, string>
+    : IMiddleware<string, string>
 {
     public RequestMiddleware<string, string> next = next
         ?? throw new ArgumentNullException(nameof(next));

@@ -10,9 +10,9 @@ internal sealed class RequestHandler<TRequest, TResponse>(
     : IRequestHandler<TRequest, TResponse>
     where TRequest : class
 {
-    private readonly ServiceProvider services = services
+    public ServiceProvider Services { get; } = services
         ?? throw new ArgumentNullException(nameof(services));
-    private readonly TimeSpan timeout = timeout;
+    public TimeSpan Timeout { get; } = timeout;
     private readonly List<Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>>> components = [];
 
     private RequestMiddleware<TRequest, TResponse>? handler;
@@ -22,9 +22,9 @@ internal sealed class RequestHandler<TRequest, TResponse>(
     {
         _ = Prepare();
 
-        return timeout == Timeout.InfiniteTimeSpan
+        return Timeout == System.Threading.Timeout.InfiniteTimeSpan
                 ? InvokeInternalAsync(request, handler!)
-                : InvokeInternalAsync(request, handler!, timeout);
+                : InvokeInternalAsync(request, handler!, Timeout);
     }
 
     private async Task<TResponse?> InvokeInternalAsync(
@@ -138,10 +138,11 @@ internal sealed class RequestHandler<TRequest, TResponse>(
                 type,
                 parameters);
 
-        var method = type.GetMethod("InvokeAsync");
+        var method = type.GetMethod(nameof(IMiddleware<TRequest, TResponse>.InvokeAsync));
         return method is null
-            ? throw new InvalidOperationException("InvokeAsync not found.")
-            : (context => (Task)(method.Invoke(middleware, [context]) ?? throw new InvalidOperationException("InvokeAsync must return task")));
+            ? throw new InvalidOperationException($"{nameof(IMiddleware<TRequest, TResponse>.InvokeAsync)} not found.")
+            : (context => (Task)(method.Invoke(middleware, [context])
+                ?? throw new InvalidOperationException($"{nameof(IMiddleware<TRequest, TResponse>.InvokeAsync)} must return task")));
     }
 }
 

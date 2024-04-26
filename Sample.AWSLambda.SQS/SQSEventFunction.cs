@@ -33,8 +33,8 @@ public sealed partial class SQSEventFunction
             .New<SQSEventContext, Dialogue.Void>();
 
         // add services
-        _ = builder.Services.AddLogging(loggingBuilder =>
-            loggingBuilder.AddSerilog(Log.Logger));
+        _ = builder.Services
+            .AddLogging(loggingBuilder => loggingBuilder.AddSerilog(Log.Logger));
 
         // build the request handler, add middleware, and prepare the pipeline
         requestHandler = builder

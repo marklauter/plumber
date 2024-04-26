@@ -7,7 +7,7 @@ using System.Diagnostics;
 
 namespace Dialog.Serilog;
 
-internal sealed class RequestLogger<TRequest, TResponse>(
+internal sealed class RequestLoggerMiddleware<TRequest, TResponse>(
     RequestMiddleware<TRequest, TResponse> next,
     RequestLoggerOptions<TRequest, TResponse> options,
     DiagnosticContext diagnosticContext)
@@ -25,7 +25,8 @@ internal sealed class RequestLogger<TRequest, TResponse>(
     private readonly LogEventLevel level = options?.LogLevel
        ?? throw new ArgumentNullException(nameof(options));
 
-    private readonly ILogger? logger = options.Logger?.ForContext<RequestLogger<TRequest, TResponse>>();
+    private readonly ILogger? logger = options.Logger?
+        .ForContext<RequestLoggerMiddleware<TRequest, TResponse>>();
 
     private readonly Action<IDiagnosticContext, RequestContext<TRequest, TResponse>>? enrichDiagnosticContext =
         options.EnrichDiagnosticContext;
@@ -61,12 +62,15 @@ internal sealed class RequestLogger<TRequest, TResponse>(
 
     private void LogCompleted(RequestContext<TRequest, TResponse> context, DiagnosticContextCollector collector, Exception? ex)
     {
-        var logger = this.logger ?? Log.ForContext<RequestLogger<TRequest, TResponse>>();
+        var logger = this.logger ?? Log.ForContext<RequestLoggerMiddleware<TRequest, TResponse>>();
         var level = ex != null ? LogEventLevel.Error : this.level;
+
         if (!logger.IsEnabled(level))
         {
             return;
         }
+
+        var now = DateTimeOffset.Now;
 
         enrichDiagnosticContext?.Invoke(diagnosticContext, context);
         if (!collector.TryComplete(out var properties, out var exception))
@@ -76,19 +80,17 @@ internal sealed class RequestLogger<TRequest, TResponse>(
 
         properties = properties.Concat(getMessageTemplateProperties(context));
 
-        var (traceId, spanId) = Activity.Current is { } activity
-            ? (activity.TraceId, activity.SpanId)
-            : (default(ActivityTraceId), default(ActivitySpanId));
-
+        var current = Activity.Current;
         var logEvent = new LogEvent(
-            DateTimeOffset.UtcNow,
+            now,
             level,
             ex ?? exception,
             messageTemplate,
             properties,
-            traceId,
-            spanId);
+            current?.TraceId ?? default,
+            current?.SpanId ?? default);
 
         logger.Write(logEvent);
+        //logger.Information("hello");
     }
 }

@@ -1,4 +1,5 @@
-﻿namespace Dialogue.Tests;
+﻿// See https://aka.ms/new-console-template for more information
+using Dialogue;
 
 internal sealed class ToLowerMiddleware(RequestMiddleware<string, string> next)
     : IMiddleware<string, string>

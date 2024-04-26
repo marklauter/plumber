@@ -1,23 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-	  <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
-	  <LangVersion>12</LangVersion>
-	  <ImplicitUsings>enable</ImplicitUsings>
-	  <Nullable>enable</Nullable>
-	  <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
+		<LangVersion>12</LangVersion>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <None Include="..\LICENSE" Link="LICENSE">
-      <PackagePath>\</PackagePath>
-      <Pack>True</Pack>
-    </None>
-    <None Include="..\MSL.png" Link="MSL.png">
-      <PackagePath>\</PackagePath>
-      <Pack>True</Pack>
-    </None>
-  </ItemGroup>
+	<ItemGroup>
+		<None Include="..\LICENSE" Link="LICENSE">
+			<PackagePath>\</PackagePath>
+			<Pack>True</Pack>
+		</None>
+		<None Include="..\MSL.png" Link="MSL.png">
+			<PackagePath>\</PackagePath>
+			<Pack>True</Pack>
+		</None>
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="IDisposableAnalyzers" Version="4.0.7">
@@ -31,7 +31,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\Dialogue\Dialogue.csproj" />
+		<ProjectReference Include="..\Dialogue\Dialogue.csproj" />
 	</ItemGroup>
 
 </Project>

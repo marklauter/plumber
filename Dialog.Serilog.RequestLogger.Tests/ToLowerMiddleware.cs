@@ -1,4 +1,6 @@
-﻿namespace Dialogue.Tests;
+﻿using Dialogue;
+
+namespace Dialog.Serilog.Tests;
 
 internal sealed class ToLowerMiddleware(RequestMiddleware<string, string> next)
     : IMiddleware<string, string>
