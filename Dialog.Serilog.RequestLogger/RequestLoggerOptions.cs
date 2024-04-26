@@ -2,7 +2,7 @@
 using Serilog;
 using Serilog.Events;
 
-namespace Dialog.Serilog.RequestLogger;
+namespace Dialog.Serilog;
 
 public sealed class RequestLoggerOptions<TRequest, TResponse>
     where TRequest : class

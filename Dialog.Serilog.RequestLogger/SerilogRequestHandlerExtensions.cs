@@ -1,6 +1,6 @@
 ﻿using Dialogue;
 
-namespace Dialog.Serilog.RequestLogger;
+namespace Dialog.Serilog;
 
 public static class SerilogRequestHandlerExtensions
 {

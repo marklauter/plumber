@@ -5,7 +5,7 @@ using Serilog.Extensions.Hosting;
 using Serilog.Parsing;
 using System.Diagnostics;
 
-namespace Dialog.Serilog.RequestLogger;
+namespace Dialog.Serilog;
 
 internal sealed class RequestLogger<TRequest, TResponse>(
     RequestMiddleware<TRequest, TResponse> next,

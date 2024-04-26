@@ -8,6 +8,17 @@
 	  <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Include="..\LICENSE" Link="LICENSE">
+      <PackagePath>\</PackagePath>
+      <Pack>True</Pack>
+    </None>
+    <None Include="..\MSL.png" Link="MSL.png">
+      <PackagePath>\</PackagePath>
+      <Pack>True</Pack>
+    </None>
+  </ItemGroup>
+
 	<ItemGroup>
 		<PackageReference Include="IDisposableAnalyzers" Version="4.0.7">
 			<PrivateAssets>all</PrivateAssets>

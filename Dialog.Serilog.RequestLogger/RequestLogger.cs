@@ -1,3 +1,3 @@
-﻿namespace Dialog.Serilog.RequestLogger;
+﻿namespace Dialog.Serilog;
 
 internal sealed class RequestLogger { }
