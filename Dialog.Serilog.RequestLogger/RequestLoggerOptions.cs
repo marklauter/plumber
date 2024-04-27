@@ -8,12 +8,12 @@ public sealed class RequestLoggerOptions<TRequest, TResponse>
     where TRequest : class
 {
     private const string DefaultCompletedMessage =
-        "Request {RequestId} completed in {Elapsed} ms";
+        "Request {RequestId} completed in {Elapsed:0.0000} ms";
 
     private static IEnumerable<LogEventProperty> DefaultGetMessageTemplateProperties(RequestContext<TRequest, TResponse> context) =>
     [
         new LogEventProperty(nameof(RequestContext<TRequest, TResponse>.Id), new ScalarValue(context.Id)),
-        new LogEventProperty(nameof(RequestContext<TRequest, TResponse>.Elapsed), new ScalarValue(context.Elapsed))
+        new LogEventProperty(nameof(RequestContext<TRequest, TResponse>.Elapsed), new ScalarValue(context.Elapsed.TotalMilliseconds))
     ];
 
     public Action<IDiagnosticContext, RequestContext<TRequest, TResponse>>? EnrichDiagnosticContext { get; set; }
