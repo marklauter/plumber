@@ -1,6 +1,6 @@
 ![plumber logo](https://raw.githubusercontent.com/marklauter/plumber/main/plumber.png)
-# Plumber
-Plumber is a request pipeline that supports middleware delegates and classes. It provides configuration, dependency injection, and middleware pipeline services for AWS Lambda functions or Azure functions.
+# Plumber: Pipelines for AWS Lambda
+Plumber is a request pipeline that supports middleware delegates and classes. It provides configuration, dependency injection, and middleware pipeline services for AWS Lambda functions and Azure functions.
 
 ## References
 Plumber is based this article:
