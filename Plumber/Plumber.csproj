@@ -9,16 +9,16 @@
 
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 
-		<Title>Plumber: A Request/Response Pipeline</Title>
+		<Title>Plumber: Pipelines for AWS Lambda</Title>
 		<PackageId>MSL.$(AssemblyName).Pipeline</PackageId>
-		<ProductName>Plumber</ProductName>
+		<ProductName>Plumber: Pipelines for AWS Lambda</ProductName>
 		<Authors>Mark Lauter</Authors>
-		<Description>Plumber is a request/response pipeline library that supports delegate-based and class-based middleware components.</Description>
+		<Description>Plumber is a pipeline library for AWS Lambdas that supports delegate-based and class-based middleware components.</Description>
 		<Copyright>Copyright (c) 2024 Mark Lauter</Copyright>
 		<PackageProjectUrl>https://github.com/marklauter/Plumber</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/marklauter/Plumber</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<PackageTags>request pipeline;middleware;pipeline;plumber</PackageTags>
+		<PackageTags>aws lambda;middleware;pipeline;plumber</PackageTags>
 		<NeutralLanguage>en-US</NeutralLanguage>
 		<IncludeContentInPack>true</IncludeContentInPack>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
