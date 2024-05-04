@@ -38,7 +38,7 @@ jobs:
       - name: Increment Commit Tag
         id: version-tag
         run: |
-          git pull --tags --filter=tree:0
+          git pull --tags
           current_tag=$(git describe --abbrev=0 --tags)
           echo current tag: $current_tag
           major=$(echo $current_tag | cut -d "." -f 1 | cut -d "v" -f 2)
