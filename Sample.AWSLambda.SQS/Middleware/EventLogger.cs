@@ -1,21 +1,21 @@
 ﻿using Amazon.Lambda.SQSEvents;
-using Dialogue;
 using Microsoft.Extensions.Logging;
+using Plumber;
 
 namespace Sample.AWSLambda.SQS.Middleware;
 
 // This sample event logger is similar to the Serilog web request logger that can be used in ASP.NET Core.
 // Register the event logger ahead of the other middleware components.
 internal sealed class EventLogger(
-    RequestMiddleware<SQSEventContext, Dialogue.Void> next,
+    RequestMiddleware<SQSEventContext, Plumber.Void> next,
     ILogger<EventLogger> logger)
-    : IMiddleware<SQSEventContext, Dialogue.Void>
+    : IMiddleware<SQSEventContext, Plumber.Void>
 {
     private readonly ILogger<EventLogger> logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-    private readonly RequestMiddleware<SQSEventContext, Dialogue.Void> next = next ?? throw new ArgumentNullException(nameof(next));
+    private readonly RequestMiddleware<SQSEventContext, Plumber.Void> next = next ?? throw new ArgumentNullException(nameof(next));
 
-    public async Task InvokeAsync(RequestContext<SQSEventContext, Dialogue.Void> context)
+    public async Task InvokeAsync(RequestContext<SQSEventContext, Plumber.Void> context)
     {
         using var logscope = logger
             .BeginScope($"{nameof(SQSEvent)}::{context.Request.LambdaContext.InvokedFunctionArn}::{context.Request.LambdaContext.AwsRequestId}");

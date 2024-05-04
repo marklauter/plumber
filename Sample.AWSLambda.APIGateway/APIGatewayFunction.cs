@@ -1,7 +1,7 @@
 using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Lambda.Core;
-using Dialogue;
 using Microsoft.Extensions.DependencyInjection;
+using Plumber;
 using Sample.AWSLambda.APIGateway.Middleware;
 using Serilog;
 using Serilog.Exceptions;

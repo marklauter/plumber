@@ -1,5 +1,5 @@
-﻿using Dialogue;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Plumber;
 using Sample.AWSLambda.SQS.Middleware;
 using Serilog;
 using Serilog.Exceptions;
@@ -21,7 +21,7 @@ public sealed partial class SQSEventFunction
 
         // create a request handler builder
         var builder = RequestHandlerBuilder
-            .New<SQSEventContext, Dialogue.Void>();
+            .New<SQSEventContext, Plumber.Void>();
 
         // add services
         _ = builder.Services.AddLogging(loggingBuilder => loggingBuilder.AddSerilog(Log.Logger));

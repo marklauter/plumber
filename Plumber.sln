@@ -12,6 +12,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 		.gitignore = .gitignore
 		LICENSE = LICENSE
+		plumber.png = plumber.png
+		plumber.svg = plumber.svg
 		README.md = README.md
 	EndProjectSection
 EndProject
@@ -39,9 +41,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "github-workflows", "github-
 		.github\workflows\dotnet.tests.yml = .github\workflows\dotnet.tests.yml
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Plumber.Serilog.Tests", "Plumber.Serilog.RequestLogger.Tests\Plumber.Serilog.Tests.csproj", "{00A6373C-234A-4DFE-B3F2-C867E3CF1690}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Plumber.Serilog.Tests", "Plumber.Serilog.RequestLogger.Tests\Plumber.Serilog.Tests.csproj", "{00A6373C-234A-4DFE-B3F2-C867E3CF1690}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Plumber.Serilog.Console", "Plumber.Serilog.Console\Plumber.Serilog.Console.csproj", "{CE75ECF6-5530-4F0A-86D2-196E6189585B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Plumber.Serilog.Console", "Plumber.Serilog.Console\Plumber.Serilog.Console.csproj", "{CE75ECF6-5530-4F0A-86D2-196E6189585B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

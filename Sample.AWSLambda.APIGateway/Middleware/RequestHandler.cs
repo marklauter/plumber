@@ -1,5 +1,5 @@
 ﻿using Amazon.Lambda.APIGatewayEvents;
-using Dialogue;
+using Plumber;
 
 namespace Sample.AWSLambda.APIGateway.Middleware;
 

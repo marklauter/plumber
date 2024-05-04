@@ -1,7 +1,7 @@
 using Amazon.Lambda.Core;
 using Amazon.Lambda.SQSEvents;
-using Dialogue;
 using Microsoft.Extensions.DependencyInjection;
+using Plumber;
 using Sample.AWSLambda.SQS.Middleware;
 using Serilog;
 using Serilog.Exceptions;
@@ -13,7 +13,7 @@ namespace Sample.AWSLambda.SQS;
 
 public sealed partial class SQSEventFunction
 {
-    private readonly IRequestHandler<SQSEventContext, Dialogue.Void> requestHandler;
+    private readonly IRequestHandler<SQSEventContext, Plumber.Void> requestHandler;
 
     // The default constructor is called by Lambda host service once for the lifetime of the function instance, which could be up to a couple of hours.
     // That's once per cold-start, so you want to get all your setup done here.
@@ -30,7 +30,7 @@ public sealed partial class SQSEventFunction
 
         // create a request handler builder
         var builder = RequestHandlerBuilder
-            .New<SQSEventContext, Dialogue.Void>();
+            .New<SQSEventContext, Plumber.Void>();
 
         // add services
         _ = builder.Services

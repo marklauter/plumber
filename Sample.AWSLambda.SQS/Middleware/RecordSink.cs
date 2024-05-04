@@ -1,16 +1,16 @@
-﻿using Dialogue;
+﻿using Plumber;
 
 namespace Sample.AWSLambda.SQS.Middleware;
 
 // This user-defined middleware component is the last to be added to the pipeline. In a real-world use case, it would do the actual work of processing the SQS event.
 // This simplied example is just a sink that does nothing.
 internal sealed class RecordSink(
-    RequestMiddleware<SQSEventContext, Dialogue.Void> next)
-    : IMiddleware<SQSEventContext, Dialogue.Void>
+    RequestMiddleware<SQSEventContext, Plumber.Void> next)
+    : IMiddleware<SQSEventContext, Plumber.Void>
 {
-    private readonly RequestMiddleware<SQSEventContext, Dialogue.Void> next = next ?? throw new ArgumentNullException(nameof(next));
+    private readonly RequestMiddleware<SQSEventContext, Plumber.Void> next = next ?? throw new ArgumentNullException(nameof(next));
 
-    public Task InvokeAsync(RequestContext<SQSEventContext, Dialogue.Void> context)
+    public Task InvokeAsync(RequestContext<SQSEventContext, Plumber.Void> context)
     {
         // always check for cancellation
         context.CancellationToken.ThrowIfCancellationRequested();

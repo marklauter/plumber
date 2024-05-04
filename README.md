@@ -1,15 +1,16 @@
-# Dialogue
-Dialogue is a request pipeline that supports middleware delegates and classes. It provides configuration, dependency injection, and middleware pipeline services for AWS Lambda functions or Azure functions.
+![plumber logo](plumber.png)
+# Plumber
+Plumber is a request pipeline that supports middleware delegates and classes. It provides configuration, dependency injection, and middleware pipeline services for AWS Lambda functions or Azure functions.
 
 ## References
-Dialogue is based this article:
+Plumber is based this article:
 [How is the ASP.NET Core Middleware Pipeline Built - Steve Gorden, July 2020](https://www.stevejgordon.co.uk/how-is-the-asp-net-core-middleware-pipeline-built)
 
 ## Getting Started
 If you're not familiar with middleware pipelines, Microsoft has a [good primer on how middleware works in ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/?view=aspnetcore-8.0).
 
 ## Installing
-To install, use the following command: `dotnet add package MSL.Dialogue.Pipeline`
+To install, use the following command: `dotnet add package MSL.Plumber.Pipeline`
 
 ## Usage
 1. Create an `IRequestHandlerBuilder<TRequest, TResponse>` by calling one of the static `RequestHandlerBuilder.New` methods. 
@@ -26,10 +27,10 @@ To install, use the following command: `dotnet add package MSL.Dialogue.Pipeline
 1. In your terminal delegate, set the response value in the request context.
 
 ## Sample AWS Lambda Projects
-- [Dialogue.Samples.Lambda.SQS](https://github.com/marklauter/Dialogue/tree/main/Sample.AWSLambda.SQS)
-- [Dialogue.Samples.Lambda.SQS.Tests](https://github.com/marklauter/Dialogue/tree/main/Sample.AWSLambda.SQS.Tests)
-- [Dialogue.Samples.Lambda.APIGateway](https://github.com/marklauter/Dialogue/tree/main/Sample.AWSLambda.APIGateway)
-- [Dialogue.Samples.Lambda.APIGateway.Tests](https://github.com/marklauter/Dialogue/tree/main/Sample.AWSLambda.APIGateway.Tests)
+- [Samples.Lambda.SQS](https://github.com/marklauter/Plumber/tree/main/Sample.AWSLambda.SQS)
+- [Samples.Lambda.SQS.Tests](https://github.com/marklauter/Plumber/tree/main/Sample.AWSLambda.SQS.Tests)
+- [Samples.Lambda.APIGateway](https://github.com/marklauter/Plumber/tree/main/Sample.AWSLambda.APIGateway)
+- [Samples.Lambda.APIGateway.Tests](https://github.com/marklauter/Plumber/tree/main/Sample.AWSLambda.APIGateway.Tests)
 
 ## Examples
 The following examples demonstrate common usage scenarios.
@@ -93,7 +94,7 @@ internal sealed class ToLowerMiddleware(RequestMiddleware<string, string> next)
 }
 ```
 
-Then we register the middleware with the request handler with the `Use<T>` method.
+Next, we register the middleware with the request handler with the `Use<T>` method.
 ```csharp
 var request = "Hello, World!";
 
@@ -108,7 +109,7 @@ Assert.Equal(request.ToLowerInvariant(), response);
 ```
 
 ### Builder Configure Example
-Use the `Configuration` property on the builder to add configuration providers.
+Use the `Configuration` property on the builder to add configuration providers, like `AddInMemory` or `AddJsonFile`.
 ```csharp
 var builder = RequestHandlerBuilder.New<string, string>();
 

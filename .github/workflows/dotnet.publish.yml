@@ -17,13 +17,13 @@ jobs:
       with:
         dotnet-version: 8.0.x
     - name: Restore dependencies
-      working-directory: Dialogue
+      working-directory: Plumber
       run: dotnet restore
     - name: Build
-      working-directory: Dialogue
+      working-directory: Plumber
       run: dotnet build --no-restore -c Debug
     - name: Test
-      working-directory: Dialogue
+      working-directory: Plumber
       run: dotnet test --no-build --verbosity normal
 
   version:
@@ -66,21 +66,21 @@ jobs:
       run: echo ${{ needs.version.outputs.PACKAGE_VERSION }}
 
     - name: Restore dependencies
-      working-directory: Dialogue
+      working-directory: Plumber
       run: dotnet restore
 
     - name: Build
-      working-directory: Dialogue
+      working-directory: Plumber
       run: dotnet build --no-restore -c Release -p:Version=${{ needs.version.outputs.PACKAGE_VERSION }}
 
     - name: Pack
-      working-directory: Dialogue
+      working-directory: Plumber
       run: dotnet pack -c Release -o nuget -p:PackageVersion=${{ needs.version.outputs.PACKAGE_VERSION }} -p:Version=${{ needs.version.outputs.PACKAGE_VERSION }}
 
     - name: Publish to nuget.pkg.github.com
-      working-directory: Dialogue
+      working-directory: Plumber
       run: dotnet nuget push nuget/*.nupkg --skip-duplicate -k ${{ secrets.GITHUB_TOKEN }} -s https://nuget.pkg.github.com/marklauter/index.json
 
     - name: Publish to api.nuget.org
-      working-directory: Dialogue
+      working-directory: Plumber
       run: dotnet nuget push nuget/*.nupkg --skip-duplicate -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
