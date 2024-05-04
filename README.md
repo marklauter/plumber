@@ -1,4 +1,4 @@
-![plumber logo]([plumber.png](https://github.com/marklauter/plumber/blob/main/plumber.png))
+![plumber logo](https://raw.githubusercontent.com/marklauter/plumber/main/plumber.png)
 # Plumber
 Plumber is a request pipeline that supports middleware delegates and classes. It provides configuration, dependency injection, and middleware pipeline services for AWS Lambda functions or Azure functions.
 
