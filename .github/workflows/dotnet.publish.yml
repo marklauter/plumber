@@ -16,15 +16,15 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
+
     - name: Restore dependencies
-      working-directory: Plumber
       run: dotnet restore
+
     - name: Build
-      working-directory: Plumber
-      run: dotnet build --no-restore -c Debug
+      run: dotnet build -c Debug --no-restore
+
     - name: Test
-      working-directory: Plumber
-      run: dotnet test --no-build --verbosity normal
+      run: dotnet test --no-build
 
   version:
     needs: test

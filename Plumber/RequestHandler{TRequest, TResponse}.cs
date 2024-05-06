@@ -111,6 +111,7 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         return Use(Component);
     }
 
+    /// <inheritdoc/>
     public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TMiddleware>(params object[] parameters)
         where TMiddleware : class, IMiddleware<TRequest, TResponse>
     {
