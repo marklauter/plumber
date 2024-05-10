@@ -35,7 +35,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Increment Commit Tag
+      - name: Get Build Version
         id: version-tag
         run: |
           current_tag=$(git tag --sort=committerdate | tail -1)
@@ -61,7 +61,7 @@ jobs:
     - name: Echo Package Version
       run: echo ${{ needs.version.outputs.PACKAGE_VERSION }}
 
-    - name: Restore dependencies
+    - name: Restore
       working-directory: Plumber
       run: dotnet restore
 
