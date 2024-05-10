@@ -1,10 +1,8 @@
 name: .NET Publish
 
 on:
-  push:
-    branches: [ "main" ]
-    paths:
-      - 'src/**'
+  release:
+    types: [published]
 permissions:
   contents: write
   packages: write
