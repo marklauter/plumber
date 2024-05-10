@@ -3,6 +3,8 @@ name: .NET Publish
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - 'src/*'
 permissions:
   contents: write
   packages: write
