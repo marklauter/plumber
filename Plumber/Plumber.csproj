@@ -62,14 +62,14 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Include="plumber.png">
+		<None Include="..\images\plumber.png">
 			<Pack>True</Pack>
 			<PackagePath>\</PackagePath>
 		</None>
 		<None Include="..\README.md">
-	    <Pack>True</Pack>
-	    <PackagePath>\</PackagePath>
-	  </None>
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
 		<None Include="..\LICENSE">
 			<Pack>True</Pack>
 			<PackagePath>\</PackagePath>
