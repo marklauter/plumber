@@ -115,7 +115,7 @@ Assert.Equal(request.ToLowerInvariant(), response);
 ```
 
 ### Builder Configure Example
-Use the `Configuration` property on the builder to add configuration providers, like `AddInMemory` or `AddJsonFile`.
+Use the `IRequestHandlerBuilder.Configuration` property to add configuration providers, like `AddInMemory` or `AddJsonFile`.
 ```csharp
 var builder = RequestHandlerBuilder.New<string, string>();
 
@@ -126,8 +126,7 @@ var handler = builder.Build();
 ```
 
 ### Builder ConfigureServices Example
-Call the `ConfigureServices` method on the builder to register services with `IServiceCollection`.
-Call `Configure` before calling `ConfigureServices`.
+Use the `IRequestHandlerBuilder.Services` property to register services.
 ```csharp
 var builder = RequestHandlerBuilder.New<string, string>();
 
