@@ -1,7 +1,7 @@
 ## Build Status
 [![.NET Tests](https://github.com/marklauter/plumber/actions/workflows/dotnet.tests.yml/badge.svg)](https://github.com/marklauter/plumber/actions/workflows/dotnet.tests.yml)
 [![.NET Publish](https://github.com/marklauter/plumber/actions/workflows/dotnet.publish.yml/badge.svg)](https://github.com/marklauter/plumber/actions/workflows/dotnet.publish.yml)
-
+[![Nuget](https://img.shields.io/badge/Nuget-v1.0.49-blue)]([https://www.nuget.org/packages/MSL.Pool/](https://www.nuget.org/packages/MSL.Plumber.Pipeline/))
 ##
 ![plumber logo](https://raw.githubusercontent.com/marklauter/plumber/main/images/plumber.png)
 
