@@ -6,8 +6,8 @@
 [![Nuget](https://img.shields.io/badge/.NET-7.0-blue)](https://dotnet.microsoft.com/en-us/download/dotnet/7.0)
 [![Nuget](https://img.shields.io/badge/.NET-8.0-blue)](https://dotnet.microsoft.com/en-us/download/dotnet/8.0/)
 
-##
-![plumber logo](https://raw.githubusercontent.com/marklauter/plumber/main/images/plumber.png)
+<div>
+<img src="https://github.com/marklauter/kryptonite/blob/main/plumber.svg" title="plumber-logo" alt="plumber-logo" height="128" />
 
 # Plumber: Pipelines for AWS Lambda
 Plumber is a request pipeline that supports middleware delegates and classes. It provides configuration, dependency injection, and middleware pipeline services. It's useful for AWS Lambdas, Azure Functions, queue event handlers, and similar use cases.
@@ -154,3 +154,4 @@ var handler = RequestHandlerBuilder.New<string, Void>() // Void TResponse type
     .Build()
     .Prepare();
 ```
+<div>
