@@ -9,7 +9,8 @@
 <div>
 <img src="https://github.com/marklauter/plumber/blob/main/images/plumber.svg" title="plumber-logo" alt="plumber-logo" height="128" />
 
-# Plumber: Pipelines for host-free projects like AWS Lambda, Console, etc.
+# Plumber
+## Pipelines for host-free projects like AWS Lambda, Console, etc.
 Plumber is a request pipeline that supports middleware delegates and classes. It provides configuration, dependency injection, and middleware pipeline services. It's useful for AWS Lambdas, Azure Functions, queue event handlers, and similar use cases.
 
 ## References
