@@ -18,10 +18,32 @@ public record RequestContext<TRequest, TResponse>(
     CancellationToken CancellationToken)
     where TRequest : class
 {
+
+    private Dictionary<string, object?>? data;
+
     /// <summary>
     /// Data that can be passed from one middleware to another.
     /// </summary>
-    public IDictionary<string, object> Data { get; } = new Dictionary<string, object>();
+    public IDictionary<string, object?> Data
+    {
+        get
+        {
+            data ??= [];
+            return data;
+        }
+    }
+
+    /// <summary>
+    /// Returns the data associated with the specified key.
+    /// </summary>
+    /// <typeparam name="T">The data type the to which the result will be cast.</typeparam>
+    /// <param name="key">The key of the element in the Data dictionary.</param>
+    /// <param name="item"></param>
+    /// <returns>TData</returns>
+    /// <exception cref="KeyNotFoundException"></exception>
+    /// <remarks>If nothing has been added to the dicionary, then TryGetValue returns default(TData)</remarks>
+    public bool TryGetValue<T>(string key, out T? item) =>
+        data?.TryGetValue(key, out var value) == true && (item = (T?)value) != null || (item = default) == null;
 
     /// <summary>
     /// The response.
