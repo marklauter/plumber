@@ -6,8 +6,8 @@
 [![Nuget](https://img.shields.io/badge/.NET-7.0-blue)](https://dotnet.microsoft.com/en-us/download/dotnet/7.0)
 [![Nuget](https://img.shields.io/badge/.NET-8.0-blue)](https://dotnet.microsoft.com/en-us/download/dotnet/8.0/)
 
-<div>
-<img src="https://github.com/marklauter/plumber/blob/main/images/plumber.svg" title="plumber-logo" alt="plumber-logo" height="128" />
+## 
+![Plumber Logo](https://github.com/marklauter/plumber/blob/main/images/plumber.svg "Plumber Logo")
 
 # Plumber
 ## Pipelines for host-free projects like AWS Lambda, Console, etc.
@@ -155,4 +155,4 @@ var handler = RequestHandlerBuilder.New<string, Void>() // Void TResponse type
     .Build()
     .Prepare();
 ```
-<div>
+
