@@ -40,8 +40,7 @@ public sealed partial class APIGatewayFunction
         requestHandler = builder
            .Build()
            .Use<RequestLogger>()
-           .Use<RequestHandler>()
-           .Prepare();
+           .Use<RequestHandler>();
     }
 
     // This method is called for every Lambda invocation.

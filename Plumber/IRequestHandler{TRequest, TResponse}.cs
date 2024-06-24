@@ -38,12 +38,6 @@ public interface IRequestHandler<TRequest, TResponse>
     Task<TResponse?> InvokeAsync(TRequest request);
 
     /// <summary>
-    /// Prepare's the request handler's internal middleware pipeline.
-    /// </summary>
-    /// <returns><see cref="IRequestHandler{TRequest, TResponse}"/></returns>
-    IRequestHandler<TRequest, TResponse> Prepare();
-
-    /// <summary>
     /// Adds a middleware to the request handler's pipeline.
     /// </summary>
     /// <param name="middleware"><see cref="Func{T, TResult}"/>, <see cref="RequestMiddleware{TRequest, TResponse}"/></param>

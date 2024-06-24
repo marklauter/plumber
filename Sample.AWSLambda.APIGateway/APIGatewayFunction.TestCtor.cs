@@ -31,7 +31,6 @@ public sealed partial class APIGatewayFunction
         requestHandler = builder
            .Build()
            .Use<RequestLogger>()
-           .Use<RequestHandler>()
-           .Prepare();
+           .Use<RequestHandler>();
     }
 }

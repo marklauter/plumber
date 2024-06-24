@@ -31,7 +31,6 @@ public sealed partial class SQSEventFunction
            .Build()
            .Use<EventLogger>()
            .Use<MessageValidator>()
-           .Use<RecordSink>()
-           .Prepare();
+           .Use<RecordSink>();
     }
 }

@@ -30,8 +30,7 @@ public class PlumberTests
                 context.CancellationToken.ThrowIfCancellationRequested();
                 context.Response = context.Request.ToUpperInvariant();
                 return next(context);
-            })
-            .Prepare();
+            });
 
         var response = await handler.InvokeAsync(request);
 
@@ -56,8 +55,7 @@ public class PlumberTests
                 context.CancellationToken.ThrowIfCancellationRequested();
                 context.Response = context.Request.ToLowerInvariant();
                 return next(context);
-            })
-            .Prepare();
+            });
 
         var response = await handler.InvokeAsync(request);
 
@@ -71,8 +69,7 @@ public class PlumberTests
 
         var handler = RequestHandlerBuilder.New<string, string>()
             .Build()
-            .Use<ToLowerMiddleware>()
-            .Prepare();
+            .Use<ToLowerMiddleware>();
 
         var response = await handler.InvokeAsync(request);
 
@@ -87,8 +84,7 @@ public class PlumberTests
 
         var handler = RequestHandlerBuilder.New<string, string>()
             .Build()
-            .Use<ToLowerMiddlewareWithParameter>(parameter)
-            .Prepare();
+            .Use<ToLowerMiddlewareWithParameter>(parameter);
 
         var response = await handler.InvokeAsync(request);
 
