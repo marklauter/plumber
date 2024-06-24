@@ -24,14 +24,7 @@ public record RequestContext<TRequest, TResponse>(
     /// <summary>
     /// Data that can be passed from one middleware to another.
     /// </summary>
-    public IDictionary<string, object?> Data
-    {
-        get
-        {
-            data ??= [];
-            return data;
-        }
-    }
+    public IDictionary<string, object?> Data => data ??= [];
 
     /// <summary>
     /// Returns the data associated with the specified key.
