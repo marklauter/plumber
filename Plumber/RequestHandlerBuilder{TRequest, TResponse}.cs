@@ -6,18 +6,15 @@ using System.Reflection;
 
 namespace Plumber;
 
-/// <inheritdoc/>
 internal sealed class RequestHandlerBuilder<TRequest, TResponse>
     : IRequestHandlerBuilder<TRequest, TResponse>
     where TRequest : class
 {
     private const string DevEnv = "Development";
 
-    /// <inheritdoc/>
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP006:Implement IDisposable", Justification = "it's registered as singleton in Build()")]
     public IConfigurationManager Configuration { get; } = new ConfigurationManager();
 
-    /// <inheritdoc/>
     public IServiceCollection Services { get; } = new ServiceCollection();
 
     internal RequestHandlerBuilder(string[] args)
@@ -35,14 +32,14 @@ internal sealed class RequestHandlerBuilder<TRequest, TResponse>
             _ = Configuration.AddUserSecrets(Assembly.GetExecutingAssembly(), true, true);
         }
 
-        _ = Configuration
-            .AddCommandLine(args);
-
-        _ = Services
-            .AddLogging();
+        _ = Configuration.AddCommandLine(args);
     }
 
-    /// <inheritdoc/>
+    internal RequestHandlerBuilder(string[] args, Action<IConfiguration, string[]> configure)
+    {
+        configure(Configuration, args);
+    }
+
     [RequiresUnreferencedCode("Calls Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue<T>(String, T)")]
     public IRequestHandler<TRequest, TResponse> Build()
     {
@@ -57,6 +54,16 @@ internal sealed class RequestHandlerBuilder<TRequest, TResponse>
 #pragma warning restore IDISP004 // Don't ignore created IDisposable
     }
 
-    public IRequestHandlerBuilder<TRequest, TResponse> AddEnvironmentVariables() => throw new NotImplementedException();
+    [RequiresUnreferencedCode("Calls Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue<T>(String, T)")]
+    public IRequestHandler<TRequest, TResponse> Build(TimeSpan requestTimeout)
+    {
+        Services.TryAddSingleton<IConfiguration>(Configuration);
+
+#pragma warning disable IDISP004 // Don't ignore created IDisposable - service provider lifetime == lifetime of the application
+        return new RequestHandler<TRequest, TResponse>(
+            Services.BuildServiceProvider(),
+            requestTimeout);
+#pragma warning restore IDISP004 // Don't ignore created IDisposable
+    }
 }
 
