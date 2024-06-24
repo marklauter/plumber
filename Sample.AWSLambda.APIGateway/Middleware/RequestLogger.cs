@@ -9,7 +9,6 @@ namespace Sample.AWSLambda.APIGateway.Middleware;
 internal sealed class RequestLogger(
     RequestMiddleware<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse> next,
     ILogger<RequestLogger> logger)
-    : IMiddleware<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse>
 {
     private readonly ILogger<RequestLogger> logger = logger ?? throw new ArgumentNullException(nameof(logger));
 

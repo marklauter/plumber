@@ -7,7 +7,6 @@ namespace Sample.AWSLambda.APIGateway.Middleware;
 // This simplied example is just a sink that does nothing.
 internal sealed class RequestHandler(
     RequestMiddleware<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse> next)
-    : IMiddleware<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse>
 {
     private readonly RequestMiddleware<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse> next = next ?? throw new ArgumentNullException(nameof(next));
 

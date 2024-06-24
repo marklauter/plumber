@@ -9,19 +9,19 @@ internal sealed class RequestHandler<TRequest, TResponse>(
     : IRequestHandler<TRequest, TResponse>
     where TRequest : class
 {
-    public ServiceProvider Services { get; } = services
-        ?? throw new ArgumentNullException(nameof(services));
-    public TimeSpan Timeout { get; } = timeout;
+    private const string InvokeMethodName = "InvokeAsync";
     private readonly List<Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>>> components = [];
-
     private RequestMiddleware<TRequest, TResponse>? handler;
+
+    public ServiceProvider Services { get; } = services ?? throw new ArgumentNullException(nameof(services));
+    public TimeSpan Timeout { get; } = timeout;
 
     public Task<TResponse?> InvokeAsync(TRequest request) =>
         Timeout == System.Threading.Timeout.InfiniteTimeSpan
-            ? InvokeInternalAsync(request)
+            ? InvokeInternalAsync(request, CancellationToken.None)
             : InvokeInternalAsync(request, Timeout);
 
-    private async Task<TResponse?> InvokeInternalAsync(TRequest request)
+    private async Task<TResponse?> InvokeInternalAsync(TRequest request, CancellationToken cancellationToken)
     {
         using var serviceScope = services.CreateScope();
         var context = new RequestContext<TRequest, TResponse>(
@@ -29,7 +29,7 @@ internal sealed class RequestHandler<TRequest, TResponse>(
             Ulid.NewUlid(),
             DateTime.UtcNow,
             serviceScope.ServiceProvider,
-            CancellationToken.None);
+            cancellationToken);
 
         await EnsureHandler()(context);
 
@@ -38,40 +38,15 @@ internal sealed class RequestHandler<TRequest, TResponse>(
 
     private async Task<TResponse?> InvokeInternalAsync(TRequest request, TimeSpan timeout)
     {
-        using var serviceScope = services.CreateScope();
         using var timeoutTokenSource = new CancellationTokenSource(timeout);
-
-        var context = new RequestContext<TRequest, TResponse>(
-            request,
-            Ulid.NewUlid(),
-            DateTime.UtcNow,
-            serviceScope.ServiceProvider,
-            timeoutTokenSource.Token);
-
-        await EnsureHandler()(context);
-
-        return context.Response;
+        return await InvokeInternalAsync(request, timeoutTokenSource.Token);
     }
 
-    public IRequestHandler<TRequest, TResponse> Prepare()
-    {
-        handler ??= BuildPipeline();
-        return this;
-    }
-
-    private RequestMiddleware<TRequest, TResponse> EnsureHandler()
-    {
-        handler ??= BuildPipeline();
-        return handler;
-    }
+    private RequestMiddleware<TRequest, TResponse> EnsureHandler() => handler ??= BuildPipeline();
 
     private RequestMiddleware<TRequest, TResponse> BuildPipeline()
     {
-        RequestMiddleware<TRequest, TResponse> pipeline = context =>
-            context.CancellationToken.IsCancellationRequested
-                ? Task.FromCanceled<RequestContext<TRequest, TResponse>>(context.CancellationToken)
-                : Task.FromResult(context);
-
+        var pipeline = Terminal();
         for (var i = components.Count - 1; i >= 0; --i)
         {
             pipeline = components[i](pipeline);
@@ -80,60 +55,44 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         return pipeline;
     }
 
+    // the terminal middleware in the pipeline is a a no-op, or sink, that returns the context
+    private static RequestMiddleware<TRequest, TResponse> Terminal() => context => context.CancellationToken.IsCancellationRequested
+        ? Task.FromCanceled<RequestContext<TRequest, TResponse>>(context.CancellationToken)
+        : Task.FromResult(context);
+
+    // this is a good place to start working out how to inject services into the middleware 
     public IRequestHandler<TRequest, TResponse> Use(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware)
     {
         components.Add(middleware);
         return this;
     }
 
-    // this is a good place to start working out how to inject services into the middleware 
     public IRequestHandler<TRequest, TResponse> Use(Func<RequestContext<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>, Task> middleware) =>
         Use(next => context => middleware(context, next));
 
     public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TMiddleware>()
-        where TMiddleware : class, IMiddleware<TRequest, TResponse>
-    {
-        RequestMiddleware<TRequest, TResponse> Component(RequestMiddleware<TRequest, TResponse> next)
-        {
-            var component = CreateMiddleware(typeof(TMiddleware), next, null);
-            return component.Invoke;
-        }
-
-        return Use(Component);
-    }
+        where TMiddleware : class =>
+        Use(next => CreateMiddleware(typeof(TMiddleware), next, null).Invoke);
 
     public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TMiddleware>(params object[] parameters)
-        where TMiddleware : class, IMiddleware<TRequest, TResponse>
-    {
-        RequestMiddleware<TRequest, TResponse> Component(RequestMiddleware<TRequest, TResponse> next)
-        {
-            var component = CreateMiddleware(typeof(TMiddleware), next, parameters);
-            return component.Invoke;
-        }
-
-        return Use(Component);
-    }
+        where TMiddleware : class =>
+        Use(next => CreateMiddleware(typeof(TMiddleware), next, parameters).Invoke);
 
     private RequestMiddleware<TRequest, TResponse> CreateMiddleware(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] Type type,
         RequestMiddleware<TRequest, TResponse> next,
         object[]? parameters)
     {
-        parameters = parameters is null
-            ? [next]
-            : parameters.Prepend(next).ToArray();
+        var middleware = ActivatorUtilities.CreateInstance(
+            services,
+            type,
+            parameters is null ? [next] : parameters.Prepend(next).ToArray());
 
-        var middleware = ActivatorUtilities
-            .CreateInstance(
-                services,
-                type,
-                parameters);
-
-        var method = type.GetMethod(nameof(IMiddleware<TRequest, TResponse>.InvokeAsync));
+        var method = type.GetMethod(InvokeMethodName);
         return method is null
-            ? throw new InvalidOperationException($"{nameof(IMiddleware<TRequest, TResponse>.InvokeAsync)} not found.")
+            ? throw new InvalidOperationException($"{InvokeMethodName} not present on class {type.FullName}.")
             : (context => (Task)(method.Invoke(middleware, [context])
-                ?? throw new InvalidOperationException($"{nameof(IMiddleware<TRequest, TResponse>.InvokeAsync)} must return task")));
+                ?? throw new InvalidOperationException($"{InvokeMethodName} must return task")));
     }
 }
 

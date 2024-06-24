@@ -54,21 +54,20 @@ public interface IRequestHandler<TRequest, TResponse>
     /// <summary>
     /// Adds a middleware to the request handler's pipeline.
     /// </summary>
-    /// <typeparam name="TMiddleware"><see cref="IMiddleware{TRequest, TResponse}"/></typeparam>
     /// <returns><see cref="IRequestHandler{TRequest, TResponse}"/></returns>
     IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TMiddleware>()
-        where TMiddleware : class, IMiddleware<TRequest, TResponse>;
+        where TMiddleware : class;
 
     /// <summary>
     /// Adds a middleware to the request handler's pipeline.
     /// </summary>
-    /// <typeparam name="TMiddleware"><see cref="IMiddleware{TRequest, TResponse}"/></typeparam>
-    /// <param name="parameters">Contructor arguments for the <see cref="IMiddleware{TRequest, TResponse}"/> implementation.</param>
+    /// <typeparam name="TMiddleware">A class that contains an InvokeAsync method that receives a context.</typeparam>
+    /// <param name="parameters">Contructor arguments for the middleware implementation.</param>
     /// <returns><see cref="IRequestHandler{TRequest, TResponse}"/></returns>
     /// <remarks>
     /// Constructor arguments are always passed after the Next middleware argument and before arguments provided by the service provider.
     /// </remarks>
     IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TMiddleware>(params object[] parameters)
-        where TMiddleware : class, IMiddleware<TRequest, TResponse>;
+        where TMiddleware : class;
 }
 

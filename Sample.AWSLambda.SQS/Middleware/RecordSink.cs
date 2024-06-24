@@ -6,7 +6,6 @@ namespace Sample.AWSLambda.SQS.Middleware;
 // This simplied example is just a sink that does nothing.
 internal sealed class RecordSink(
     RequestMiddleware<SQSEventContext, Plumber.Void> next)
-    : IMiddleware<SQSEventContext, Plumber.Void>
 {
     private readonly RequestMiddleware<SQSEventContext, Plumber.Void> next = next ?? throw new ArgumentNullException(nameof(next));
 

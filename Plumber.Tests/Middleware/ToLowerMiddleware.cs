@@ -1,7 +1,6 @@
 ﻿namespace Plumber.Tests.Middleware;
 
 internal sealed class ToLowerMiddleware(RequestMiddleware<string, string> next)
-    : IMiddleware<string, string>
 {
     public Task InvokeAsync(RequestContext<string, string> context)
     {

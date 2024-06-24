@@ -9,7 +9,6 @@ namespace Sample.AWSLambda.SQS.Middleware;
 internal sealed class EventLogger(
     RequestMiddleware<SQSEventContext, Plumber.Void> next,
     ILogger<EventLogger> logger)
-    : IMiddleware<SQSEventContext, Plumber.Void>
 {
     private readonly ILogger<EventLogger> logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
