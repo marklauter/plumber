@@ -3,7 +3,6 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Plumber;
 
-/// <inheritdoc/>
 internal sealed class RequestHandler<TRequest, TResponse>(
     ServiceProvider services,
     TimeSpan timeout)
@@ -17,22 +16,14 @@ internal sealed class RequestHandler<TRequest, TResponse>(
 
     private RequestMiddleware<TRequest, TResponse>? handler;
 
-    /// <inheritdoc/>
-    public Task<TResponse?> InvokeAsync(TRequest request)
-    {
-        _ = Prepare();
+    public Task<TResponse?> InvokeAsync(TRequest request) =>
+        Timeout == System.Threading.Timeout.InfiniteTimeSpan
+            ? InvokeInternalAsync(request)
+            : InvokeInternalAsync(request, Timeout);
 
-        return Timeout == System.Threading.Timeout.InfiniteTimeSpan
-            ? InvokeInternalAsync(request, handler!)
-            : InvokeInternalAsync(request, handler!, Timeout);
-    }
-
-    private async Task<TResponse?> InvokeInternalAsync(
-        TRequest request,
-        RequestMiddleware<TRequest, TResponse> handler)
+    private async Task<TResponse?> InvokeInternalAsync(TRequest request)
     {
         using var serviceScope = services.CreateScope();
-
         var context = new RequestContext<TRequest, TResponse>(
             request,
             Ulid.NewUlid(),
@@ -40,15 +31,12 @@ internal sealed class RequestHandler<TRequest, TResponse>(
             serviceScope.ServiceProvider,
             CancellationToken.None);
 
-        await handler(context);
+        await EnsureHandler()(context);
 
         return context.Response;
     }
 
-    private async Task<TResponse?> InvokeInternalAsync(
-        TRequest request,
-        RequestMiddleware<TRequest, TResponse> handler,
-        TimeSpan timeout)
+    private async Task<TResponse?> InvokeInternalAsync(TRequest request, TimeSpan timeout)
     {
         using var serviceScope = services.CreateScope();
         using var timeoutTokenSource = new CancellationTokenSource(timeout);
@@ -60,16 +48,21 @@ internal sealed class RequestHandler<TRequest, TResponse>(
             serviceScope.ServiceProvider,
             timeoutTokenSource.Token);
 
-        await handler(context);
+        await EnsureHandler()(context);
 
         return context.Response;
     }
 
-    /// <inheritdoc/>
     public IRequestHandler<TRequest, TResponse> Prepare()
     {
         handler ??= BuildPipeline();
         return this;
+    }
+
+    private RequestMiddleware<TRequest, TResponse> EnsureHandler()
+    {
+        handler ??= BuildPipeline();
+        return handler;
     }
 
     private RequestMiddleware<TRequest, TResponse> BuildPipeline()
@@ -87,18 +80,16 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         return pipeline;
     }
 
-    /// <inheritdoc/>
     public IRequestHandler<TRequest, TResponse> Use(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware)
     {
         components.Add(middleware);
         return this;
     }
 
-    /// <inheritdoc/>
+    // this is a good place to start working out how to inject services into the middleware 
     public IRequestHandler<TRequest, TResponse> Use(Func<RequestContext<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>, Task> middleware) =>
         Use(next => context => middleware(context, next));
 
-    /// <inheritdoc/>
     public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TMiddleware>()
         where TMiddleware : class, IMiddleware<TRequest, TResponse>
     {
@@ -111,7 +102,6 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         return Use(Component);
     }
 
-    /// <inheritdoc/>
     public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TMiddleware>(params object[] parameters)
         where TMiddleware : class, IMiddleware<TRequest, TResponse>
     {

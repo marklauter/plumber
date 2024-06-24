@@ -1,7 +1,7 @@
 ﻿namespace Plumber;
 
 /// <summary>
-/// Request delegate that can be used in a request handler pipeline.
+/// A function for processing request context.
 /// </summary>
 /// <typeparam name="TRequest">The type of request handled by the pipeline.</typeparam>
 /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
