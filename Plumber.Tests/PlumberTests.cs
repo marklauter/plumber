@@ -67,7 +67,8 @@ public class PlumberTests
     {
         var request = "Hello, World!";
 
-        var handler = RequestHandlerBuilder.New<string, string>()
+        var handler = RequestHandlerBuilder
+            .New<string, string>()
             .Build()
             .Use<ToLowerMiddleware>();
 
@@ -131,7 +132,7 @@ public class PlumberTests
         Assert.Equal(typeof(Void), response.GetType());
     }
 
-    [Fact(Skip = "not ready for this test yet.")]
+    [Fact]
     public async Task InjectIntoInvokeAsync()
     {
         var request = "request";
@@ -145,7 +146,11 @@ public class PlumberTests
             .Use<DependencyInjectedMiddleware>();
 
         var response = await handler.InvokeAsync(request);
+        response = await handler.InvokeAsync(request);
+        response = await handler.InvokeAsync(request);
+        response = await handler.InvokeAsync(request);
 
-        Assert.Equal(request.ToLowerInvariant(), response);
+
+        Assert.Equal("request - injected", response);
     }
 }

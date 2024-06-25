@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
@@ -62,31 +61,6 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         ? Task.FromCanceled<RequestContext<TRequest, TResponse>>(context.CancellationToken)
         : Task.FromResult(context);
 
-    private static RequestMiddleware<TRequest, TResponse> Wrapper(RequestMiddleware<TRequest, TResponse> middleware)
-    {
-        // todo: some hints here
-        // https://github.com/dotnet/aspnetcore/blob/main/src/Http/Http.Abstractions/src/Extensions/UseMiddlewareExtensions.cs
-        return next =>
-        {
-            //RequestMiddleware<TRequest, TResponse> wrapper = context =>
-            //{
-            //    var x = middleware.Method.GetParameters();
-            //    Debug.Assert(x.Length > 0);
-
-            //    return middleware(next)(context);
-            //};
-
-            return middleware(next);
-        };
-    }
-
-    private sealed class MiddlewareDefinition(MethodInfo Method)
-    {
-        public MethodInfo Method { get; }
-        public ParameterInfo[] Parameters { get; } = Method.GetParameters();
-    }
-
-    // this is a good place to start working out how to inject services into the middleware 
     public IRequestHandler<TRequest, TResponse> Use(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware)
     {
         components.Add(middleware);
@@ -97,30 +71,67 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         Use(next => context => middleware(context, next));
 
     public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TMiddleware>()
-        where TMiddleware : class =>
-        Use(next => CreateMiddleware(typeof(TMiddleware), next, null).Invoke);
+        where TMiddleware : class => Use(next =>
+        {
+            var type = typeof(TMiddleware);
+            var middlewareDefinition = new MiddlewareDefinition<TMiddleware>(
+                type,
+                (TMiddleware)ActivatorUtilities.CreateInstance(services, type, [next]));
+            return middlewareDefinition.CreateMiddleware();
+        });
 
     public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TMiddleware>(params object[] parameters)
-        where TMiddleware : class =>
-        Use(next => CreateMiddleware(typeof(TMiddleware), next, parameters).Invoke);
+        where TMiddleware : class => Use(next =>
+        {
+            var type = typeof(TMiddleware);
+            var middlewareDefinition = new MiddlewareDefinition<TMiddleware>(
+                type,
+                (TMiddleware)ActivatorUtilities.CreateInstance(services, type,
+                    parameters is not null && parameters.Length > 0 ? parameters.Prepend(next).ToArray() : [next]));
+            return middlewareDefinition.CreateMiddleware();
+        });
 
-    private RequestMiddleware<TRequest, TResponse> CreateMiddleware(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] Type type,
-        RequestMiddleware<TRequest, TResponse> next,
-        object[]? parameters)
+    private sealed class MiddlewareDefinition<TMiddleware>
+        where TMiddleware : class
     {
-        var middleware = ActivatorUtilities.CreateInstance(
-            services,
-            type,
-            parameters is null ? [next] : parameters.Prepend(next).ToArray());
+        public MiddlewareDefinition(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] Type type,
+            TMiddleware middleware)
+        {
+            method = type.GetMethod(InvokeMethodName, BindingFlags.Instance | BindingFlags.Public) 
+                ?? throw new InvalidOperationException($"{InvokeMethodName} method not found on class {type.FullName}.");
+            if (!typeof(Task).IsAssignableFrom(method.ReturnType))
+            {
+                throw new InvalidOperationException($"{InvokeMethodName} must return {nameof(Task)}");
+            }
 
-        var method = type.GetMethod(InvokeMethodName);
-        return method is null
-            ? throw new InvalidOperationException($"{InvokeMethodName} not present on class {type.FullName}.")
-            : !typeof(Task).IsAssignableFrom(method.ReturnType)
-                ? throw new InvalidOperationException($"{InvokeMethodName} must return {nameof(Task)}")
-                : (context => (Task)(method.Invoke(middleware, [context])
-                        ?? throw new InvalidOperationException($"{InvokeMethodName} must return task")));
+            this.type = type;
+            this.middleware = middleware;
+            paramTypes = method
+                .GetParameters()
+                .Select(p => p.ParameterType)
+                .Where(t => t != typeof(RequestContext<TRequest, TResponse>))
+                .ToArray();
+        }
+
+        private readonly Type type;
+        private readonly TMiddleware middleware;
+        private readonly MethodInfo method;
+        private readonly Type[] paramTypes;
+
+        public RequestMiddleware<TRequest, TResponse> CreateMiddleware() =>
+            context =>
+            {
+                var args = new object[paramTypes.Length + 1];
+                args[0] = context;
+                for (var i = 1; i < args.Length; ++i)
+                {
+                    args[i] = context.Services.GetRequiredService(paramTypes[i - 1]);
+                }
+
+                // todo: consider implementing a fast invoker
+                return (Task)method.Invoke(middleware, args)!;
+            };
     }
 }
 
