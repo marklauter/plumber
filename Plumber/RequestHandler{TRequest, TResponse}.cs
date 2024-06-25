@@ -61,7 +61,7 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         ? Task.FromCanceled<RequestContext<TRequest, TResponse>>(context.CancellationToken)
         : Task.FromResult(context);
 
-    public Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> Wrapper(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware)
+    private static Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> Wrapper(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware)
     {
         // todo: some hints here
         // https://github.com/dotnet/aspnetcore/blob/main/src/Http/Http.Abstractions/src/Extensions/UseMiddlewareExtensions.cs

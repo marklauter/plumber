@@ -1,11 +1,9 @@
-﻿namespace Plumber.Tests;
+﻿using Plumber.Tests.Middleware;
+
+namespace Plumber.Tests;
 
 public sealed class InjectionTests
 {
-    private interface IInjected;
-
-    private sealed record Injected(string Message) : IInjected;
-
     private sealed class Middleware(RequestMiddleware<string, string> next)
     {
         public Task InvokeAsync(RequestContext<string, string> context, IInjected injected) => next(context);
