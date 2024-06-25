@@ -130,5 +130,22 @@ public class PlumberTests
 
         Assert.Equal(typeof(Void), response.GetType());
     }
-}
 
+    [Fact]
+    public async Task InjectIntoInvokeAsync()
+    {
+        var request = "request";
+
+        var builder = RequestHandlerBuilder.New<string, string>();
+        _ = builder.Services
+            .AddSingleton<IInjected>(new Injected("injected"));
+
+        var handler = builder
+            .Build()
+            .Use<DependencyInjectedMiddleware>();
+
+        var response = await handler.InvokeAsync(request);
+
+        Assert.Equal(request.ToLowerInvariant(), response);
+    }
+}

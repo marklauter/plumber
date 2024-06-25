@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Plumber;
@@ -60,10 +61,28 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         ? Task.FromCanceled<RequestContext<TRequest, TResponse>>(context.CancellationToken)
         : Task.FromResult(context);
 
+    public Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> Wrapper(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware)
+    {
+        // todo: some hints here
+        // https://github.com/dotnet/aspnetcore/blob/main/src/Http/Http.Abstractions/src/Extensions/UseMiddlewareExtensions.cs
+        return next =>
+        {
+            RequestMiddleware<TRequest, TResponse> wrapper = context =>
+            {
+                var x = middleware.Method.GetParameters();
+                Debug.Assert(x.Length > 0);
+
+                return middleware(next)(context);
+            };
+
+            return wrapper;
+        };
+    }
+
     // this is a good place to start working out how to inject services into the middleware 
     public IRequestHandler<TRequest, TResponse> Use(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware)
     {
-        components.Add(middleware);
+        components.Add(Wrapper(middleware));
         return this;
     }
 
@@ -91,8 +110,10 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         var method = type.GetMethod(InvokeMethodName);
         return method is null
             ? throw new InvalidOperationException($"{InvokeMethodName} not present on class {type.FullName}.")
-            : (context => (Task)(method.Invoke(middleware, [context])
-                ?? throw new InvalidOperationException($"{InvokeMethodName} must return task")));
+            : !typeof(Task).IsAssignableFrom(method.ReturnType)
+                ? throw new InvalidOperationException($"{InvokeMethodName} must return {nameof(Task)}")
+                : (context => (Task)(method.Invoke(middleware, [context])
+                        ?? throw new InvalidOperationException($"{InvokeMethodName} must return task")));
     }
 }
 

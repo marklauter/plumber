@@ -1,11 +1,4 @@
-﻿using Microsoft.Extensions.Primitives;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Plumber.Tests;
+﻿namespace Plumber.Tests;
 
 public sealed class InjectionTests
 {
@@ -15,10 +8,7 @@ public sealed class InjectionTests
 
     private sealed class Middleware(RequestMiddleware<string, string> next)
     {
-        public Task InvokeAsync(RequestContext<string, string> context, IInjected injected)
-        {
-            return next(context);
-        }
+        public Task InvokeAsync(RequestContext<string, string> context, IInjected injected) => next(context);
     }
 
     [Fact]
