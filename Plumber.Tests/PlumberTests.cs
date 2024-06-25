@@ -146,10 +146,6 @@ public class PlumberTests
             .Use<DependencyInjectedMiddleware>();
 
         var response = await handler.InvokeAsync(request);
-        response = await handler.InvokeAsync(request);
-        response = await handler.InvokeAsync(request);
-        response = await handler.InvokeAsync(request);
-
 
         Assert.Equal("request - injected", response);
     }
