@@ -112,6 +112,8 @@ internal sealed class RequestHandler<TRequest, TResponse>(
                 .Select(p => p.ParameterType)
                 .Where(t => t != typeof(RequestContext<TRequest, TResponse>))
                 .ToArray();
+
+            // todo: with some minor effort we can extract the generic Func<Task, [arg types]> entity to use in Delegate.CreateDelegate(), which we can then cast to that correct type and call Invoke directly for big performance improvement over methodinfo.invoke
         }
 
         private readonly Type type;
