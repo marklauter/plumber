@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 
 namespace Plumber;
 
@@ -61,28 +62,34 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         ? Task.FromCanceled<RequestContext<TRequest, TResponse>>(context.CancellationToken)
         : Task.FromResult(context);
 
-    private static Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> Wrapper(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware)
+    private static RequestMiddleware<TRequest, TResponse> Wrapper(RequestMiddleware<TRequest, TResponse> middleware)
     {
         // todo: some hints here
         // https://github.com/dotnet/aspnetcore/blob/main/src/Http/Http.Abstractions/src/Extensions/UseMiddlewareExtensions.cs
         return next =>
         {
-            RequestMiddleware<TRequest, TResponse> wrapper = context =>
-            {
-                var x = middleware.Method.GetParameters();
-                Debug.Assert(x.Length > 0);
+            //RequestMiddleware<TRequest, TResponse> wrapper = context =>
+            //{
+            //    var x = middleware.Method.GetParameters();
+            //    Debug.Assert(x.Length > 0);
 
-                return middleware(next)(context);
-            };
+            //    return middleware(next)(context);
+            //};
 
-            return wrapper;
+            return middleware(next);
         };
+    }
+
+    private sealed class MiddlewareDefinition(MethodInfo Method)
+    {
+        public MethodInfo Method { get; }
+        public ParameterInfo[] Parameters { get; } = Method.GetParameters();
     }
 
     // this is a good place to start working out how to inject services into the middleware 
     public IRequestHandler<TRequest, TResponse> Use(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware)
     {
-        components.Add(Wrapper(middleware));
+        components.Add(middleware);
         return this;
     }
 
