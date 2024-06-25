@@ -25,17 +25,23 @@ To install, use the following command: `dotnet add package MSL.Plumber.Pipeline`
 
 ## Usage
 1. Create an `IRequestHandlerBuilder<TRequest, TResponse>` by calling one of the static `RequestHandlerBuilder.New` methods. 
-1. The request handler builder adds default configuration providers for appsettings files, environment variables, command line args, and user secrets.
+1. Use `RequestHandlerBuilder.Create(string[] args)` to create a builder with the default configuration providers for `appsettings.json` files, environment variables, command line args, and user secrets.
+1. Use `RequestHandlerBuilder.Create(string[] args, Action<IConfiguration, string[]> configure)` to create a builder with your own selection of configuration providers.
 1. Handle additional configuration scenarios through the  `IConfigurationManager Configuration` property on the builder.
 1. Register services with the `IServiceCollection Services` property.
 1. Use the `Build` method to create an `IRequestRequestDelegate<TRequest, TResponse>` instance.
 1. Configure the request delegate pipeline by calling the `Use` methods on the request handler.
 1. Call the `Prepare` method on the request handler to compile the pipeline. If you don't call `Prepare`, the pipeline will be compiled when the first request is processed.
 1. Call the `InvokeAsync` method on the request handler to forward the request to the pipeline.
-1. Within your middleware delegates, or `IMiddleware` implementations, always invoke `Next` to pass the request context to the next delegate in the pipeline.
-1. Always call `context.CancelationToken.ThrowIfCancellationRequested()` to check for cancellation requests before processing the request or invoking `Next`.
-1. To terminate or "short circuit" the pipeline don't invoke `Next`.
-1. Set the response value in the request context to return a value from the pipeline execution.
+1. Any class that meets the following criteria can be used as middleware
+    - constructor must take `RequestMiddleware<TRequest, TResponse>` as its first argument
+    - must contain an `InvokeAsync` method
+    - `InvokeAsync` must return a `Task`
+    - `InvokeAsync` must take `RequestContext<TRequest, TResponse>` as its first argument
+1. Within your middleware delegates or class implementations, always invoke `next` to pass the request context to the next delegate in the pipeline.
+1. Always call `context.CancelationToken.ThrowIfCancellationRequested()` to check for cancellation requests before processing the request or invoking `next`.
+1. To terminate or "short circuit" the pipeline, don't invoke `next`.
+1. Set the `Response` property on the `RequestContext<TRequest, TResponse>` argument to return a value from the pipeline execution.
 
 ## Sample AWS Lambda Projects
 - [Samples.Lambda.SQS](https://github.com/marklauter/Plumber/tree/main/Sample.AWSLambda.SQS)
@@ -72,8 +78,7 @@ var handler = RequestHandlerBuilder.New<string, string>()
         context.CancelationToken.ThrowIfCancellationRequested();
         context.Response = context.Request.ToUpperInvariant();
         await next(context); // call next to pass the request context to the next delegate in the pipeline
-    })
-    .Prepare();
+    });
 
 var response = await handler.InvokeAsync(request);
 
@@ -81,26 +86,38 @@ Assert.Equal(request.ToUpperInvariant(), response);
 ```
 
 ### Middleware Class Example
-In this sample, we create a request handler with a user-defined `IMiddleware` implementation that converts the request to lowercase.
+In this sample, we create a request handler with a user-defined middleware class that converts the request to lowercase.
 
 First, we define the middleware class, which receives the next middleware delegate in the pipeline in its constructor.
 The middleware is responsible for invoking the `next` delegate. You will short-circuit the pipeline if you don't invoke the `next` delegate.
 An example short-circuit scenario might be a request validation middleware that returns an error response if the request is invalid. 
 The middleware is also responsible for short-circuiting when the pipeline is explicitly canceled via the `context.CancelationToken`.
 
-Constructor-based dependency injection is supported for `IMiddleware` implementations, 
+Constructor-based dependency injection is supported for middleware implementations, 
 with the condition that the `next` delegate must be the first argument in the constructor.
 ```csharp
 internal sealed class ToLowerMiddleware(RequestMiddleware<string, string> next)
-    : IMiddleware<string, string>
 {
-    private readonly RequestMiddleware<string, string> next = next
-        ?? throw new ArgumentNullException(nameof(next));
-
-    public Task InvokeAsync(Context<string, string> context)
+    public Task InvokeAsync(RequestContext<string, string> context)
     {
         context.CancelationToken.ThrowIfCancellationRequested();
         context.Response = context.Request.ToLowerInvariant();
+        return next(context); // call next to pass the request context to the next delegate in the pipeline
+    }
+}
+```
+
+`InvokeAsync` dependency injection is supported for middleware implementations, 
+with the condition that the `RequestContext<TRequest, TResponse>` must be the first argument.
+```csharp
+internal sealed class ToLowerMiddleware(RequestMiddleware<string, string> next)
+{
+    public Task InvokeAsync(
+        RequestContext<string, string> context, // context is first argument
+        IMyFavoriteService service) // second argument is injected by the pipeline's service scope
+    {
+        context.CancelationToken.ThrowIfCancellationRequested();
+        context.Response = service.DoSomethingWonderful(context.Request.ToLowerInvariant());
         return next(context); // call next to pass the request context to the next delegate in the pipeline
     }
 }
@@ -112,8 +129,7 @@ var request = "Hello, World!";
 
 var handler = RequestHandlerBuilder.New<string, string>()
     .Build()
-    .Use<ToLowerMiddleware>()
-    .Prepare();
+    .Use<ToLowerMiddleware>();
 
 var response = await handler.InvokeAsync(request);
 
@@ -149,10 +165,9 @@ The `Void` type is for request handlers that don't return a response.
 public readonly struct Void { }
 ```
 
-Use it as the response type for request handlers that don't return a response.
+You can use it as the response type for request handlers that don't need to return a response.
 ```csharp
 var handler = RequestHandlerBuilder.New<string, Void>() // Void TResponse type
-    .Build()
-    .Prepare();
+    .Build();
 ```
 
