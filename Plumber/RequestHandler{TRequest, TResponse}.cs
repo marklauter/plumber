@@ -10,55 +10,21 @@ internal sealed class RequestHandler<TRequest, TResponse>(
     : IRequestHandler<TRequest, TResponse>
     where TRequest : class
 {
+    private const DynamicallyAccessedMemberTypes DynamicFlags =
+        DynamicallyAccessedMemberTypes.PublicConstructors |
+        DynamicallyAccessedMemberTypes.PublicMethods;
+
     private readonly List<Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>>> components = [];
     private RequestMiddleware<TRequest, TResponse>? handler;
 
     public ServiceProvider Services { get; } = services ?? throw new ArgumentNullException(nameof(services));
+
     public TimeSpan Timeout { get; } = timeout;
 
     public Task<TResponse?> InvokeAsync(TRequest request) =>
         Timeout == System.Threading.Timeout.InfiniteTimeSpan
             ? InvokeInternalAsync(request, CancellationToken.None)
             : InvokeInternalAsync(request, Timeout);
-
-    private async Task<TResponse?> InvokeInternalAsync(TRequest request, CancellationToken cancellationToken)
-    {
-        using var serviceScope = services.CreateScope();
-        var context = new RequestContext<TRequest, TResponse>(
-            request,
-            Ulid.NewUlid(),
-            DateTime.UtcNow,
-            serviceScope.ServiceProvider,
-            cancellationToken);
-
-        await EnsureHandler()(context);
-
-        return context.Response;
-    }
-
-    private async Task<TResponse?> InvokeInternalAsync(TRequest request, TimeSpan timeout)
-    {
-        using var timeoutTokenSource = new CancellationTokenSource(timeout);
-        return await InvokeInternalAsync(request, timeoutTokenSource.Token);
-    }
-
-    private RequestMiddleware<TRequest, TResponse> EnsureHandler() => handler ??= BuildPipeline();
-
-    private RequestMiddleware<TRequest, TResponse> BuildPipeline()
-    {
-        var pipeline = Terminal();
-        for (var i = components.Count - 1; i >= 0; --i)
-        {
-            pipeline = components[i](pipeline);
-        }
-
-        return pipeline;
-    }
-
-    // the terminal middleware in the pipeline is a a no-op, or sink, that returns the context
-    private static RequestMiddleware<TRequest, TResponse> Terminal() => context => context.CancellationToken.IsCancellationRequested
-        ? Task.FromCanceled<RequestContext<TRequest, TResponse>>(context.CancellationToken)
-        : Task.FromResult(context);
 
     public IRequestHandler<TRequest, TResponse> Use(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware)
     {
@@ -69,13 +35,13 @@ internal sealed class RequestHandler<TRequest, TResponse>(
     public IRequestHandler<TRequest, TResponse> Use(Func<RequestContext<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>, Task> middleware) =>
         Use(next => context => middleware(context, next));
 
-    public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TMiddleware>(params object[] parameters)
+    public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicFlags)] TMiddleware>(params object[] parameters)
         where TMiddleware : class =>
         Use(next =>
             new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), services, next, parameters)
                 .CreateMiddleware());
 
-    public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TMiddleware>()
+    public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicFlags)] TMiddleware>()
         where TMiddleware : class =>
         Use(next =>
             new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), services, next, null)
@@ -88,7 +54,7 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         private static readonly Type ContextType = typeof(RequestContext<TRequest, TResponse>);
 
         public MiddlewareFactory(
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)]
+            [DynamicallyAccessedMembers(DynamicFlags)]
             Type type,
             IServiceProvider services,
             RequestMiddleware<TRequest, TResponse> next,
@@ -137,10 +103,7 @@ internal sealed class RequestHandler<TRequest, TResponse>(
                 ? CreateDirectMiddleware()
                 : CreateInjectedMiddleware();
 
-        private RequestMiddleware<TRequest, TResponse> CreateDirectMiddleware()
-        {
-            return context => handler!.Invoke(context);
-        }
+        private RequestMiddleware<TRequest, TResponse> CreateDirectMiddleware() => context => handler!.Invoke(context);
 
         private RequestMiddleware<TRequest, TResponse> CreateInjectedMiddleware() =>
             context =>
@@ -155,5 +118,45 @@ internal sealed class RequestHandler<TRequest, TResponse>(
                 return (Task)method.Invoke(middleware, args)!;
             };
     }
+
+    private async Task<TResponse?> InvokeInternalAsync(TRequest request, CancellationToken cancellationToken)
+    {
+        using var serviceScope = services.CreateScope();
+        var context = new RequestContext<TRequest, TResponse>(
+            request,
+            Ulid.NewUlid(),
+            DateTime.UtcNow,
+            serviceScope.ServiceProvider,
+            cancellationToken);
+
+        await EnsureHandler()(context);
+
+        return context.Response;
+    }
+
+    private async Task<TResponse?> InvokeInternalAsync(TRequest request, TimeSpan timeout)
+    {
+        using var timeoutTokenSource = new CancellationTokenSource(timeout);
+        return await InvokeInternalAsync(request, timeoutTokenSource.Token);
+    }
+
+    private RequestMiddleware<TRequest, TResponse> EnsureHandler() => handler ??= BuildPipeline();
+
+    private RequestMiddleware<TRequest, TResponse> BuildPipeline()
+    {
+        var pipeline = Terminal();
+        for (var i = components.Count - 1; i >= 0; --i)
+        {
+            pipeline = components[i](pipeline);
+        }
+
+        return pipeline;
+    }
+
+    // the terminal middleware in the pipeline is a a no-op, or sink, that returns the context
+    private static RequestMiddleware<TRequest, TResponse> Terminal() => context => 
+        context.CancellationToken.IsCancellationRequested
+            ? Task.FromCanceled<RequestContext<TRequest, TResponse>>(context.CancellationToken)
+            : Task.FromResult(context);
 }
 
