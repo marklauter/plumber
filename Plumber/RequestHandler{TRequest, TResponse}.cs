@@ -74,7 +74,7 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         where TMiddleware : class => Use(next =>
         {
             var type = typeof(TMiddleware);
-            var middlewareDefinition = new MiddlewareDefinition<TMiddleware>(
+            var middlewareDefinition = new MiddlewareFactory<TMiddleware>(
                 type,
                 (TMiddleware)ActivatorUtilities.CreateInstance(services, type, [next]));
             return middlewareDefinition.CreateMiddleware();
@@ -84,7 +84,7 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         where TMiddleware : class => Use(next =>
         {
             var type = typeof(TMiddleware);
-            var middlewareDefinition = new MiddlewareDefinition<TMiddleware>(
+            var middlewareDefinition = new MiddlewareFactory<TMiddleware>(
                 type,
                 (TMiddleware)ActivatorUtilities.CreateInstance(
                     services,
@@ -93,10 +93,10 @@ internal sealed class RequestHandler<TRequest, TResponse>(
             return middlewareDefinition.CreateMiddleware();
         });
 
-    private sealed class MiddlewareDefinition<TMiddleware>
+    private sealed class MiddlewareFactory<TMiddleware>
         where TMiddleware : class
     {
-        public MiddlewareDefinition(
+        public MiddlewareFactory(
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] Type type,
             TMiddleware middleware)
         {
