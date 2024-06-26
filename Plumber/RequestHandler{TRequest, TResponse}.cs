@@ -85,6 +85,7 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         where TMiddleware : class
     {
         private const string InvokeMethodName = "InvokeAsync";
+        private static readonly Type ContextType = typeof(RequestContext<TRequest, TResponse>);
 
         public MiddlewareFactory(
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)]
@@ -93,40 +94,52 @@ internal sealed class RequestHandler<TRequest, TResponse>(
             RequestMiddleware<TRequest, TResponse> next,
             object[]? parameters)
         {
+            method = type.GetMethod(InvokeMethodName, BindingFlags.Instance | BindingFlags.Public)
+                ?? throw new InvalidOperationException($"{InvokeMethodName} method not found on class {type.FullName}.");
+
+            if (!typeof(Task).IsAssignableFrom(method.ReturnType))
+            {
+                throw new InvalidOperationException($"{InvokeMethodName} must return {nameof(Task)}");
+            }
+
+            var allParamTypes = method
+                .GetParameters()
+                .Select(p => p.ParameterType);
+
+            if (!allParamTypes.Any() || allParamTypes.FirstOrDefault() != ContextType)
+            {
+                throw new InvalidOperationException($"method {method.Name} must have {ContextType.Name} as its first parameter");
+            }
+
+            injectedTypes = allParamTypes
+                .Where(t => t != typeof(RequestContext<TRequest, TResponse>))
+                .ToArray();
+
             middleware = (TMiddleware)ActivatorUtilities.CreateInstance(
                 services,
                 type,
                 parameters is null || parameters.Length == 0 ? [next] : parameters.Prepend(next).ToArray())
                 ?? throw new InvalidOperationException($"can't construct type {type.FullName}");
 
-            method = type.GetMethod(InvokeMethodName, BindingFlags.Instance | BindingFlags.Public)
-                ?? throw new InvalidOperationException($"{InvokeMethodName} method not found on class {type.FullName}.");
-            if (!typeof(Task).IsAssignableFrom(method.ReturnType))
-            {
-                throw new InvalidOperationException($"{InvokeMethodName} must return {nameof(Task)}");
-            }
-
-            injectedTypes = method
-                .GetParameters()
-                .Select(p => p.ParameterType)
-                .Where(t => t != typeof(RequestContext<TRequest, TResponse>))
-                .ToArray();
+            handler = injectedTypes.Length == 0
+                ? (Func<RequestContext<TRequest, TResponse>, Task>)Delegate
+                    .CreateDelegate(typeof(Func<RequestContext<TRequest, TResponse>, Task>), middleware, method)
+                : null;
         }
 
         private readonly TMiddleware middleware;
         private readonly MethodInfo method;
         private readonly Type[] injectedTypes;
+        private readonly Func<RequestContext<TRequest, TResponse>, Task>? handler;
 
         public RequestMiddleware<TRequest, TResponse> CreateMiddleware() =>
-            injectedTypes.Length == 0
+            handler is not null
                 ? CreateDirectMiddleware()
                 : CreateInjectedMiddleware();
 
         private RequestMiddleware<TRequest, TResponse> CreateDirectMiddleware()
         {
-            var foo = (Func<RequestContext<TRequest, TResponse>, Task>)Delegate
-                .CreateDelegate(typeof(Func<RequestContext<TRequest, TResponse>, Task>), middleware, method);
-            return context => foo.Invoke(context)!;
+            return context => handler!.Invoke(context);
         }
 
         private RequestMiddleware<TRequest, TResponse> CreateInjectedMiddleware() =>
