@@ -28,7 +28,7 @@ To install, use the following command in your terminal or command prompt
 ## Usage
 1. Create an `IRequestHandlerBuilder<TRequest, TResponse>` by calling one of the static `RequestHandlerBuilder.Create` methods. 
 1. Use `RequestHandlerBuilder.Create(string[] args)` to create a builder with the default configuration providers for `appsettings.json` files, environment variables, command line args, and user secrets.
-1. Use `RequestHandlerBuilder.Create(string[] args, Action<IConfiguration, string[]> configure)` to create a builder with your own selection of configuration providers.
+1. Use `RequestHandlerBuilder.Create(string[] args, Action<IConfiguration, string[]> configure)` to create a builder with your own set of configuration providers.
 1. Handle additional configuration scenarios through the  `IConfigurationManager Configuration` property on the builder.
 1. Register services with the `IServiceCollection Services` property.
 1. Use the `Build` method to create an `IRequestHandler<TRequest, TResponse>` instance.
@@ -158,7 +158,7 @@ builder.Configuration.AddInMemoryCollection(new Dictionary<string, string> { { "
 
 var handler = builder.Build();
 ```
-Use your own configuration providers with the `Create` method.
+Provide your own set of configuration providers with the `Create` method.
 ```csharp
 // only user specified configuration providers are added
 var builder = RequestHandlerBuilder.Create<string, string>(args, (args, configuration) => 
@@ -185,7 +185,7 @@ var handler = builder.Build();
 
 ### Void Response Example
 Some pipelines need to return a response. One example is an AWS Lambda triggered by APIGateway. These
-handlers receive a `APIGatewayHttpApiV2ProxyRequest` and return a `APIGatewayHttpApiV2ProxyResponse` to the APIGateway.
+handlers receive an `APIGatewayHttpApiV2ProxyRequest` and return an `APIGatewayHttpApiV2ProxyResponse` to the APIGateway.
 
 However, many use cases don't require a response. For example, an AWS Lambda triggered by an SQS message.
 In these cases, the `Void` type can be used as the generic argument for `TResponse`.
