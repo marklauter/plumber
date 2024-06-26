@@ -7,7 +7,7 @@
 [![Nuget](https://img.shields.io/badge/.NET-8.0-blue)](https://dotnet.microsoft.com/en-us/download/dotnet/8.0/)
 
 ## 
-![Plumber Logo](https://raw.githubusercontent.com/marklauter/plumber/main/images/plumber.svg "Plumber Logo")
+![Plumber Logo](https://raw.githubusercontent.com/marklauter/plumber/main/images/plumber.png "Plumber Logo")
 
 # Plumber
 ## Middleware pipelines for host-free projects like AWS Lambda, Console, etc.
