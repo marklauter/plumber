@@ -10,7 +10,6 @@ internal sealed class RequestHandler<TRequest, TResponse>(
     : IRequestHandler<TRequest, TResponse>
     where TRequest : class
 {
-    private const string InvokeMethodName = "InvokeAsync";
     private readonly List<Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>>> components = [];
     private RequestMiddleware<TRequest, TResponse>? handler;
 
@@ -70,36 +69,36 @@ internal sealed class RequestHandler<TRequest, TResponse>(
     public IRequestHandler<TRequest, TResponse> Use(Func<RequestContext<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>, Task> middleware) =>
         Use(next => context => middleware(context, next));
 
-    public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TMiddleware>()
-        where TMiddleware : class => Use(next =>
-        {
-            var type = typeof(TMiddleware);
-            var middlewareDefinition = new MiddlewareFactory<TMiddleware>(
-                type,
-                (TMiddleware)ActivatorUtilities.CreateInstance(services, type, [next]));
-            return middlewareDefinition.CreateMiddleware();
-        });
-
     public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TMiddleware>(params object[] parameters)
-        where TMiddleware : class => Use(next =>
-        {
-            var type = typeof(TMiddleware);
-            var middlewareDefinition = new MiddlewareFactory<TMiddleware>(
-                type,
-                (TMiddleware)ActivatorUtilities.CreateInstance(
-                    services,
-                    type,
-                    parameters is not null && parameters.Length > 0 ? parameters.Prepend(next).ToArray() : [next]));
-            return middlewareDefinition.CreateMiddleware();
-        });
+        where TMiddleware : class =>
+        Use(next =>
+            new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), services, next, parameters)
+                .CreateMiddleware());
+
+    public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TMiddleware>()
+        where TMiddleware : class =>
+        Use(next =>
+            new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), services, next, null)
+                .CreateMiddleware());
 
     private sealed class MiddlewareFactory<TMiddleware>
         where TMiddleware : class
     {
+        private const string InvokeMethodName = "InvokeAsync";
+
         public MiddlewareFactory(
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] Type type,
-            TMiddleware middleware)
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)]
+            Type type,
+            IServiceProvider services,
+            RequestMiddleware<TRequest, TResponse> next,
+            object[]? parameters)
         {
+            middleware = (TMiddleware)ActivatorUtilities.CreateInstance(
+                services,
+                type,
+                parameters is null || parameters.Length == 0 ? [next] : parameters.Prepend(next).ToArray())
+                ?? throw new InvalidOperationException($"can't construct type {type.FullName}");
+
             method = type.GetMethod(InvokeMethodName, BindingFlags.Instance | BindingFlags.Public)
                 ?? throw new InvalidOperationException($"{InvokeMethodName} method not found on class {type.FullName}.");
             if (!typeof(Task).IsAssignableFrom(method.ReturnType))
@@ -107,8 +106,6 @@ internal sealed class RequestHandler<TRequest, TResponse>(
                 throw new InvalidOperationException($"{InvokeMethodName} must return {nameof(Task)}");
             }
 
-            this.type = type;
-            this.middleware = middleware;
             injectedTypes = method
                 .GetParameters()
                 .Select(p => p.ParameterType)
@@ -116,7 +113,6 @@ internal sealed class RequestHandler<TRequest, TResponse>(
                 .ToArray();
         }
 
-        private readonly Type type;
         private readonly TMiddleware middleware;
         private readonly MethodInfo method;
         private readonly Type[] injectedTypes;
