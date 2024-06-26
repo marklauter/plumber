@@ -86,7 +86,9 @@ internal sealed class RequestHandler<TRequest, TResponse>(
             var type = typeof(TMiddleware);
             var middlewareDefinition = new MiddlewareDefinition<TMiddleware>(
                 type,
-                (TMiddleware)ActivatorUtilities.CreateInstance(services, type,
+                (TMiddleware)ActivatorUtilities.CreateInstance(
+                    services,
+                    type,
                     parameters is not null && parameters.Length > 0 ? parameters.Prepend(next).ToArray() : [next]));
             return middlewareDefinition.CreateMiddleware();
         });
@@ -98,7 +100,7 @@ internal sealed class RequestHandler<TRequest, TResponse>(
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] Type type,
             TMiddleware middleware)
         {
-            method = type.GetMethod(InvokeMethodName, BindingFlags.Instance | BindingFlags.Public) 
+            method = type.GetMethod(InvokeMethodName, BindingFlags.Instance | BindingFlags.Public)
                 ?? throw new InvalidOperationException($"{InvokeMethodName} method not found on class {type.FullName}.");
             if (!typeof(Task).IsAssignableFrom(method.ReturnType))
             {
@@ -107,31 +109,40 @@ internal sealed class RequestHandler<TRequest, TResponse>(
 
             this.type = type;
             this.middleware = middleware;
-            paramTypes = method
+            injectedTypes = method
                 .GetParameters()
                 .Select(p => p.ParameterType)
                 .Where(t => t != typeof(RequestContext<TRequest, TResponse>))
                 .ToArray();
-
-            // todo: with some minor effort we can extract the generic Func<Task, [arg types]> entity to use in Delegate.CreateDelegate(), which we can then cast to that correct type and call Invoke directly for big performance improvement over methodinfo.invoke
         }
 
         private readonly Type type;
         private readonly TMiddleware middleware;
         private readonly MethodInfo method;
-        private readonly Type[] paramTypes;
+        private readonly Type[] injectedTypes;
 
         public RequestMiddleware<TRequest, TResponse> CreateMiddleware() =>
+            injectedTypes.Length == 0
+                ? CreateDirectMiddleware()
+                : CreateInjectedMiddleware();
+
+        private RequestMiddleware<TRequest, TResponse> CreateDirectMiddleware()
+        {
+            var foo = (Func<RequestContext<TRequest, TResponse>, Task>)Delegate
+                .CreateDelegate(typeof(Func<RequestContext<TRequest, TResponse>, Task>), middleware, method);
+            return context => foo.Invoke(context)!;
+        }
+
+        private RequestMiddleware<TRequest, TResponse> CreateInjectedMiddleware() =>
             context =>
             {
-                var args = new object[paramTypes.Length + 1];
+                var args = new object[injectedTypes.Length + 1];
                 args[0] = context;
                 for (var i = 1; i < args.Length; ++i)
                 {
-                    args[i] = context.Services.GetRequiredService(paramTypes[i - 1]);
+                    args[i] = context.Services.GetRequiredService(injectedTypes[i - 1]);
                 }
 
-                // todo: consider implementing a fast invoker
                 return (Task)method.Invoke(middleware, args)!;
             };
     }
