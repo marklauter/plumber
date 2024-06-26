@@ -10,7 +10,7 @@ public class PlumberTests
     {
         var request = "Hello, World!";
 
-        var handler = RequestHandlerBuilder.New<string, string>()
+        var handler = RequestHandlerBuilder.Create<string, string>()
             .Build();
 
         var response = await handler.InvokeAsync(request);
@@ -23,7 +23,7 @@ public class PlumberTests
     {
         var request = "Hello, World!";
 
-        var handler = RequestHandlerBuilder.New<string, string>()
+        var handler = RequestHandlerBuilder.Create<string, string>()
             .Build()
             .Use((context, next) =>
             {
@@ -42,7 +42,7 @@ public class PlumberTests
     {
         var request = "Hello, World!";
 
-        var handler = RequestHandlerBuilder.New<string, string>()
+        var handler = RequestHandlerBuilder.Create<string, string>()
             .Build()
             .Use((context, next) =>
             {
@@ -68,7 +68,7 @@ public class PlumberTests
         var request = "Hello, World!";
 
         var handler = RequestHandlerBuilder
-            .New<string, string>()
+            .Create<string, string>()
             .Build()
             .Use<ToLowerMiddleware>();
 
@@ -83,7 +83,7 @@ public class PlumberTests
         var request = "Hello, World!";
         var parameter = "parameter";
 
-        var handler = RequestHandlerBuilder.New<string, string>()
+        var handler = RequestHandlerBuilder.Create<string, string>()
             .Build()
             .Use<ToLowerMiddlewareWithParameter>(parameter);
 
@@ -124,7 +124,7 @@ public class PlumberTests
     {
         var request = "Hello, World!";
 
-        var handler = RequestHandlerBuilder.New<string, Void>()
+        var handler = RequestHandlerBuilder.Create<string, Void>()
             .Build();
 
         var response = await handler.InvokeAsync(request);
@@ -137,7 +137,7 @@ public class PlumberTests
     {
         var request = "request";
 
-        var builder = RequestHandlerBuilder.New<string, string>();
+        var builder = RequestHandlerBuilder.Create<string, string>();
         _ = builder.Services
             .AddSingleton<IInjected>(new Injected("injected"));
 

@@ -30,7 +30,7 @@ public sealed partial class APIGatewayFunction
 
         // create a request handler builder
         var builder = RequestHandlerBuilder
-            .New<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse>();
+            .Create<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse>();
 
         // add services
         _ = builder.Services.AddLogging(loggingBuilder =>

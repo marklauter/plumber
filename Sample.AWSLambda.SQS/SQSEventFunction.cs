@@ -30,7 +30,7 @@ public sealed partial class SQSEventFunction
 
         // create a request handler builder
         var builder = RequestHandlerBuilder
-            .New<SQSEventContext, Plumber.Void>();
+            .Create<SQSEventContext, Plumber.Void>();
 
         // add services
         _ = builder.Services
