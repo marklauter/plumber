@@ -6,6 +6,7 @@ public sealed class InjectionTests
 {
     private sealed class Middleware(RequestMiddleware<string, string> next)
     {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "testing something")]
         public Task InvokeAsync(RequestContext<string, string> context, IInjected injected) => next(context);
     }
 
