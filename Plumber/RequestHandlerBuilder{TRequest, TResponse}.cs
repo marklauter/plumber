@@ -47,11 +47,9 @@ internal sealed class RequestHandlerBuilder<TRequest, TResponse>
 
         Services.TryAddSingleton<IConfiguration>(Configuration);
 
-#pragma warning disable IDISP004 // Don't ignore created IDisposable - service provider lifetime == lifetime of the application
         return new RequestHandler<TRequest, TResponse>(
-            Services.BuildServiceProvider(),
+            Services,
             requestTimeout);
-#pragma warning restore IDISP004 // Don't ignore created IDisposable
     }
 
     [RequiresUnreferencedCode("Calls Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue<T>(String, T)")]
@@ -59,11 +57,9 @@ internal sealed class RequestHandlerBuilder<TRequest, TResponse>
     {
         Services.TryAddSingleton<IConfiguration>(Configuration);
 
-#pragma warning disable IDISP004 // Don't ignore created IDisposable - service provider lifetime == lifetime of the application
         return new RequestHandler<TRequest, TResponse>(
-            Services.BuildServiceProvider(),
+            Services,
             requestTimeout);
-#pragma warning restore IDISP004 // Don't ignore created IDisposable
     }
 }
 
