@@ -52,6 +52,7 @@
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Diagnostics.Abstractions" Version="8.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
+		<PackageReference Include="Microsoft.NET.ILLink.Tasks" Version="8.0.6" />
 		<PackageReference Include="Ulid" Version="1.3.3" />
 	</ItemGroup>
 
