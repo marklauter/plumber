@@ -12,8 +12,10 @@ using Serilog.Formatting.Compact;
 namespace Sample.AWSLambda.SQS;
 
 public sealed partial class SQSEventFunction
+    : IDisposable
 {
     private readonly IRequestHandler<SQSEventContext, Plumber.Void> requestHandler;
+    private bool disposed;
 
     // The default constructor is called by Lambda host service once for the lifetime of the function instance, which could be up to a couple of hours.
     // That's once per cold-start, so you want to get all your setup done here.
@@ -50,4 +52,19 @@ public sealed partial class SQSEventFunction
     // In a real-world scenario you'd probably create context instance per record on the event and invoke the handler for each one.
     public async Task ForwardEventAsync(SQSEvent e, ILambdaContext context) =>
         _ = await requestHandler.InvokeAsync(new SQSEventContext(e, context));
+
+    public void Dispose()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        requestHandler.Dispose();
+
+        disposed = true;
+    }
+
+    private SQSEventFunction ThrowIfDisposed() =>
+        disposed ? throw new ObjectDisposedException(nameof(SQSEventFunction)) : this;
 }

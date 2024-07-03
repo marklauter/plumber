@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Plumber.Tests.Middleware;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Plumber.Tests;
 
@@ -10,7 +11,7 @@ public class PlumberTests
     {
         var request = "Hello, World!";
 
-        var handler = RequestHandlerBuilder.Create<string, string>()
+        using var handler = RequestHandlerBuilder.Create<string, string>()
             .Build();
 
         var response = await handler.InvokeAsync(request);
@@ -19,11 +20,12 @@ public class PlumberTests
     }
 
     [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
     public async Task HandleRequestWithMiddlewareAsync()
     {
         var request = "Hello, World!";
 
-        var handler = RequestHandlerBuilder.Create<string, string>()
+        using var handler = RequestHandlerBuilder.Create<string, string>()
             .Build()
             .Use((context, next) =>
             {
@@ -38,11 +40,12 @@ public class PlumberTests
     }
 
     [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
     public async Task HandleRequestLastMiddlewareWinsAsync()
     {
         var request = "Hello, World!";
 
-        var handler = RequestHandlerBuilder.Create<string, string>()
+        using var handler = RequestHandlerBuilder.Create<string, string>()
             .Build()
             .Use((context, next) =>
             {
@@ -67,7 +70,7 @@ public class PlumberTests
     {
         var request = "Hello, World!";
 
-        var handler = RequestHandlerBuilder
+        using var handler = RequestHandlerBuilder
             .Create<string, string>()
             .Build()
             .Use<ToLowerMiddleware>();
@@ -83,7 +86,7 @@ public class PlumberTests
         var request = "Hello, World!";
         var parameter = "parameter";
 
-        var handler = RequestHandlerBuilder.Create<string, string>()
+        using var handler = RequestHandlerBuilder.Create<string, string>()
             .Build()
             .Use<ToLowerMiddlewareWithParameter>(parameter);
 
@@ -124,7 +127,7 @@ public class PlumberTests
     {
         var request = "Hello, World!";
 
-        var handler = RequestHandlerBuilder.Create<string, Void>()
+        using var handler = RequestHandlerBuilder.Create<string, Void>()
             .Build();
 
         var response = await handler.InvokeAsync(request);
@@ -141,7 +144,7 @@ public class PlumberTests
         _ = builder.Services
             .AddSingleton<IInjected>(new Injected("injected"));
 
-        var handler = builder
+        using var handler = builder
             .Build()
             .Use<DependencyInjectedMiddleware>();
 

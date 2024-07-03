@@ -12,8 +12,10 @@ using Serilog.Formatting.Compact;
 namespace Sample.AWSLambda.APIGateway;
 
 public sealed partial class APIGatewayFunction
+    : IDisposable
 {
     private readonly IRequestHandler<APIGatewayHttpProxyContext, APIGatewayHttpApiV2ProxyResponse> requestHandler;
+    private bool disposed;
 
     // The default constructor is called by Lambda host service once for the lifetime of the function instance, which could be up to a couple of hours.
     // That's once per cold-start, so you want to get all your setup done here.
@@ -47,6 +49,21 @@ public sealed partial class APIGatewayFunction
     // Invoke the request handler to execute the pipeline.
     // In this simplifed scenario we're passing a a request context.
     public async Task<APIGatewayHttpApiV2ProxyResponse> ForwardRequestAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context) =>
-        await requestHandler.InvokeAsync(new APIGatewayHttpProxyContext(request, context))
+        await ThrowIfDisposed().requestHandler.InvokeAsync(new APIGatewayHttpProxyContext(request, context))
             ?? throw new InvalidOperationException("response was unassigned");
+
+    public void Dispose()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        requestHandler.Dispose();
+
+        disposed = true;
+    }
+
+    private APIGatewayFunction ThrowIfDisposed() =>
+        disposed ? throw new ObjectDisposedException(nameof(APIGatewayFunction)) : this;
 }

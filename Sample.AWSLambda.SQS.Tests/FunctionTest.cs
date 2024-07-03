@@ -29,7 +29,7 @@ public class FunctionTest(ITestOutputHelper output)
             AwsRequestId = Guid.NewGuid().ToString(),
         };
 
-        var function = new SQSEventFunction(ConfigureLogger);
+        using var function = new SQSEventFunction(ConfigureLogger);
         await function.ForwardEventAsync(sqsEvent, lambdaContext);
 
         var stdout = ((Xunit.Sdk.TestOutputHelper)output).Output;

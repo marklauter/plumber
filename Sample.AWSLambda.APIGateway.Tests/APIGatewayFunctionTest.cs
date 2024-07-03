@@ -36,7 +36,7 @@ public class APIGatewayFunctionTest(ITestOutputHelper output)
             AwsRequestId = Guid.NewGuid().ToString(),
         };
 
-        var function = new APIGatewayFunction(ConfigureLogger);
+        using var function = new APIGatewayFunction(ConfigureLogger);
         var response = await function.ForwardRequestAsync(request, lambdaContext);
 
         var stdout = ((Xunit.Sdk.TestOutputHelper)output).Output;
