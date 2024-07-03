@@ -5,10 +5,9 @@ using System.Reflection;
 namespace Plumber;
 
 internal sealed class RequestHandler<TRequest, TResponse>(
-    ServiceProvider services,
+    IServiceCollection services,
     TimeSpan timeout)
-    : IRequestHandler<TRequest, TResponse>
-    where TRequest : class
+    : IRequestHandler<TRequest, TResponse>, IDisposable where TRequest : class
 {
     private const DynamicallyAccessedMemberTypes DynamicFlags =
         DynamicallyAccessedMemberTypes.PublicConstructors |
@@ -16,19 +15,32 @@ internal sealed class RequestHandler<TRequest, TResponse>(
 
     private readonly List<Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>>> components = [];
     private RequestMiddleware<TRequest, TResponse>? handler;
+    private bool disposed;
 
-    public ServiceProvider Services { get; } = services ?? throw new ArgumentNullException(nameof(services));
+    private readonly ServiceProvider services = services?.BuildServiceProvider() ?? throw new ArgumentNullException(nameof(services));
 
-    public TimeSpan Timeout { get; } = timeout;
+    public TimeSpan Timeout => timeout;
 
     public Task<TResponse?> InvokeAsync(TRequest request) =>
-        Timeout == System.Threading.Timeout.InfiniteTimeSpan
+        ThrowIfDisposed()
+        .Timeout == System.Threading.Timeout.InfiniteTimeSpan
             ? InvokeInternalAsync(request, CancellationToken.None)
             : InvokeInternalAsync(request, Timeout);
 
+    public Task<TResponse?> InvokeAsync(TRequest request, CancellationToken cancellationToken) =>
+        ThrowIfDisposed()
+        .Timeout == System.Threading.Timeout.InfiniteTimeSpan
+            ? InvokeInternalAsync(request, cancellationToken)
+            : InvokeInternalAsync(request, Timeout, cancellationToken);
+
     public IRequestHandler<TRequest, TResponse> Use(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware)
     {
-        components.Add(middleware);
+        if (handler is not null)
+        {
+            throw new InvalidOperationException("middleware components cannot be added after the pipeline has been built.");
+        }
+
+        ThrowIfDisposed().components.Add(middleware);
         return this;
     }
 
@@ -46,6 +58,55 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         Use(next =>
             new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), services, next, null)
                 .CreateMiddleware());
+
+    private async Task<TResponse?> InvokeInternalAsync(TRequest request, CancellationToken cancellationToken)
+    {
+        using var serviceScope = services.CreateScope();
+        var context = new RequestContext<TRequest, TResponse>(
+            request,
+            Ulid.NewUlid(),
+            DateTime.UtcNow,
+            serviceScope.ServiceProvider,
+            cancellationToken);
+
+        await EnsureHandler()(context);
+
+        return context.Response;
+    }
+
+    private async Task<TResponse?> InvokeInternalAsync(TRequest request, TimeSpan timeout)
+    {
+        using var timeoutTokenSource = new CancellationTokenSource(timeout);
+        return await InvokeInternalAsync(request, timeoutTokenSource.Token);
+    }
+
+    private async Task<TResponse?> InvokeInternalAsync(TRequest request, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        using var timeoutTokenSource = new CancellationTokenSource(timeout);
+        using var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken,
+            timeoutTokenSource.Token);
+        return await InvokeInternalAsync(request, linkedTokenSource.Token);
+    }
+
+    private RequestMiddleware<TRequest, TResponse> EnsureHandler() => handler ??= BuildPipeline();
+
+    private RequestMiddleware<TRequest, TResponse> BuildPipeline()
+    {
+        var pipeline = Terminal();
+        for (var i = components.Count - 1; i >= 0; --i)
+        {
+            pipeline = components[i](pipeline);
+        }
+
+        return pipeline;
+    }
+
+    // the terminal middleware in the pipeline is a a no-op, or sink, that returns the context
+    private static RequestMiddleware<TRequest, TResponse> Terminal() => context =>
+        context.CancellationToken.IsCancellationRequested
+            ? Task.FromCanceled<RequestContext<TRequest, TResponse>>(context.CancellationToken)
+            : Task.FromResult(context);
 
     private sealed class MiddlewareFactory<TMiddleware>
         where TMiddleware : class
@@ -119,44 +180,19 @@ internal sealed class RequestHandler<TRequest, TResponse>(
             };
     }
 
-    private async Task<TResponse?> InvokeInternalAsync(TRequest request, CancellationToken cancellationToken)
+    public void Dispose()
     {
-        using var serviceScope = services.CreateScope();
-        var context = new RequestContext<TRequest, TResponse>(
-            request,
-            Ulid.NewUlid(),
-            DateTime.UtcNow,
-            serviceScope.ServiceProvider,
-            cancellationToken);
-
-        await EnsureHandler()(context);
-
-        return context.Response;
-    }
-
-    private async Task<TResponse?> InvokeInternalAsync(TRequest request, TimeSpan timeout)
-    {
-        using var timeoutTokenSource = new CancellationTokenSource(timeout);
-        return await InvokeInternalAsync(request, timeoutTokenSource.Token);
-    }
-
-    private RequestMiddleware<TRequest, TResponse> EnsureHandler() => handler ??= BuildPipeline();
-
-    private RequestMiddleware<TRequest, TResponse> BuildPipeline()
-    {
-        var pipeline = Terminal();
-        for (var i = components.Count - 1; i >= 0; --i)
+        if (disposed)
         {
-            pipeline = components[i](pipeline);
+            return;
         }
 
-        return pipeline;
+        services.Dispose();
+
+        disposed = true;
     }
 
-    // the terminal middleware in the pipeline is a a no-op, or sink, that returns the context
-    private static RequestMiddleware<TRequest, TResponse> Terminal() => context => 
-        context.CancellationToken.IsCancellationRequested
-            ? Task.FromCanceled<RequestContext<TRequest, TResponse>>(context.CancellationToken)
-            : Task.FromResult(context);
-}
+    private RequestHandler<TRequest, TResponse> ThrowIfDisposed() =>
+        disposed ? throw new ObjectDisposedException(GetType().FullName) : this;
 
+}
