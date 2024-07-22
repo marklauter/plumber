@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Plumber;
 
@@ -11,6 +12,11 @@ public interface IRequestHandler<TRequest, TResponse>
     : IDisposable
     where TRequest : class
 {
+    /// <summary>
+    /// Handler level service provider.
+    /// </summary>
+    ServiceProvider Services { get; }
+
     /// <summary>
     /// The timeout for the request handler's pipeline.
     /// </summary>

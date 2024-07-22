@@ -17,7 +17,7 @@ internal sealed class RequestHandler<TRequest, TResponse>(
     private RequestMiddleware<TRequest, TResponse>? handler;
     private bool disposed;
 
-    private readonly ServiceProvider services = services?.BuildServiceProvider() ?? throw new ArgumentNullException(nameof(services));
+    public ServiceProvider Services { get; } = services?.BuildServiceProvider() ?? throw new ArgumentNullException(nameof(services));
 
     public TimeSpan Timeout => timeout;
 
@@ -50,29 +50,14 @@ internal sealed class RequestHandler<TRequest, TResponse>(
     public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicFlags)] TMiddleware>(params object[] parameters)
         where TMiddleware : class =>
         Use(next =>
-            new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), services, next, parameters)
+            new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), Services, next, parameters)
                 .CreateMiddleware());
 
     public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicFlags)] TMiddleware>()
         where TMiddleware : class =>
         Use(next =>
-            new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), services, next, null)
+            new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), Services, next, null)
                 .CreateMiddleware());
-
-    private async Task<TResponse?> InvokeInternalAsync(TRequest request, CancellationToken cancellationToken)
-    {
-        using var serviceScope = services.CreateScope();
-        var context = new RequestContext<TRequest, TResponse>(
-            request,
-            Ulid.NewUlid(),
-            DateTime.UtcNow,
-            serviceScope.ServiceProvider,
-            cancellationToken);
-
-        await EnsureHandler()(context);
-
-        return context.Response;
-    }
 
     private async Task<TResponse?> InvokeInternalAsync(TRequest request, TimeSpan timeout)
     {
@@ -87,6 +72,21 @@ internal sealed class RequestHandler<TRequest, TResponse>(
             cancellationToken,
             timeoutTokenSource.Token);
         return await InvokeInternalAsync(request, linkedTokenSource.Token);
+    }
+
+    private async Task<TResponse?> InvokeInternalAsync(TRequest request, CancellationToken cancellationToken)
+    {
+        using var serviceScope = Services.CreateScope();
+        var context = new RequestContext<TRequest, TResponse>(
+            request,
+            Ulid.NewUlid(),
+            DateTime.UtcNow,
+            serviceScope.ServiceProvider,
+            cancellationToken);
+
+        await EnsureHandler()(context);
+
+        return context.Response;
     }
 
     private RequestMiddleware<TRequest, TResponse> EnsureHandler() => handler ??= BuildPipeline();
@@ -187,12 +187,11 @@ internal sealed class RequestHandler<TRequest, TResponse>(
             return;
         }
 
-        services.Dispose();
+        Services.Dispose();
 
         disposed = true;
     }
 
     private RequestHandler<TRequest, TResponse> ThrowIfDisposed() =>
         disposed ? throw new ObjectDisposedException(GetType().FullName) : this;
-
 }
