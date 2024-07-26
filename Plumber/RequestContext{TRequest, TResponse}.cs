@@ -1,4 +1,6 @@
-﻿namespace Plumber;
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace Plumber;
 
 /// <summary>
 /// The request context holds the request, response, and other data that can be passed from one request delegate, or middleware, to another.
@@ -33,10 +35,9 @@ public record RequestContext<TRequest, TResponse>(
     /// <param name="key">The key of the element in the Data dictionary.</param>
     /// <param name="item"></param>
     /// <returns>TData</returns>
-    /// <exception cref="KeyNotFoundException"></exception>
     /// <remarks>If nothing has been added to the dicionary, then TryGetValue returns default(TData)</remarks>
-    public bool TryGetValue<T>(string key, out T? item) =>
-        data?.TryGetValue(key, out var value) == true && (item = (T?)value) != null || (item = default) == null;
+    public bool TryGetValue<T>(string key, [NotNullWhen(true)] out T? item) =>
+        data?.TryGetValue(key, out var value) == true && (item = (T?)value) != null || (item = default) != null;
 
     /// <summary>
     /// The response.

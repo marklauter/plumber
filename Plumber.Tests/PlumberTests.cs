@@ -4,7 +4,40 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Plumber.Tests;
 
-public class PlumberTests
+public sealed class RequestContextTests
+{
+    [Fact]
+    public void TryGetValueNotNullWhenTrue()
+    {
+        using var services = new ServiceCollection().BuildServiceProvider();
+        var context = new RequestContext<string, string>("request", Ulid.NewUlid(), DateTime.UtcNow, services, CancellationToken.None);
+
+        context.Data["key"] = "value";
+        Assert.True(context.TryGetValue<string>("key", out var value));
+        Assert.Equal("value", value);
+    }
+
+    [Fact]
+    public void TryGetValueFalseWhenDataIsNull()
+    {
+        using var services = new ServiceCollection().BuildServiceProvider();
+        var context = new RequestContext<string, string>("request", Ulid.NewUlid(), DateTime.UtcNow, services, CancellationToken.None);
+
+        Assert.False(context.TryGetValue<string>("key", out var value));
+    }
+
+    [Fact]
+    public void TryGetValueFalseWhenKeyNotFound()
+    {
+        using var services = new ServiceCollection().BuildServiceProvider();
+        var context = new RequestContext<string, string>("request", Ulid.NewUlid(), DateTime.UtcNow, services, CancellationToken.None);
+
+        context.Data["key1"] = "value";
+        Assert.False(context.TryGetValue<string>("key2", out var value));
+    }
+}
+
+public sealed class PlumberTests
 {
     [Fact]
     public async Task HandleRequestWithNoUserDefinedMiddlewareAsync()
