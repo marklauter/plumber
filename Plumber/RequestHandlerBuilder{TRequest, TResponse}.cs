@@ -25,14 +25,9 @@ internal sealed class RequestHandlerBuilder<TRequest, TResponse>
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
             .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true)
             .AddEnvironmentVariables("DOTNET_")
-            .AddEnvironmentVariables();
-
-        if (environment.Equals(DevEnv, StringComparison.OrdinalIgnoreCase))
-        {
-            _ = Configuration.AddUserSecrets(Assembly.GetExecutingAssembly(), true, true);
-        }
-
-        _ = Configuration.AddCommandLine(args);
+            .AddEnvironmentVariables()
+            .AddUserSecrets(Assembly.GetExecutingAssembly(), true, true)
+            .AddCommandLine(args);
     }
 
     internal RequestHandlerBuilder(string[] args, Action<IConfiguration, string[]> configure)
