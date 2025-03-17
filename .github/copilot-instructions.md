@@ -1,0 +1,86 @@
+ - we're using dotnet 8
+ - we're using C# 12
+ - my testing framework is xUnit
+ - prefer empty collection
+ - prefer var
+ - prefer immutability
+ - prefer empty collection initialization using `[]` for lists and arrays (e.g., `private List<T> list =  - []` instead of `private List<T> list = new List<T>()`) 
+ - Use 4 spaces for indentation.
+ - Use spaces instead of tabs.
+ - Set tab width to 4 spaces.
+ - Use CRLF for new lines.
+ - Insert a final newline at the end of files.
+ - Do not separate import directive groups.
+ - Do not sort system directives first.
+ - Prefer primary constructors
+ - Never use 'this.' for events, fields, methods, and properties.
+ - Prefer using language keywords (e.g., int) for locals, parameters, and members.
+ - Prefer using BCL types (e.g., Int32) for member access.
+ - Prefer not using unnecessary parentheses in arithmetic, relational, and other binary operators.
+ - Prefer not using unnecessary parentheses in other operators.
+ - Require accessibility modifiers for non-interface members.
+ - Prefer using deconstructed variable declarations.
+ - Prefer inlining variable declarations.
+ - Prefer using throw expressions.
+ - Prefer using coalesce expressions.
+ - Prefer using collection initializers.
+ - Prefer using explicit tuple names.
+ - Prefer using null propagation.
+ - Prefer using object initializers.
+ - Prefer auto properties.
+ - Prefer compound assignments.
+ - Prefer conditional expressions over assignments.
+ - Prefer conditional expressions over returns.
+ - Prefer inferred anonymous type member names.
+ - Prefer inferred tuple names.
+ - Prefer is null check over reference equality method.
+ - Mark fields as readonly when possible (warning).
+ - Prefer var for built-in types, when type is apparent, and elsewhere.
+ - Prefer expression-bodied accessors, constructors, indexers, lambdas, local functions, methods,  - operators, and properties.
+ - Prefer pattern matching over as with null check.
+ - Prefer pattern matching over is with cast check.
+ - Prefer switch expressions.
+ - Prefer conditional delegate calls.
+ - Prefer static local functions.
+ - Follow this modifier order: public, private, protected, internal, static, extern, new, virtual,  - abstract, sealed, override, readonly, unsafe, volatile, async.
+ - Prefer omitting braces for single-line statements.
+ - Strongly prefer simplified using statements (warning).
+ - Prefer simple default expressions.
+ - Prefer pattern local over anonymous functions.
+ - Prefer index operator.
+ - Prefer range operator.
+ - Prefer discarding unused variables.
+ - Place using directives outside namespace (warning).
+ - Add new lines before catch, else, finally.
+ - Add new lines before members in anonymous types and object initializers.
+ - Add new lines before open braces.
+ - Add new lines between query expression clauses.
+ - Indent block contents and switch labels.
+ - Don't indent braces or case contents when block.
+ - Indent labels one less than current.
+ - Don't add space after cast.
+ - Add space after colon in inheritance clause.
+ - Add space after comma.
+ - Don't add space after dot.
+ - Add space after keywords in control flow statements.
+ - Add space after semicolon in for statement.
+ - Add space around binary operators.
+ - Don't add space around declaration statements.
+ - Add space before colon in inheritance clause.
+ - Don't add space before comma, dot, or semicolon in for statement.
+ - Don't add space before open square brackets.
+ - Don't add space between empty square brackets.
+ - Don't add space in parameter lists and method calls.
+ - Don't add space between parentheses.
+ - Preserve single line blocks.
+ - Don't preserve single line statements.
+ - Interface names should begin with 'I' (suggestion).
+ - Type names should use PascalCase (warning).
+ - Non-field members should use PascalCase (suggestion).
+ - Async methods should end with 'Async' (warning).
+ - Private or internal fields should use camelCase (suggestion).
+ - Properties should use PascalCase (warning).
+ - Public or protected fields should use PascalCase (warning).
+ - Static fields should use PascalCase (suggestion).
+ - Private or internal static fields should use PascalCase (suggestion).
+ - Never use underscore ('_') as a field prefix.
