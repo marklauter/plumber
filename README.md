@@ -12,10 +12,11 @@
 Plumber is a C# library for dotnet that provides a generic middleware pipeline framework for applications that don't have a built-in host, such as AWS Lambda functions, console applications, queue event handlers, and similar scenarios. It implements a request-response pattern with support for middleware functions and components, dependency injection, and configuration management.
 
 ## Table of Contents
-- [Use Cases](#middleware-pipeline-use-cases)
-- [References](#references)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
+- [Introduction](#introduction)
+  - [Inspiration](#inspiration)
+  - [Use Cases](#use-cases)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
 - [Getting Started](#getting-started)
   - [Basic Setup](#basic-setup)
   - [Configuration](#configuration)
@@ -36,65 +37,73 @@ Plumber is a C# library for dotnet that provides a generic middleware pipeline f
   - [Pipeline Short-Circuiting](#pipeline-short-circuiting)
   - [Response Handling](#response-handling)
   - [Using Void Response Type](#using-void-response-type)
+  - [Middleware Method Injection](#middleware-method-injection)
+- [Complete Application Example](#complete-application-example)
 - [Frequently Asked Questions (FAQ)](#frequently-asked-questions-faq)
 
-## Middleware Pipeline Use Cases
+## Introduction
+
+Plumber is a C# library for dotnet that provides a generic middleware pipeline framework for applications that don't have a built-in host. It implements a request-response pattern with support for middleware functions and components, dependency injection, and configuration management.
+
+### Inspiration
+
+Plumber is based on this article:
+[How is the ASP.NET Core Middleware Pipeline Built - Steve Gorden, July 2020](https://www.stevejgordon.co.uk/how-is-the-asp-net-core-middleware-pipeline-built)
+
+### Use Cases
+
 Plumber is well-suited for various scenarios:
 
-### Console Applications
+#### Console Applications
 - CLI tools with complex processing steps
 - Batch processing applications
 - Data migration tools
 - System maintenance utilities
 
-### AWS Lambda Functions
+#### AWS Lambda Functions
 - Functions requiring dependency injection services
 - API Gateway request processing
 - event handlers (SQS, SNS, DynamoDB Streams, CDC, etc)
 
-### Message Queue Processing
+#### Message Queue Processing
 - RabbitMQ consumer applications
 - Azure Service Bus message handlers
 - Apache Kafka consumers
 - Custom message broker integrations
 
-### File Processing Pipelines
+#### File Processing Pipelines
 - Document conversion workflows
 - Image processing pipelines
 - ETL (Extract, Transform, Load) operations
 - Batch file processing systems
 
-### API Integrations
+#### API Integrations
 - Third-party API middleware
 - Webhook handlers
 - API gateway transformations
 - Microservice communication layers
 
-## References
-Plumber is based on this article:
-[How is the ASP.NET Core Middleware Pipeline Built - Steve Gorden, July 2020](https://www.stevejgordon.co.uk/how-is-the-asp-net-core-middleware-pipeline-built)
-
-## Prerequisites
+### Prerequisites
 - .NET 8.0 SDK or later
 - For AWS Lambda samples:
   - AWS account with appropriate permissions
   - AWS CLI installed and configured
   - Amazon.Lambda.Tools Global Tool (instructions in sample projects)
 
-## Installation
+### Installation
 You can install the Plumber package using any of the following methods:
 
-### Using .NET CLI
+#### Using .NET CLI
 ```bash
 dotnet add package MSL.Plumber.Pipeline
 ```
 
-### Using Package Manager Console
+#### Using Package Manager Console
 ```powershell
 Install-Package MSL.Plumber.Pipeline
 ```
 
-### Using PackageReference in .csproj file
+#### Using PackageReference in .csproj file
 ```xml
 <PackageReference Include="MSL.Plumber.Pipeline" Version="2.3.2" />
 ```
@@ -451,6 +460,59 @@ builder.Services
 var handler = builder.Build();
 ```
 
+## Complete Application Example
+
+The following example shows how all the components fit together in a complete application:
+
+```csharp
+// Program.cs - a comprehensive example
+public class Program
+{
+    public static async Task Main(string[] args)
+    {
+        // 1. Build the pipeline
+        var builder = RequestHandlerBuilder
+            .Create<UserCommand, CommandResult>(args);
+        
+        // 2. Configure services
+        builder.Services
+            .AddSingleton<IUserRepository, UserRepository>()
+            .AddScoped<ICommandProcessor, CommandProcessor>()
+            .AddLogging(logging => {
+                logging.AddConsole();
+                logging.SetMinimumLevel(LogLevel.Information);
+            });
+            
+        // 3. Configure settings
+        builder.Configuration.AddJsonFile("appsettings.json", optional: true);
+        
+        // 4. Build the handler with middleware
+        var handler = builder.Build()
+            .Use<LoggingMiddleware>()
+            .Use<AuthenticationMiddleware>()
+            .Use<ValidationMiddleware>()
+            .Use<CommandProcessorMiddleware>()
+            .Use<ResponseFormattingMiddleware>();
+            
+        // 5. Process the request
+        var command = ParseCommandLine(args);
+        var result = await handler.InvokeAsync(command);
+        
+        // 6. Handle the result
+        if (result.Success)
+        {
+            Console.WriteLine($"Command succeeded: {result.Message}");
+            return 0;
+        }
+        else
+        {
+            Console.Error.WriteLine($"Command failed: {result.Error}");
+            return 1;
+        }
+    }
+}
+```
+
 ## Sample AWS Lambda Projects
 - [Samples.Lambda.SQS](https://github.com/marklauter/Plumber/tree/main/Sample.AWSLambda.SQS)
 - [Samples.Lambda.SQS.Tests](https://github.com/marklauter/Plumber/tree/main/Sample.AWSLambda.SQS.Tests)
@@ -762,9 +824,12 @@ public class Function
         var builder = RequestHandlerBuilder.Create<SQSEvent, Void>();
         
         builder.Services
-            .AddLogging()
-            .AddSingleton<IMessageProcessor, MessageProcessor>
-            .AddScoped<IRepository, Repository>();
+            .AddSingleton<IUserRepository, UserRepository>()
+            .AddScoped<ICommandProcessor, CommandProcessor>()
+            .AddLogging(logging => {
+                logging.AddConsole();
+                logging.SetMinimumLevel(LogLevel.Information);
+            });
             
         handler = builder.Build()
             .Use<LoggingMiddleware>()
@@ -813,6 +878,105 @@ The `Void` response type is particularly useful in these scenarios:
 2. **Type safety** - More type-safe than using `object?` or other placeholder types
 3. **Simplified middleware** - Middleware doesn't need to worry about setting a response
 4. **Self-documenting code** - Makes it clear to other developers that the pipeline doesn't return a value
+
+### Middleware Method Injection
+In addition to constructor injection, Plumber supports dependency injection directly into middleware's `InvokeAsync` method parameters. This provides more flexibility when you need a dependency only for a specific method rather than for the entire middleware class.
+
+```csharp
+// 1. Register your services with the builder
+var builder = RequestHandlerBuilder
+    .Create<OrderRequest, OrderResponse>();
+
+// Register services that will be injected
+builder.Services
+    .AddSingleton<IOrderValidator, OrderValidator>()
+    .AddScoped<IOrderProcessor, OrderProcessor>()
+    .AddTransient<INotificationService, EmailNotificationService>();
+
+// 2. Create middleware that uses method injection
+public sealed class OrderProcessingMiddleware(RequestMiddleware<OrderRequest, OrderResponse> next)
+{
+    public async Task InvokeAsync(
+        RequestContext<OrderRequest, OrderResponse> context, // Must be first parameter
+        IOrderValidator validator,       // Will be injected from service provider
+        IOrderProcessor processor,       // Will be injected from service provider
+        INotificationService notifier,   // Will be injected from service provider
+        ILogger<OrderProcessingMiddleware> logger) // Even framework services can be injected
+    {
+        // Ensure the pipeline doesn't proceed if cancellation is requested
+        context.CancellationToken.ThrowIfCancellationRequested();
+        
+        // Use the injected validator service
+        var validationResult = validator.Validate(context.Request);
+        if (!validationResult.IsValid)
+        {
+            logger.LogWarning("Order validation failed: {Errors}", 
+                string.Join(", ", validationResult.Errors));
+                
+            context.Response = new OrderResponse
+            {
+                Success = false,
+                ErrorMessage = "Validation failed: " + validationResult.Errors.First()
+            };
+            
+            // Short-circuit the pipeline - don't call next
+            return;
+        }
+        
+        // Use the injected processor service
+        var orderResult = await processor.ProcessOrderAsync(
+            context.Request, 
+            context.CancellationToken);
+            
+        // Create the response
+        context.Response = new OrderResponse
+        {
+            Success = true,
+            OrderId = orderResult.OrderId,
+            EstimatedDelivery = orderResult.EstimatedDelivery
+        };
+        
+        // Continue the middleware pipeline
+        await next(context);
+        
+        // After next completes, use another injected service for post-processing
+        if (context.Response.Success)
+        {
+            await notifier.SendOrderConfirmationAsync(
+                context.Request.CustomerEmail,
+                context.Response.OrderId,
+                context.CancellationToken);
+                
+            logger.LogInformation("Order {OrderId} processed successfully and confirmation sent", 
+                context.Response.OrderId);
+        }
+    }
+}
+
+// 3. Build the handler and add the middleware
+var handler = builder.Build()
+    .Use<OrderProcessingMiddleware>();
+
+// 4. Invoke the pipeline
+var request = new OrderRequest
+{
+    CustomerEmail = "customer@example.com",
+    Items = new[] { new OrderItem("Product1", 2), new OrderItem("Product2", 1) }
+};
+
+var response = await handler.InvokeAsync(request);
+```
+
+#### Key Points About Method Injection
+
+- The `RequestContext<TRequest, TResponse>` must be the first parameter of the `InvokeAsync` method
+- Services are resolved from the scoped service provider created for each request
+- Method injection allows you to request only the services you need for a specific middleware method
+- This approach is useful when:
+  - A dependency is only needed for one method
+  - You want to avoid storing injected services as fields
+  - You need to inject services with scoped lifetime
+- You can combine constructor and method injection in the same middleware class
 
 ## Frequently Asked Questions (FAQ)
 
