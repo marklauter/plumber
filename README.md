@@ -748,42 +748,6 @@ handler.Use(async (context, next) =>
 });
 ```
 
-#### Response Pipeline Order
-Remember that middleware is executed in the order they are added, but post-processing (code after `await next(context)`) happens in reverse order:
-
-```csharp
-// Order of execution:
-// 1. First pre-processing
-// 2. Second pre-processing
-// 3. Third pre-processing
-// 4. Third post-processing
-// 5. Second post-processing
-// 6. First post-processing
-
-handler.Use(async (context, next) =>
-{
-    Console.WriteLine("1. First pre-processing");
-    await next(context);
-    Console.WriteLine("6. First post-processing");
-});
-
-handler.Use(async (context, next) =>
-{
-    Console.WriteLine("2. Second pre-processing");
-    await next(context);
-    Console.WriteLine("5. Second post-processing");
-});
-
-handler.Use(async (context, next) =>
-{
-    Console.WriteLine("3. Third pre-processing");
-    await next(context);
-    Console.WriteLine("4. Third post-processing");
-});
-```
-
-Understanding this execution pattern is crucial when designing middleware that needs to transform requests before later middleware components process them, or transform responses after earlier middleware has processed them.
-
 ### Using Void Response Type
 Many pipeline scenarios, especially in event handling, don't require returning a response. For these cases, Plumber provides the `Void` type, which can be used as the `TResponse` type parameter to indicate that no response is expected.
 
