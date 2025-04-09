@@ -36,16 +36,8 @@ internal sealed class RequestHandlerBuilder<TRequest, TResponse>
     }
 
     [RequiresUnreferencedCode("Calls Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue<T>(String, T)")]
-    public IRequestHandler<TRequest, TResponse> Build()
-    {
-        var requestTimeout = Configuration.GetValue("RequestTimeout", Timeout.InfiniteTimeSpan);
-
-        Services.TryAddSingleton<IConfiguration>(Configuration);
-
-        return new RequestHandler<TRequest, TResponse>(
-            Services,
-            requestTimeout);
-    }
+    public IRequestHandler<TRequest, TResponse> Build() =>
+        Build(Configuration.GetValue("RequestTimeout", Timeout.InfiniteTimeSpan));
 
     [RequiresUnreferencedCode("Calls Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue<T>(String, T)")]
     public IRequestHandler<TRequest, TResponse> Build(TimeSpan requestTimeout)
