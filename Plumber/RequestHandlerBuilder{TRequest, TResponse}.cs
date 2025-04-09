@@ -8,7 +8,7 @@ namespace Plumber;
 
 internal sealed class RequestHandlerBuilder<TRequest, TResponse>
     : IRequestHandlerBuilder<TRequest, TResponse>
-    where TRequest : class
+    where TRequest : notnull
 {
     private const string DevEnv = "Development";
 

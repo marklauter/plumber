@@ -7,7 +7,7 @@ namespace Plumber;
 internal sealed class RequestHandler<TRequest, TResponse>(
     IServiceCollection services,
     TimeSpan timeout)
-    : IRequestHandler<TRequest, TResponse>, IDisposable where TRequest : class
+    : IRequestHandler<TRequest, TResponse>, IDisposable where TRequest : notnull
 {
     private const DynamicallyAccessedMemberTypes DynamicFlags =
         DynamicallyAccessedMemberTypes.PublicConstructors |
@@ -138,14 +138,12 @@ internal sealed class RequestHandler<TRequest, TResponse>(
                 throw new InvalidOperationException($"method {method.Name} must have {ContextType.Name} as its first parameter");
             }
 
-            injectedTypes = allParamTypes
-                .Where(t => t != typeof(RequestContext<TRequest, TResponse>))
-                .ToArray();
+            injectedTypes = [.. allParamTypes.Where(t => t != typeof(RequestContext<TRequest, TResponse>))];
 
             middleware = (TMiddleware)ActivatorUtilities.CreateInstance(
                 services,
                 type,
-                parameters is null || parameters.Length == 0 ? [next] : parameters.Prepend(next).ToArray())
+                parameters is null || parameters.Length == 0 ? [next] : [.. parameters.Prepend(next)])
                 ?? throw new InvalidOperationException($"can't construct type {type.FullName}");
 
             handler = injectedTypes.Length == 0

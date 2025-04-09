@@ -10,7 +10,7 @@ namespace Plumber;
 /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
 public interface IRequestHandler<TRequest, TResponse>
     : IDisposable
-    where TRequest : class
+    where TRequest : notnull
 {
     /// <summary>
     /// Handler level service provider.

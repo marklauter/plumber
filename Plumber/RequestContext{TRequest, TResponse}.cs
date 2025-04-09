@@ -18,7 +18,7 @@ public record RequestContext<TRequest, TResponse>(
     DateTime Timestamp,
     IServiceProvider Services,
     CancellationToken CancellationToken)
-    where TRequest : class
+    where TRequest : notnull
 {
 
     private Dictionary<string, object?>? data;

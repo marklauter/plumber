@@ -22,7 +22,7 @@ public static class RequestHandlerBuilder
     /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
     /// <returns><see cref="IRequestHandlerBuilder{TRequest, TResponse}"/></returns>
     public static IRequestHandlerBuilder<TRequest, TResponse> Create<TRequest, TResponse>()
-        where TRequest : class => new RequestHandlerBuilder<TRequest, TResponse>([]);
+        where TRequest : notnull => new RequestHandlerBuilder<TRequest, TResponse>([]);
 
     /// <summary>
     /// Creates a new request handler builder with default configuration providers:
@@ -39,7 +39,7 @@ public static class RequestHandlerBuilder
     /// <param name="args">Program args passed into Main(). Used to build <see cref="IConfiguration"/> with <see cref="IConfigurationBuilder"/>.AddCommandLine(args)</param>
     /// <returns><see cref="IRequestHandlerBuilder{TRequest, TResponse}"/></returns>
     public static IRequestHandlerBuilder<TRequest, TResponse> Create<TRequest, TResponse>(string[] args)
-        where TRequest : class => new RequestHandlerBuilder<TRequest, TResponse>(args);
+        where TRequest : notnull => new RequestHandlerBuilder<TRequest, TResponse>(args);
 
     /// <summary>
     /// Creates a new request handler builder, does NOT build a default configuration, and allows for custom configuration through the <paramref name="configure"/> action.
@@ -50,6 +50,6 @@ public static class RequestHandlerBuilder
     /// <param name="configure"></param>
     /// <returns><see cref="IRequestHandlerBuilder{TRequest, TResponse}"/></returns>
     public static IRequestHandlerBuilder<TRequest, TResponse> Create<TRequest, TResponse>(string[] args, Action<IConfiguration, string[]> configure)
-        where TRequest : class => new RequestHandlerBuilder<TRequest, TResponse>(args, configure);
+        where TRequest : notnull => new RequestHandlerBuilder<TRequest, TResponse>(args, configure);
 }
 

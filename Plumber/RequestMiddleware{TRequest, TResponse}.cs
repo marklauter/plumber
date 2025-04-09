@@ -9,4 +9,4 @@
 /// <returns></returns>
 public delegate Task RequestMiddleware<TRequest, TResponse>(
     RequestContext<TRequest, TResponse> context)
-    where TRequest : class;
+    where TRequest : notnull;

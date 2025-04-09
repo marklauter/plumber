@@ -15,7 +15,7 @@ namespace Plumber;
 public interface IRequestHandlerBuilder<TRequest, TResponse>
     : ILoggingBuilder
     , IMetricsBuilder
-    where TRequest : class
+    where TRequest : notnull
 {
     /// <summary>
     /// The <see cref="IConfigurationManager"/> for the request handler.
