@@ -1,0 +1,37 @@
+using Plumber;
+using System.Diagnostics.CodeAnalysis;
+
+namespace Sample.Cli;
+
+internal static class Pipeline
+{
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
+        Justification = "fluent .Use() returns the same handler instance; caller disposes")]
+    public static IRequestHandler<string, TextReport> Build(string[] args) =>
+        RequestHandlerBuilder
+            .Create<string, TextReport>(args)
+            .Build()
+            .Use(async (context, next) =>
+            {
+                var start = DateTime.UtcNow;
+                await next(context);
+                if (context.Response is { } response)
+                {
+                    context.Response = response with { Elapsed = DateTime.UtcNow - start };
+                }
+            })
+            .Use<ValidationMiddleware>()
+            .Use<NormalizeMiddleware>()
+            .Use((context, next) =>
+            {
+                context.CancellationToken.ThrowIfCancellationRequested();
+                if (context.TryGetValue<string>(DataKeys.Normalized, out var normalized))
+                {
+                    context.Data[DataKeys.Tokens] = normalized.Split(
+                        ' ',
+                        StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                }
+                return next(context);
+            })
+            .Use<ReportMiddleware>();
+}
