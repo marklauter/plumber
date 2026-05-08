@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Plumber.Testing;
@@ -68,6 +70,24 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     {
         ArgumentNullException.ThrowIfNull(configure);
         return WithBuilder(builder => configure(builder.Services));
+    }
+
+    /// <summary>
+    /// Customize logging before the pipeline is built. Sugar over <see cref="WithBuilder"/>.
+    /// </summary>
+    public PlumberApplicationFactory<TRequest, TResponse> WithLogging(Action<ILoggingBuilder> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        return WithBuilder(configure);
+    }
+
+    /// <summary>
+    /// Customize configuration sources before the pipeline is built. Sugar over <see cref="WithBuilder"/>.
+    /// </summary>
+    public PlumberApplicationFactory<TRequest, TResponse> WithConfiguration(Action<IConfigurationManager> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        return WithBuilder(builder => configure(builder.Configuration));
     }
 
     /// <summary>
