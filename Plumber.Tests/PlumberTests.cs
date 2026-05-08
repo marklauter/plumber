@@ -47,7 +47,7 @@ public sealed class PlumberTests
         using var handler = RequestHandlerBuilder.Create<string, string>()
             .Build();
 
-        var response = await handler.InvokeAsync(request);
+        var response = await handler.InvokeAsync(request, TestContext.Current.CancellationToken);
 
         Assert.True(String.IsNullOrEmpty(response));
     }
@@ -67,7 +67,7 @@ public sealed class PlumberTests
                 return next(context);
             });
 
-        var response = await handler.InvokeAsync(request);
+        var response = await handler.InvokeAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(request.ToUpperInvariant(), response);
     }
@@ -93,7 +93,7 @@ public sealed class PlumberTests
                 return next(context);
             });
 
-        var response = await handler.InvokeAsync(request);
+        var response = await handler.InvokeAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(request.ToLowerInvariant(), response);
     }
@@ -108,7 +108,7 @@ public sealed class PlumberTests
             .Build()
             .Use<ToLowerMiddleware>();
 
-        var response = await handler.InvokeAsync(request);
+        var response = await handler.InvokeAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(request.ToLowerInvariant(), response);
     }
@@ -123,7 +123,7 @@ public sealed class PlumberTests
             .Build()
             .Use<ToLowerMiddlewareWithParameter>(parameter);
 
-        var response = await handler.InvokeAsync(request);
+        var response = await handler.InvokeAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal($"{parameter}-{request.ToLowerInvariant()}", response);
     }
@@ -163,7 +163,7 @@ public sealed class PlumberTests
         using var handler = RequestHandlerBuilder.Create<string, Void>()
             .Build();
 
-        var response = await handler.InvokeAsync(request);
+        var response = await handler.InvokeAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(typeof(Void), response.GetType());
     }
@@ -181,7 +181,7 @@ public sealed class PlumberTests
             .Build()
             .Use<DependencyInjectedMiddleware>();
 
-        var response = await handler.InvokeAsync(request);
+        var response = await handler.InvokeAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal("request - injected", response);
     }
