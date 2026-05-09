@@ -2,7 +2,7 @@
 
 Snapshot after the upgrade-net10 / interface-removal / callback-builder refactor.
 
-**Totals:** 19 entries — 17 Resolved, 2 Open. (No `018-*.md`; that number was retired and partially carved into #020.)
+**Totals:** 19 entries — 18 Resolved, 1 Open. (No `018-*.md`; that number was retired and partially carved into #020.)
 
 ## Open
 
@@ -12,13 +12,6 @@ External package targets the old `builder.Services` / `builder.Configuration` sh
 - **Blocking** for any consumer pairing Serilog with this branch's Plumber.
 - *Effort:* small port (callbacks instead of direct `Services` / `Configuration`) + tests + version bump + readme/instructions update.
 - *Dependencies:* publish a Plumber pre-release, OR develop in lockstep against a project reference (local clone at `.tmp/plumber.serilog.extensions/`).
-
-### #020 — Finite-timeout firing path is untested (Low)
-Timeout-fires path on both finite-timeout overloads has no test. The "drop-in `[Fact]` with a 50 ms timeout and 10 s delay" idea doesn't work: the timeout CTS at lines 169 and 182 uses the wall-clock `new CancellationTokenSource(timeout)` and ignores the handler's `TimeProvider`, so `FakeTimeProvider` can't drive it deterministically. Earlier snippet also asserted `OperationCanceledException`, which is wrong post-#008 (now `TimeoutException`).
-
-- *Effort:* ~half-day. Production change: switch to the `(TimeSpan, TimeProvider)` CTS overload in both methods. Test change: pair of `FakeTimeProvider` + TCS rendezvous tests asserting `TimeoutException` with OCE inner.
-- *Dependencies:* none.
-- *Surface impact:* user-supplied `TimeProvider` now controls timeout firing as well as `RequestContext.Elapsed` — consistent with #012's intent; warrants a one-line note on the `Timeout` property remarks.
 
 ## Resolved this branch
 
@@ -41,14 +34,13 @@ Closed by the upgrade-net10 / interface-removal / callback-builder PR plus follo
 - **#015** — Multiple `Build()` calls → reframed as intended "recipe pattern"; per-Build snapshot avoids accumulation.
 - **#017** — XML doc sweep → all six categories applied; build clean; the dead IDISP007 suppression on `Dispose` removed.
 - **#019** — `Build()` leaked configuration on callback failure → try/catch disposes config on failure. Regression tests added.
+- **#020** — Finite-timeout firing path untested → both finite-timeout CTS sites now use the `(TimeSpan, TimeProvider)` overload; pair of deterministic `FakeTimeProvider` tests added (`FiniteTimeoutFiresAndThrowsTimeoutExceptionAsync` + `WithCallerTokenAsync`). Two superseded wall-clock #008 tests removed. Suite at 46 tests.
 
 ## Suggested execution order
 
-1. **#020** — drop in the snippet, ~15 min, no design surface.
-2. **#016** — port Plumber.Serilog.Extensions once a Plumber pre-release is published, or develop in lockstep via project reference.
+1. **#016** — port Plumber.Serilog.Extensions once a Plumber pre-release is published, or develop in lockstep via project reference.
 
 ## What changed since the last triage entry
 
-- Five items closed: #007 (documented as designed), #011, #012 (TimeProvider migration), #013, #017 (xmldoc sweep landed).
-- #020 added (carved out of the now-deleted #018).
-- Only one open item with code impact remains, and it is external (#016).
+- Six items closed: #007 (documented as designed), #011, #012 (TimeProvider migration), #013, #017 (xmldoc sweep landed), #020 (TimeProvider plumbed into timeout CTS + deterministic tests).
+- Only one open item remains, and it is external (#016).

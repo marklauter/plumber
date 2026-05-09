@@ -36,6 +36,7 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// When Timeout is set to <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> <see cref="CancellationToken.None"/> is passed to the <see cref="RequestContext{TRequest, TResponse}"/> constructor.
     /// Otherwise, a timeout-based <see cref="CancellationTokenSource"/> is used to provide the cancellation token for the request context.
     /// When the timeout elapses before the pipeline completes, <see cref="InvokeAsync(TRequest)"/> throws <see cref="TimeoutException"/> rather than <see cref="OperationCanceledException"/>, so timeouts can be distinguished from caller-initiated cancellation.
+    /// The registered <see cref="TimeProvider"/> drives the timeout timer; supplying a custom provider (for example, <c>FakeTimeProvider</c>) controls when the timeout fires.
     /// </remarks>
     public TimeSpan Timeout { get; }
 
@@ -166,7 +167,7 @@ public sealed class RequestHandler<TRequest, TResponse>
 
     private async Task<TResponse?> InvokeInternalAsync(TRequest request, TimeSpan timeout)
     {
-        using var timeoutTokenSource = new CancellationTokenSource(timeout);
+        using var timeoutTokenSource = new CancellationTokenSource(timeout, timeProvider);
         try
         {
             return await InvokeInternalAsync(request, timeoutTokenSource.Token);
@@ -179,7 +180,7 @@ public sealed class RequestHandler<TRequest, TResponse>
 
     private async Task<TResponse?> InvokeInternalAsync(TRequest request, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        using var timeoutTokenSource = new CancellationTokenSource(timeout);
+        using var timeoutTokenSource = new CancellationTokenSource(timeout, timeProvider);
         using var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken,
             timeoutTokenSource.Token);

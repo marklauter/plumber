@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using Plumber.Tests.Middleware;
 using System.Diagnostics.CodeAnalysis;
 
@@ -703,34 +704,53 @@ public sealed class PlumberTests
     [Fact]
     [SuppressMessage("Usage", "xUnit1051:Calls to methods which accept CancellationToken should use TestContext.Current.CancellationToken", Justification = "test exists specifically to exercise the no-CT InvokeAsync overload against a finite-timeout handler")]
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
-    public async Task TimeoutWithoutCallerTokenThrowsTimeoutExceptionAsync()
+    public async Task FiniteTimeoutFiresAndThrowsTimeoutExceptionAsync()
     {
+        var fakeTime = new FakeTimeProvider();
+        var parked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
         using var handler = RequestHandlerBuilder.Create<string, string>()
-            .Build(TimeSpan.FromMilliseconds(50))
+            .ConfigureServices((s, _) => s.AddSingleton<TimeProvider>(fakeTime))
+            .Build(TimeSpan.FromSeconds(30))
             .Use(async (context, next) =>
             {
-                await Task.Delay(System.Threading.Timeout.Infinite, context.CancellationToken);
+                using var registration = context.CancellationToken.Register(
+                    () => parked.TrySetCanceled(context.CancellationToken));
+                await parked.Task;
                 await next(context);
             });
 
-        var ex = await Assert.ThrowsAsync<TimeoutException>(() => handler.InvokeAsync("request"));
+        var invocation = handler.InvokeAsync("request");
+
+        fakeTime.Advance(TimeSpan.FromSeconds(31));
+
+        var ex = await Assert.ThrowsAsync<TimeoutException>(() => invocation);
         _ = Assert.IsType<OperationCanceledException>(ex.InnerException, exactMatch: false);
     }
 
     [Fact]
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
-    public async Task TimeoutWithUncancelledCallerTokenThrowsTimeoutExceptionAsync()
+    public async Task FiniteTimeoutFiresAndThrowsTimeoutExceptionWithCallerTokenAsync()
     {
+        var fakeTime = new FakeTimeProvider();
+        var parked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
         using var handler = RequestHandlerBuilder.Create<string, string>()
-            .Build(TimeSpan.FromMilliseconds(50))
+            .ConfigureServices((s, _) => s.AddSingleton<TimeProvider>(fakeTime))
+            .Build(TimeSpan.FromSeconds(30))
             .Use(async (context, next) =>
             {
-                await Task.Delay(System.Threading.Timeout.Infinite, context.CancellationToken);
+                using var registration = context.CancellationToken.Register(
+                    () => parked.TrySetCanceled(context.CancellationToken));
+                await parked.Task;
                 await next(context);
             });
 
-        var ex = await Assert.ThrowsAsync<TimeoutException>(
-            () => handler.InvokeAsync("request", TestContext.Current.CancellationToken));
+        var invocation = handler.InvokeAsync("request", TestContext.Current.CancellationToken);
+
+        fakeTime.Advance(TimeSpan.FromSeconds(31));
+
+        var ex = await Assert.ThrowsAsync<TimeoutException>(() => invocation);
         _ = Assert.IsType<OperationCanceledException>(ex.InnerException, exactMatch: false);
     }
 
