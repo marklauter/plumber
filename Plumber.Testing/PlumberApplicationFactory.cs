@@ -69,13 +69,13 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     public PlumberApplicationFactory<TRequest, TResponse> WithServices(Action<IServiceCollection> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
-        return WithBuilder(builder => builder.ConfigureServices((_, services) => configure(services)));
+        return WithBuilder(builder => builder.ConfigureServices((services, _) => configure(services)));
     }
 
     /// <summary>
     /// Customize service registrations before the pipeline is built, with the built <see cref="IConfiguration"/> available.
     /// </summary>
-    public PlumberApplicationFactory<TRequest, TResponse> WithServices(Action<IConfiguration, IServiceCollection> configure)
+    public PlumberApplicationFactory<TRequest, TResponse> WithServices(Action<IServiceCollection, IConfiguration> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
         return WithBuilder(builder => builder.ConfigureServices(configure));
@@ -85,15 +85,6 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     /// Customize logging before the pipeline is built. Sugar over <see cref="WithBuilder"/>.
     /// </summary>
     public PlumberApplicationFactory<TRequest, TResponse> WithLogging(Action<ILoggingBuilder> configure)
-    {
-        ArgumentNullException.ThrowIfNull(configure);
-        return WithBuilder(builder => builder.ConfigureLogging((_, lb) => configure(lb)));
-    }
-
-    /// <summary>
-    /// Customize logging before the pipeline is built, with the built <see cref="IConfiguration"/> available for filter binding.
-    /// </summary>
-    public PlumberApplicationFactory<TRequest, TResponse> WithLogging(Action<IConfiguration, ILoggingBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
         return WithBuilder(builder => builder.ConfigureLogging(configure));
