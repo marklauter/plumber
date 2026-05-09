@@ -6,7 +6,7 @@ internal sealed class TokenizeMiddleware(RequestMiddleware<string, TextReport> n
 {
     public Task InvokeAsync(RequestContext<string, TextReport> context, ITokenizer tokenizer)
     {
-        context.CancellationToken.ThrowIfCancellationRequested();
+        context.ThrowIfCanceled();
 
         if (context.TryGetValue<string>(DataKeys.Normalized, out var normalized))
         {

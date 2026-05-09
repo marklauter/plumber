@@ -4,7 +4,7 @@ internal sealed class ToLowerMiddlewareWithParameter(RequestMiddleware<string, s
 {
     public Task InvokeAsync(RequestContext<string, string> context)
     {
-        context.CancellationToken.ThrowIfCancellationRequested();
+        context.ThrowIfCanceled();
         context.Response = $"{parameter}-{context.Request.ToLowerInvariant()}";
         return next(context);
     }

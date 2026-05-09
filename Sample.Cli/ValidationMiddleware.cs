@@ -6,7 +6,7 @@ internal sealed class ValidationMiddleware(RequestMiddleware<string, TextReport>
 {
     public Task InvokeAsync(RequestContext<string, TextReport> context)
     {
-        context.CancellationToken.ThrowIfCancellationRequested();
+        context.ThrowIfCanceled();
 
         if (string.IsNullOrWhiteSpace(context.Request))
         {

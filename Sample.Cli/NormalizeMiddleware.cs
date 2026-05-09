@@ -9,7 +9,7 @@ internal sealed class NormalizeMiddleware(
 {
     public Task InvokeAsync(RequestContext<string, TextReport> context)
     {
-        context.CancellationToken.ThrowIfCancellationRequested();
+        context.ThrowIfCanceled();
         var normalized = context.Request.ToLowerInvariant();
         context.Data[DataKeys.Normalized] = normalized;
         logger.LogDebug("normalized {Length} chars", normalized.Length);

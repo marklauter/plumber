@@ -4,11 +4,10 @@
 [![NuGet](https://img.shields.io/nuget/v/MSL.Plumber.Pipeline?logo=nuget)](https://www.nuget.org/packages/MSL.Plumber.Pipeline/)
 [![Nuget](https://img.shields.io/badge/.NET-10.0-blue)](https://dotnet.microsoft.com/en-us/download/dotnet/10.0/)
 
-##
 ![Plumber Logo](https://raw.githubusercontent.com/marklauter/plumber/main/images/plumber.png "Plumber Logo")
 
 # Plumber
-## Middleware pipelines for host-free .NET projects.
+## Middleware pipelines for host-free .NET projects
 
 Plumber gives console apps, Lambdas, queue consumers, and other host-free .NET projects the same middleware-pipeline shape that ASP.NET Core gives web apps. You define a request type, a response type, and a chain of middleware components. Plumber wires up DI, configuration, logging, scoping, timeouts, and cancellation; you focus on the steps in your pipeline.
 
@@ -16,7 +15,7 @@ Plumber gives console apps, Lambdas, queue consumers, and other host-free .NET p
 
 ## Table of Contents
 - [Plumber](#plumber)
-  - [Middleware pipelines for host-free .NET projects.](#middleware-pipelines-for-host-free-net-projects)
+  - [Middleware pipelines for host-free .NET projects](#middleware-pipelines-for-host-free-net-projects)
   - [Table of Contents](#table-of-contents)
   - [When to reach for Plumber](#when-to-reach-for-plumber)
   - [Installation](#installation)
@@ -29,7 +28,7 @@ Plumber gives console apps, Lambdas, queue consumers, and other host-free .NET p
   - [Middleware](#middleware)
     - [Delegate middleware](#delegate-middleware)
     - [Class middleware](#class-middleware)
-      - [Method injection (recommended for scoped or transient services)](#method-injection-recommended-for-scoped-or-transient-services)
+      - [Method injection (recommended)](#method-injection-recommended)
       - [Constructor injection (advanced — singleton lifetime, root provider)](#constructor-injection-advanced--singleton-lifetime-root-provider)
   - [Request lifecycle](#request-lifecycle)
     - [Sharing data between middleware](#sharing-data-between-middleware)
@@ -218,7 +217,7 @@ For one-off transformations, register an inline delegate:
 ```csharp
 handler.Use(async (context, next) =>
 {
-    context.CancellationToken.ThrowIfCancellationRequested();
+    context.ThrowIfCanceled();
 
     var stopwatch = Stopwatch.StartNew();
     await next(context);
@@ -236,7 +235,7 @@ internal sealed class NormalizeMiddleware(RequestMiddleware<string, TextReport> 
 {
     public Task InvokeAsync(RequestContext<string, TextReport> context)
     {
-        context.CancellationToken.ThrowIfCancellationRequested();
+        context.ThrowIfCanceled();
         context.Data["normalized"] = context.Request.ToLowerInvariant();
         return next(context);
     }
@@ -244,7 +243,9 @@ internal sealed class NormalizeMiddleware(RequestMiddleware<string, TextReport> 
 ```
 Register with `handler.Use<NormalizeMiddleware>()`.
 
-#### Method injection (recommended for scoped or transient services)
+The terminal middleware at the end of the pipeline already checks cancellation before invoking, so the explicit `ThrowIfCanceled` calls above are defense-in-depth — useful in long-running middleware that does work before deferring to `next`, but not strictly required for short ones. If you'd rather short-circuit without throwing, check `context.IsCanceled` and set `context.Response` yourself.
+
+#### Method injection (recommended)
 You can declare additional `InvokeAsync` parameters. Plumber resolves them from the **per-request scope** on every invocation — this is the safe place for `DbContext`, `HttpClient`, and other scoped or transient services.
 
 ```csharp
@@ -254,7 +255,7 @@ internal sealed class TokenizeMiddleware(RequestMiddleware<string, TextReport> n
         RequestContext<string, TextReport> context,  // first param must be the context
         ITokenizer tokenizer)                         // resolved from context.Services on every request
     {
-        context.CancellationToken.ThrowIfCancellationRequested();
+        context.ThrowIfCanceled();
         context.Data["tokens"] = tokenizer.Tokenize(context.Request);
         return next(context);
     }
@@ -322,7 +323,7 @@ internal sealed class ValidationMiddleware(RequestMiddleware<string, TextReport>
 {
     public Task InvokeAsync(RequestContext<string, TextReport> context)
     {
-        context.CancellationToken.ThrowIfCancellationRequested();
+        context.ThrowIfCanceled();
 
         if (string.IsNullOrWhiteSpace(context.Request))
         {
@@ -362,20 +363,20 @@ await handler.InvokeAsync(batch);
 `Unit` is borrowed from F# (`unit`) and Haskell (`()`). It's more expressive than `object?` and keeps every handler typed as `RequestHandler<TRequest, TResponse>`, no separate void shape needed.
 
 ### Timeouts
-Pipelines support both per-request and handler-wide timeouts.
+Two timeout layers: the handler has a built-in timeout configured at `Build()`, and callers can layer a deadline of their own with a `CancellationToken`.
 
 Handler-wide:
 ```csharp
 using var handler = builder.Build(TimeSpan.FromSeconds(30));
 ```
 
-Per-request:
+Caller-supplied:
 ```csharp
 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 var response = await handler.InvokeAsync(request, cts.Token);
 ```
 
-When the handler timeout elapses, `InvokeAsync` throws `TimeoutException`. When the caller's token cancels, it throws `OperationCanceledException`. If both fire, the caller wins. The timer is driven by the registered `TimeProvider`, so `FakeTimeProvider` works in tests.
+When the handler timeout elapses, `InvokeAsync` throws `TimeoutException`. When the caller's token cancels, it throws `OperationCanceledException`. If both fire, the caller wins. The parameterless `InvokeAsync(request)` overload skips the caller layer entirely — the handler timeout is the only cancellation signal in flight. The timer is driven by the registered `TimeProvider`, so `FakeTimeProvider` works in tests.
 
 ### Error handling
 Exceptions propagate through the pipeline by default. Wrap a try/catch at the outer edge if you want to convert or log them:
@@ -442,11 +443,10 @@ public sealed class PipelineTests
     public async Task StubTokenizerAsync()
     {
         using var factory = new PlumberApplicationFactory<string, TextReport>(
-            Pipeline.CreateBuilder,
-            Pipeline.Configure);
-
-        factory.WithServices(services =>
-            services.AddSingleton<ITokenizer>(new StubTokenizer(["a", "b", "c"])));
+                Pipeline.CreateBuilder,
+                Pipeline.Configure)
+            .WithServices(services =>
+                services.AddSingleton<ITokenizer>(new StubTokenizer(["a", "b", "c"])));
 
         var report = await factory.InvokeAsync("anything");
 

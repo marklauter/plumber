@@ -210,7 +210,7 @@ public sealed class PlumberTests
             .Build()
             .Use((context, next) =>
             {
-                context.CancellationToken.ThrowIfCancellationRequested();
+                context.ThrowIfCanceled();
                 context.Response = context.Request.ToUpperInvariant();
                 return next(context);
             });
@@ -230,13 +230,13 @@ public sealed class PlumberTests
             .Build()
             .Use((context, next) =>
             {
-                context.CancellationToken.ThrowIfCancellationRequested();
+                context.ThrowIfCanceled();
                 context.Response = context.Request.ToUpperInvariant();
                 return next(context);
             })
             .Use((context, next) =>
             {
-                context.CancellationToken.ThrowIfCancellationRequested();
+                context.ThrowIfCanceled();
                 context.Response = context.Request.ToLowerInvariant();
                 return next(context);
             });
@@ -283,7 +283,7 @@ public sealed class PlumberTests
     public async Task GetMiddlewareCtorAsync()
     {
         RequestMiddleware<string, string> next = context =>
-            context.CancellationToken.IsCancellationRequested
+            context.IsCanceled
                 ? Task.FromCanceled<RequestContext<string, string>>(context.CancellationToken)
                 : Task.FromResult(context);
 
@@ -301,6 +301,46 @@ public sealed class PlumberTests
         await middleware.InvokeAsync(context);
 
         Assert.Equal(request.ToLowerInvariant(), context.Response);
+    }
+
+    [Fact]
+    public void IsCanceledReflectsCancellationToken()
+    {
+        using var cts = new CancellationTokenSource();
+        using var services = new ServiceCollection().BuildServiceProvider();
+
+        var context = new RequestContext<string, string>(
+            "request",
+            Ulid.NewUlid(),
+            TimeProvider.System,
+            services,
+            cts.Token);
+
+        Assert.False(context.IsCanceled);
+
+        cts.Cancel();
+
+        Assert.True(context.IsCanceled);
+    }
+
+    [Fact]
+    public void ThrowIfCanceledThrowsWhenTokenCanceled()
+    {
+        using var cts = new CancellationTokenSource();
+        using var services = new ServiceCollection().BuildServiceProvider();
+
+        var context = new RequestContext<string, string>(
+            "request",
+            Ulid.NewUlid(),
+            TimeProvider.System,
+            services,
+            cts.Token);
+
+        context.ThrowIfCanceled();
+
+        cts.Cancel();
+
+        _ = Assert.Throws<OperationCanceledException>(context.ThrowIfCanceled);
     }
 
     [Fact]

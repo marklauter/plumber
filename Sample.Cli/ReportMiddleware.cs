@@ -6,7 +6,7 @@ internal sealed class ReportMiddleware(RequestMiddleware<string, TextReport> nex
 {
     public Task InvokeAsync(RequestContext<string, TextReport> context)
     {
-        context.CancellationToken.ThrowIfCancellationRequested();
+        context.ThrowIfCanceled();
 
         _ = context.TryGetValue<string>(DataKeys.Normalized, out var normalized);
         _ = context.TryGetValue<string[]>(DataKeys.Tokens, out var tokens);

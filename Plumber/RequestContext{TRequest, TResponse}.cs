@@ -52,6 +52,19 @@ public sealed class RequestContext<TRequest, TResponse>(
     public CancellationToken CancellationToken => cancellationToken;
 
     /// <summary>
+    /// Whether cancellation has been requested on the request's <see cref="CancellationToken"/>.
+    /// Shorthand for <c>context.CancellationToken.IsCancellationRequested</c> — lets middleware short-circuit without throwing.
+    /// </summary>
+    public bool IsCanceled => cancellationToken.IsCancellationRequested;
+
+    /// <summary>
+    /// Throws an <see cref="OperationCanceledException"/> if cancellation has been requested.
+    /// Shorthand for <c>context.CancellationToken.ThrowIfCancellationRequested()</c>.
+    /// </summary>
+    /// <exception cref="OperationCanceledException">Cancellation has been requested.</exception>
+    public void ThrowIfCanceled() => cancellationToken.ThrowIfCancellationRequested();
+
+    /// <summary>
     /// Data that can be passed from one middleware to another.
     /// </summary>
     public IDictionary<string, object?> Data => data ??= [];
