@@ -103,12 +103,30 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// <summary>
     /// Adds a class-based middleware to the request handler's pipeline with constructor parameters.
     /// </summary>
-    /// <typeparam name="TMiddleware">A class that contains an InvokeAsync method that receives a context.</typeparam>
-    /// <param name="parameters">Contructor arguments for the middleware implementation.</param>
+    /// <typeparam name="TMiddleware">A class with an InvokeAsync method whose first parameter is <see cref="RequestContext{TRequest, TResponse}"/>.</typeparam>
+    /// <param name="parameters">Constructor arguments for the middleware implementation.</param>
     /// <returns><see cref="RequestHandler{TRequest, TResponse}"/></returns>
     /// <exception cref="InvalidOperationException">New middleware components can't be added after the pipeline has been built. The pipeline is built on the first call to InvokeAsync.</exception>
     /// <remarks>
+    /// <para>
     /// Constructor arguments are always passed after the Next middleware argument and before arguments provided by the service provider.
+    /// </para>
+    /// <para>
+    /// The middleware instance is constructed once at registration time and reused for every request — it has
+    /// effectively a singleton lifetime, regardless of how <typeparamref name="TMiddleware"/> itself is
+    /// registered with the DI container.
+    /// </para>
+    /// <para>
+    /// Constructor parameters are resolved from the root <see cref="IServiceProvider"/>, not from the
+    /// per-request scope. Do NOT inject scoped or transient services (for example, <c>DbContext</c>) via the
+    /// constructor — the captured instance will be shared across all requests, which can cause stale data,
+    /// thread-safety violations, or disposed-object errors.
+    /// </para>
+    /// <para>
+    /// To consume scoped or transient services, declare them as parameters on <c>InvokeAsync</c> after the
+    /// required <see cref="RequestContext{TRequest, TResponse}"/> parameter. Those are resolved from the
+    /// per-request scope on every invocation.
+    /// </para>
     /// </remarks>
     public RequestHandler<TRequest, TResponse> Use<TMiddleware>(params object[] parameters)
         where TMiddleware : class =>
@@ -119,9 +137,27 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// <summary>
     /// Adds a class-based middleware to the request handler's pipeline.
     /// </summary>
-    /// <typeparam name="TMiddleware">A class that contains an InvokeAsync method that receives a context.</typeparam>
+    /// <typeparam name="TMiddleware">A class with an InvokeAsync method whose first parameter is <see cref="RequestContext{TRequest, TResponse}"/>.</typeparam>
     /// <returns><see cref="RequestHandler{TRequest, TResponse}"/></returns>
     /// <exception cref="InvalidOperationException">New middleware components can't be added after the pipeline has been built. The pipeline is built on the first call to InvokeAsync.</exception>
+    /// <remarks>
+    /// <para>
+    /// The middleware instance is constructed once at registration time and reused for every request — it has
+    /// effectively a singleton lifetime, regardless of how <typeparamref name="TMiddleware"/> itself is
+    /// registered with the DI container.
+    /// </para>
+    /// <para>
+    /// Constructor parameters are resolved from the root <see cref="IServiceProvider"/>, not from the
+    /// per-request scope. Do NOT inject scoped or transient services (for example, <c>DbContext</c>) via the
+    /// constructor — the captured instance will be shared across all requests, which can cause stale data,
+    /// thread-safety violations, or disposed-object errors.
+    /// </para>
+    /// <para>
+    /// To consume scoped or transient services, declare them as parameters on <c>InvokeAsync</c> after the
+    /// required <see cref="RequestContext{TRequest, TResponse}"/> parameter. Those are resolved from the
+    /// per-request scope on every invocation.
+    /// </para>
+    /// </remarks>
     public RequestHandler<TRequest, TResponse> Use<TMiddleware>()
         where TMiddleware : class =>
         Use(next =>
