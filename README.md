@@ -15,33 +15,43 @@ Plumber gives console apps, Lambdas, queue consumers, and other host-free .NET p
 > **Upgrading from v2.x?** Many APIs changed in v3 — interfaces removed, configuration no longer auto-loaded, builder reshaped. See [Migration v2.x → v3.x](#migration-v2x--v3x) at the bottom.
 
 ## Table of Contents
-- [When to reach for Plumber](#when-to-reach-for-plumber)
-- [Installation](#installation)
-- [Hello, World](#hello-world)
-- [Pipeline architecture](#pipeline-architecture)
-- [Building a pipeline](#building-a-pipeline)
-  - [Configuration sources](#configuration-sources)
-  - [Service registration](#service-registration)
-  - [Logging](#logging)
-- [Middleware](#middleware)
-  - [Delegate middleware](#delegate-middleware)
-  - [Class middleware](#class-middleware)
-  - [Method injection (recommended)](#method-injection-recommended-for-scoped-or-transient-services)
-  - [Constructor injection (advanced)](#constructor-injection-advanced--singleton-lifetime-root-provider)
-- [Request lifecycle](#request-lifecycle)
-  - [Sharing data between middleware](#sharing-data-between-middleware)
-  - [Short-circuiting](#short-circuiting)
-  - [Pipelines with no response: `Unit`](#pipelines-with-no-response-unit)
-  - [Timeouts](#timeouts)
-  - [Error handling](#error-handling)
-- [Testing your pipeline (preview)](#testing-your-pipeline-preview)
-- [Sample app](#sample-app)
-- [Advanced](#advanced)
-  - [Hosting inside an existing DI container](#hosting-inside-an-existing-di-container)
-  - [Multiple `Build()` calls](#multiple-build-calls)
-  - [Custom `TimeProvider` for tests](#custom-timeprovider-for-tests)
-- [FAQ](#faq)
-- [Migration v2.x → v3.x](#migration-v2x--v3x)
+- [Plumber](#plumber)
+  - [Middleware pipelines for host-free .NET projects.](#middleware-pipelines-for-host-free-net-projects)
+  - [Table of Contents](#table-of-contents)
+  - [When to reach for Plumber](#when-to-reach-for-plumber)
+  - [Installation](#installation)
+  - [Hello, World](#hello-world)
+  - [Pipeline architecture](#pipeline-architecture)
+  - [Building a pipeline](#building-a-pipeline)
+    - [Configuration sources](#configuration-sources)
+    - [Service registration](#service-registration)
+    - [Logging](#logging)
+  - [Middleware](#middleware)
+    - [Delegate middleware](#delegate-middleware)
+    - [Class middleware](#class-middleware)
+      - [Method injection (recommended for scoped or transient services)](#method-injection-recommended-for-scoped-or-transient-services)
+      - [Constructor injection (advanced — singleton lifetime, root provider)](#constructor-injection-advanced--singleton-lifetime-root-provider)
+  - [Request lifecycle](#request-lifecycle)
+    - [Sharing data between middleware](#sharing-data-between-middleware)
+    - [Short-circuiting](#short-circuiting)
+    - [Pipelines with no response: `Unit`](#pipelines-with-no-response-unit)
+    - [Timeouts](#timeouts)
+    - [Error handling](#error-handling)
+  - [Testing your pipeline (preview)](#testing-your-pipeline-preview)
+  - [Sample app](#sample-app)
+  - [Advanced](#advanced)
+    - [Hosting inside an existing DI container](#hosting-inside-an-existing-di-container)
+    - [Multiple `Build()` calls](#multiple-build-calls)
+    - [Custom `TimeProvider` for tests](#custom-timeprovider-for-tests)
+  - [FAQ](#faq)
+  - [Migration v2.x → v3.x](#migration-v2x--v3x)
+    - [1. Interfaces removed](#1-interfaces-removed)
+    - [2. `Void` → `Unit`](#2-void--unit)
+    - [3. Configuration is no longer auto-loaded](#3-configuration-is-no-longer-auto-loaded)
+    - [4. `Services` and `Configuration` properties → callbacks](#4-services-and-configuration-properties--callbacks)
+    - [5. Scoped or transient services in middleware ctors → method injection](#5-scoped-or-transient-services-in-middleware-ctors--method-injection)
+    - [6. Timeout exceptions are distinguishable](#6-timeout-exceptions-are-distinguishable)
+    - [7. Handler is `IDisposable`](#7-handler-is-idisposable)
 
 ## When to reach for Plumber
 - Console apps and CLI tools that need ordered, composable steps with DI and config
@@ -276,7 +286,7 @@ internal sealed class LoggingMiddleware(
 }
 ```
 
-You can also pass extra constructor arguments at registration. They're forwarded to the constructor positionally, after `next` and before any DI-resolved parameters:
+You can also pass extra constructor arguments at registration. Declare the constructor with `next` first, your extra parameters next, then any DI-resolved dependencies. `ActivatorUtilities` matches the supplied arguments by type before satisfying the rest from the root provider:
 ```csharp
 handler.Use<RetryMiddleware>(3, TimeSpan.FromMilliseconds(200));
 ```
@@ -301,7 +311,7 @@ handler.Use((context, next) =>
     return next(context);
 });
 ```
-`TryGetValue<T>` returns `false` for missing keys, null values, and type mismatches — you only get `true` when there's a non-null `T` at the key.
+`TryGetValue<T>` returns `false` for missing keys, null values, and type mismatches — you only get `true` when there's a non-null `T` at the key. Note: zero/default values for value types still return `true` — the check is `value is T`, not `value != default`. If you stored `0` for an `int` key, the call returns `true` with `0`.
 
 The dictionary is allocated lazily on first access, so pipelines that don't share data pay no allocation cost.
 
@@ -399,7 +409,10 @@ internal sealed class ErrorBoundary<TReq, TRes>(
     }
 }
 ```
-Register the boundary first if you want it to see every exception in the pipeline.
+Register the boundary first if you want it to see every exception in the pipeline. The class is generic, so spell out the closed generic when you register it:
+```csharp
+handler.Use<ErrorBoundary<MyRequest, MyResponse>>();
+```
 
 ## Testing your pipeline (preview)
 
@@ -456,10 +469,10 @@ Customization hooks:
 `CreateHandler()` is idempotent — call it as many times as you like; the same handler comes back. Once it's been called, builder hooks are frozen; trying to add more throws.
 
 ## Sample app
-[`Sample.Cli`](Sample.Cli) is the canonical example. It's a small CLI that reads stdin (or argv), runs it through validation → normalization → tokenization → reporting, and prints the result. It demonstrates:
+[`Sample.Cli`](Sample.Cli) is a complete, working version of the same shape. It's a small CLI that reads stdin (or argv), runs it through validation → normalization → tokenization → reporting, and prints the result. The earlier README snippets are simplified for teaching — the sample's middleware add logging and use shared `DataKeys` constants for the `context.Data` keys. It demonstrates:
 
 - The `CreateBuilder` + `Configure` split
-- Configuration via `ConfigureConfiguration` and the options pattern
+- Configuration via `ConfigureConfiguration` and bound configuration POCOs
 - DI-registered services (`ITokenizer`)
 - Method injection on class middleware
 - Structured logging via `ConfigureLogging`
