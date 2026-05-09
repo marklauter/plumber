@@ -36,7 +36,7 @@ Plumber is a C# library for dotnet that provides a generic middleware pipeline f
   - [Middleware Data Sharing](#middleware-data-sharing)
   - [Pipeline Short-Circuiting](#pipeline-short-circuiting)
   - [Response Handling](#response-handling)
-  - [Using Void Response Type](#using-void-response-type)
+  - [Using Unit Response Type](#using-unit-response-type)
   - [Middleware Method Injection](#middleware-method-injection)
 - [Complete Application Example](#complete-application-example)
 - [Frequently Asked Questions (FAQ)](#frequently-asked-questions-faq)
@@ -748,24 +748,24 @@ handler.Use(async (context, next) =>
 });
 ```
 
-### Using Void Response Type
-Many pipeline scenarios, especially in event handling, don't require returning a response. For these cases, Plumber provides the `Void` type, which can be used as the `TResponse` type parameter to indicate that no response is expected.
+### Using Unit Response Type
+Many pipeline scenarios, especially in event handling, don't require returning a response. For these cases, Plumber provides the `Unit` type, which can be used as the `TResponse` type parameter to indicate that no response is expected.
 
-#### What is the Void Type?
-The `Void` type is a simple readonly record struct:
+#### What is the Unit Type?
+The `Unit` type is a simple readonly record struct:
 
 ```csharp
-public readonly record struct Void;
+public readonly record struct Unit;
 ```
 
 It serves as a more expressive alternative to using `object?` or another arbitrary type when no response is needed.
 
-#### Creating a Void Pipeline
+#### Creating a Unit Pipeline
 Here's how to create a pipeline that doesn't return a response:
 
 ```csharp
 // Create a pipeline that processes messages but doesn't return a response
-var handler = RequestHandlerBuilder.Create<SQSEvent, Void>(args)
+var handler = RequestHandlerBuilder.Create<SQSEvent, Unit>(args)
     .Build()
     .Use<LoggingMiddleware>()
     .Use<MessageProcessingMiddleware>();
@@ -775,17 +775,17 @@ var sqsEvent = new SQSEvent { /* ... */ };
 await handler.InvokeAsync(sqsEvent);
 ```
 
-#### Real-World Void Pipeline Example
-Here's a more complete example showing how to use the `Void` type in an AWS Lambda SQS event handler:
+#### Real-World Unit Pipeline Example
+Here's a more complete example showing how to use the `Unit` type in an AWS Lambda SQS event handler:
 
 ```csharp
 public class Function
 {
-    private readonly RequestHandler<SQSEvent, Void> handler;
+    private readonly RequestHandler<SQSEvent, Unit> handler;
 
     public Function()
     {
-        var builder = RequestHandlerBuilder.Create<SQSEvent, Void>();
+        var builder = RequestHandlerBuilder.Create<SQSEvent, Unit>();
         
         builder.Services
             .AddSingleton<IUserRepository, UserRepository>()
@@ -803,15 +803,15 @@ public class Function
 
     public async Task FunctionHandler(SQSEvent sqsEvent, ILambdaContext context)
     {
-        // We don't need to check the response since it's Void
+        // We don't need to check the response since it's Unit
         await handler.InvokeAsync(sqsEvent, context.CancellationToken);
     }
 }
 
 // Example middleware for processing SQS messages
-public sealed class MessageProcessingMiddleware(RequestMiddleware<SQSEvent, Void> next)
+public sealed class MessageProcessingMiddleware(RequestMiddleware<SQSEvent, Unit> next)
 {
-    public async Task InvokeAsync(RequestContext<SQSEvent, Void> context)
+    public async Task InvokeAsync(RequestContext<SQSEvent, Unit> context)
     {
         context.CancellationToken.ThrowIfCancellationRequested();
         
@@ -820,15 +820,15 @@ public sealed class MessageProcessingMiddleware(RequestMiddleware<SQSEvent, Void
             await ProcessMessageAsync(record.Body);
         }
         
-        // We don't need to set a response since TResponse is Void
+        // We don't need to set a response since TResponse is Unit
         // Just continue the pipeline
         await next(context);
     }
 }
 ```
 
-#### When to Use Void
-The `Void` response type is particularly useful in these scenarios:
+#### When to Use Unit
+The `Unit` response type is particularly useful in these scenarios:
 
 1. **Event processors** - SQS, SNS, EventBridge, and other event-driven handlers
 2. **Queue consumers** - RabbitMQ, Kafka, and other message queue processors
@@ -836,9 +836,9 @@ The `Void` response type is particularly useful in these scenarios:
 4. **Background tasks** - File processors, batch jobs, scheduled tasks
 5. **Write-only operations** - Database writers, logging services
 
-#### Benefits of Using Void
+#### Benefits of Using Unit
 
-1. **Intent clarity** - Using `Void` explicitly communicates that no response is expected
+1. **Intent clarity** - Using `Unit` explicitly communicates that no response is expected
 2. **Type safety** - More type-safe than using `object?` or other placeholder types
 3. **Simplified middleware** - Middleware doesn't need to worry about setting a response
 4. **Self-documenting code** - Makes it clear to other developers that the pipeline doesn't return a value
@@ -972,9 +972,9 @@ A: Yes, through two mechanisms:
 2. Method injection - services can be injected into the `InvokeAsync` method parameters after the required context parameter
 
 **Q: How do I handle requests that don't need a response?**  
-A: For pipelines that don't need to return a response (like SQS event handlers), you can use the `Void` type as the generic argument for `TResponse`:
+A: For pipelines that don't need to return a response (like SQS event handlers), you can use the `Unit` type as the generic argument for `TResponse`:
 ```csharp
-var handler = RequestHandlerBuilder.Create<MyRequest, Void>().Build();
+var handler = RequestHandlerBuilder.Create<MyRequest, Unit>().Build();
 ```
 
 ### Performance and Architecture
