@@ -29,15 +29,23 @@ public record RequestContext<TRequest, TResponse>(
     public IDictionary<string, object?> Data => data ??= [];
 
     /// <summary>
-    /// Returns the data associated with the specified key.
+    /// Gets the value associated with the specified key, if it is of type <typeparamref name="T"/>.
     /// </summary>
-    /// <typeparam name="T">The data type the to which the result will be cast.</typeparam>
-    /// <param name="key">The key of the element in the Data dictionary.</param>
-    /// <param name="item"></param>
-    /// <returns>TData</returns>
-    /// <remarks>If nothing has been added to the dicionary, then TryGetValue returns default(TData)</remarks>
-    public bool TryGetValue<T>(string key, [NotNullWhen(true)] out T? item) =>
-        data?.TryGetValue(key, out var value) == true && (item = (T?)value) != null || (item = default) != null;
+    /// <typeparam name="T">The expected type of the stored value.</typeparam>
+    /// <param name="key">The key of the element in the <see cref="Data"/> dictionary.</param>
+    /// <param name="item">When this method returns <see langword="true"/>, contains the stored value cast to <typeparamref name="T"/>; otherwise <see langword="default"/>.</param>
+    /// <returns><see langword="true"/> if the key exists and the stored value is a non-null <typeparamref name="T"/>; otherwise <see langword="false"/>.</returns>
+    public bool TryGetValue<T>(string key, [NotNullWhen(true)] out T? item)
+    {
+        if (data is not null && data.TryGetValue(key, out var value) && value is T typed)
+        {
+            item = typed;
+            return true;
+        }
+
+        item = default;
+        return false;
+    }
 
     /// <summary>
     /// The response.

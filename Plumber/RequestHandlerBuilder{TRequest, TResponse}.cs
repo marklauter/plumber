@@ -223,14 +223,23 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
         _ = perBuild.AddCommandLine(args);
 
         var configuration = perBuild.Build();
-        var serviceCollection = new ServiceCollection();
-        // factory registration so DI captures the IConfigurationRoot for disposal
-        _ = serviceCollection.AddSingleton<IConfiguration>(_ => configuration);
+        try
+        {
+            var serviceCollection = new ServiceCollection();
+            // factory registration so DI captures the IConfigurationRoot for disposal
+            _ = serviceCollection.AddSingleton<IConfiguration>(_ => configuration);
 
-        ApplyLoggingCallbacks(serviceCollection);
-        ApplyServiceCallbacks(serviceCollection, configuration);
+            ApplyLoggingCallbacks(serviceCollection);
+            ApplyServiceCallbacks(serviceCollection, configuration);
 
-        return new RequestHandler<TRequest, TResponse>(serviceCollection, timeout);
+            return new RequestHandler<TRequest, TResponse>(serviceCollection, timeout);
+        }
+        catch
+        {
+            // DI hasn't captured the configuration yet — dispose it ourselves so file watchers don't leak
+            (configuration as IDisposable)?.Dispose();
+            throw;
+        }
     }
 
     // Shallow-copies sources and properties from the shared configurationBuilder into a fresh
