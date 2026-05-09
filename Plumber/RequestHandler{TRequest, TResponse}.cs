@@ -272,7 +272,7 @@ public sealed class RequestHandler<TRequest, TResponse>
             ParameterInfo[] methodParams)
         {
             var contextParam = Expression.Parameter(ContextType, "context");
-            var servicesProp = Expression.Property(contextParam, nameof(RequestContext<TRequest, TResponse>.Services));
+            var servicesProp = Expression.Property(contextParam, nameof(RequestContext<,>.Services));
 
             var callArgs = new Expression[methodParams.Length];
             callArgs[0] = contextParam;
