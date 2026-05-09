@@ -108,7 +108,7 @@ public sealed class FactoryTests
         var factory = CreateFactory();
         factory.Dispose();
 
-        _ = Assert.Throws<ObjectDisposedException>(() => factory.CreateHandler());
+        _ = Assert.Throws<ObjectDisposedException>(factory.CreateHandler);
         _ = Assert.Throws<ObjectDisposedException>(() => factory.WithServices(_ => { }));
     }
 }

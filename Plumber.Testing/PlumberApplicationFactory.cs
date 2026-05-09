@@ -69,7 +69,7 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     public PlumberApplicationFactory<TRequest, TResponse> WithServices(Action<IServiceCollection> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
-        return WithBuilder(builder => configure(builder.Services));
+        return WithBuilder(builder => builder.ConfigureServices((_, services) => configure(services)));
     }
 
     /// <summary>
@@ -78,16 +78,16 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     public PlumberApplicationFactory<TRequest, TResponse> WithLogging(Action<ILoggingBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
-        return WithBuilder(configure);
+        return WithBuilder(builder => builder.ConfigureLogging((_, lb) => configure(lb)));
     }
 
     /// <summary>
     /// Customize configuration sources before the pipeline is built. Sugar over <see cref="WithBuilder"/>.
     /// </summary>
-    public PlumberApplicationFactory<TRequest, TResponse> WithConfiguration(Action<IConfigurationManager> configure)
+    public PlumberApplicationFactory<TRequest, TResponse> WithConfiguration(Action<IConfigurationBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
-        return WithBuilder(builder => configure(builder.Configuration));
+        return WithBuilder(builder => builder.ConfigureConfiguration((cb, _) => configure(cb)));
     }
 
     /// <summary>

@@ -32,6 +32,7 @@ internal static class Pipeline
                         ' ',
                         StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                 }
+
                 return next(context);
             })
             .Use<ReportMiddleware>();

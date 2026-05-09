@@ -22,7 +22,8 @@ public static class RequestHandlerBuilder
     /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
     /// <returns><see cref="RequestHandlerBuilder{TRequest, TResponse}"/></returns>
     public static RequestHandlerBuilder<TRequest, TResponse> Create<TRequest, TResponse>()
-        where TRequest : notnull => new([]);
+        where TRequest : notnull =>
+        new([]);
 
     /// <summary>
     /// Creates a new request handler builder with default configuration providers:
@@ -39,16 +40,6 @@ public static class RequestHandlerBuilder
     /// <param name="args">Program args passed into Main(). Used to build <see cref="IConfiguration"/> with <see cref="IConfigurationBuilder"/>.AddCommandLine(args)</param>
     /// <returns><see cref="RequestHandlerBuilder{TRequest, TResponse}"/></returns>
     public static RequestHandlerBuilder<TRequest, TResponse> Create<TRequest, TResponse>(string[] args)
-        where TRequest : notnull => new(args);
-
-    /// <summary>
-    /// Creates a new request handler builder, does NOT build a default configuration, and allows for custom configuration through the <paramref name="configure"/> action.
-    /// </summary>
-    /// <typeparam name="TRequest">The type of request handled by the pipeline.</typeparam>
-    /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
-    /// <param name="args">Program args passed into Main(). Used to build <see cref="IConfiguration"/> with <see cref="IConfigurationBuilder"/>.AddCommandLine(args)</param>
-    /// <param name="configure"></param>
-    /// <returns><see cref="RequestHandlerBuilder{TRequest, TResponse}"/></returns>
-    public static RequestHandlerBuilder<TRequest, TResponse> Create<TRequest, TResponse>(string[] args, Action<IConfiguration, string[]> configure)
-        where TRequest : notnull => new(args, configure);
+        where TRequest : notnull =>
+        new(args);
 }

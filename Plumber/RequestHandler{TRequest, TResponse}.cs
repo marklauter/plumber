@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
@@ -10,30 +9,22 @@ namespace Plumber;
 /// </summary>
 /// <typeparam name="TRequest">The type of request handled by the pipeline.</typeparam>
 /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
-public sealed class RequestHandler<TRequest, TResponse> : IDisposable
+public sealed class RequestHandler<TRequest, TResponse>
+    : IDisposable
     where TRequest : notnull
 {
     private readonly List<Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>>> components = [];
     private readonly ServiceProvider serviceProvider;
-    private readonly ConfigurationManager? ownedConfiguration;
     private RequestMiddleware<TRequest, TResponse>? handler;
     private bool disposed;
 
     internal RequestHandler(
-        IServiceCollection services,
-        TimeSpan timeout,
-        ConfigurationManager? ownedConfiguration)
+        ServiceCollection serviceCollection,
+        TimeSpan timeout)
     {
-        ArgumentNullException.ThrowIfNull(services);
-        serviceProvider = services.BuildServiceProvider();
+        serviceProvider = serviceCollection.BuildServiceProvider();
         Timeout = timeout;
-        this.ownedConfiguration = ownedConfiguration;
     }
-
-    /// <summary>
-    /// Handler-level service provider.
-    /// </summary>
-    public IServiceProvider Services => serviceProvider;
 
     /// <summary>
     /// The timeout for the request handler's pipeline.
@@ -260,8 +251,6 @@ public sealed class RequestHandler<TRequest, TResponse> : IDisposable
         }
 
         serviceProvider.Dispose();
-        ownedConfiguration?.Dispose();
-
         disposed = true;
     }
 

@@ -49,7 +49,7 @@ public sealed class PlumberTests
 
         var response = await handler.InvokeAsync(request, TestContext.Current.CancellationToken);
 
-        Assert.True(String.IsNullOrEmpty(response));
+        Assert.True(string.IsNullOrEmpty(response));
     }
 
     [Fact]
@@ -173,11 +173,8 @@ public sealed class PlumberTests
     {
         var request = "request";
 
-        var builder = RequestHandlerBuilder.Create<string, string>();
-        _ = builder.Services
-            .AddSingleton<IInjected>(new Injected("injected"));
-
-        using var handler = builder
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .ConfigureServices((_, services) => services.AddSingleton<IInjected>(new Injected("injected")))
             .Build()
             .Use<DependencyInjectedMiddleware>();
 
