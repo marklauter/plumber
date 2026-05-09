@@ -73,6 +73,15 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     }
 
     /// <summary>
+    /// Customize service registrations before the pipeline is built, with the built <see cref="IConfiguration"/> available.
+    /// </summary>
+    public PlumberApplicationFactory<TRequest, TResponse> WithServices(Action<IConfiguration, IServiceCollection> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        return WithBuilder(builder => builder.ConfigureServices(configure));
+    }
+
+    /// <summary>
     /// Customize logging before the pipeline is built. Sugar over <see cref="WithBuilder"/>.
     /// </summary>
     public PlumberApplicationFactory<TRequest, TResponse> WithLogging(Action<ILoggingBuilder> configure)
@@ -82,12 +91,31 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     }
 
     /// <summary>
+    /// Customize logging before the pipeline is built, with the built <see cref="IConfiguration"/> available for filter binding.
+    /// </summary>
+    public PlumberApplicationFactory<TRequest, TResponse> WithLogging(Action<IConfiguration, ILoggingBuilder> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        return WithBuilder(builder => builder.ConfigureLogging(configure));
+    }
+
+    /// <summary>
     /// Customize configuration sources before the pipeline is built. Sugar over <see cref="WithBuilder"/>.
     /// </summary>
     public PlumberApplicationFactory<TRequest, TResponse> WithConfiguration(Action<IConfigurationBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
         return WithBuilder(builder => builder.ConfigureConfiguration((cb, _) => configure(cb)));
+    }
+
+    /// <summary>
+    /// Seeds the configuration with an in-memory key/value collection. Common test-setup pattern for stubbing settings.
+    /// </summary>
+    /// <param name="settings">Key/value pairs added as a configuration source.</param>
+    public PlumberApplicationFactory<TRequest, TResponse> WithInMemorySettings(IEnumerable<KeyValuePair<string, string?>> settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        return WithBuilder(builder => builder.AddInMemoryCollection(settings));
     }
 
     /// <summary>
