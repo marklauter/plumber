@@ -2,7 +2,7 @@
 
 - **Area:** RequestHandler (timeout handling)
 - **Priority:** Medium
-- **Status:** Open
+- **Status:** Resolved
 
 ## Problem
 When a timeout occurs, the linked `CancellationToken` is cancelled, producing `OperationCanceledException`. This is indistinguishable from user-initiated cancellation. For AWS Lambda scenarios, distinguishing between internal timeouts and external cancellations is important for debugging.

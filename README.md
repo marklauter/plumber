@@ -1,1010 +1,656 @@
 ## Build Status
 [![.NET Tests](https://github.com/marklauter/plumber/actions/workflows/dotnet.tests.yml/badge.svg)](https://github.com/marklauter/plumber/actions/workflows/dotnet.tests.yml)
 [![.NET Publish](https://github.com/marklauter/plumber/actions/workflows/dotnet.publish.yml/badge.svg)](https://github.com/marklauter/plumber/actions/workflows/dotnet.publish.yml)
-[![Nuget](https://img.shields.io/badge/Nuget-v2.3.2-blue)](https://www.nuget.org/packages/MSL.Plumber.Pipeline/)
-[![Nuget](https://img.shields.io/badge/.NET-8.0-blue)](https://dotnet.microsoft.com/en-us/download/dotnet/8.0/)
+[![NuGet](https://img.shields.io/nuget/v/MSL.Plumber.Pipeline?logo=nuget)](https://www.nuget.org/packages/MSL.Plumber.Pipeline/)
+[![Nuget](https://img.shields.io/badge/.NET-10.0-blue)](https://dotnet.microsoft.com/en-us/download/dotnet/10.0/)
 
-## 
 ![Plumber Logo](https://raw.githubusercontent.com/marklauter/plumber/main/images/plumber.png "Plumber Logo")
 
 # Plumber
-## Middleware pipelines for host-free projects like AWS Lambda, Console, etc.
-Plumber is a C# library for dotnet that provides a generic middleware pipeline framework for applications that don't have a built-in host, such as AWS Lambda functions, console applications, queue event handlers, and similar scenarios. It implements a request-response pattern with support for middleware functions and components, dependency injection, and configuration management.
+## Middleware pipelines for host-free .NET projects
+
+Plumber gives console apps, Lambdas, queue consumers, and other host-free .NET projects the same middleware-pipeline shape that ASP.NET Core gives web apps. You define a request type, a response type, and a chain of middleware components. Plumber wires up DI, configuration, logging, scoping, timeouts, and cancellation; you focus on the steps in your pipeline.
+
+> **Upgrading from v2.x?** Many APIs changed in v3 — interfaces removed, configuration no longer auto-loaded, builder reshaped. See [Migration v2.x → v3.x](#migration-v2x--v3x) at the bottom. v3 is also a modernization and bug-fix pass: faster middleware dispatch (expression-tree-compiled), monotonic `Elapsed`, distinguishable timeout exceptions, and a host-mode factory for reusing an existing DI container.
 
 ## Table of Contents
-- [Introduction](#introduction)
-  - [Inspiration](#inspiration)
-  - [Use Cases](#use-cases)
-  - [Prerequisites](#prerequisites)
+- [Plumber](#plumber)
+  - [Middleware pipelines for host-free .NET projects](#middleware-pipelines-for-host-free-net-projects)
+  - [Table of Contents](#table-of-contents)
+  - [When to reach for Plumber](#when-to-reach-for-plumber)
   - [Installation](#installation)
-- [Getting Started](#getting-started)
-  - [Basic Setup](#basic-setup)
-  - [Configuration](#configuration)
-  - [Service Registration](#service-registration)
-  - [Middleware Implementation](#middleware-implementation)
-- [Pipeline Architecture](#pipeline-architecture)
-- [Examples](#examples)
-  - [Simple Example](#simplest-example---no-config-no-services-no-middleware)
-  - [Middleware Delegate Example](#middleware-delegate-example)
-  - [Middleware Class Example](#middleware-class-example)
-  - [Configuration Example](#builder-configuration-example)
-  - [Service Registration Example](#builder-service-registration-example)
-- [Sample Projects](#sample-aws-lambda-projects)
-- [Advanced Techniques](#advanced-techniques)
-  - [Error Handling](#error-handling)
-  - [Request Timeout](#request-timeout)
-  - [Middleware Data Sharing](#middleware-data-sharing)
-  - [Pipeline Short-Circuiting](#pipeline-short-circuiting)
-  - [Response Handling](#response-handling)
-  - [Using Void Response Type](#using-void-response-type)
-  - [Middleware Method Injection](#middleware-method-injection)
-- [Complete Application Example](#complete-application-example)
-- [Frequently Asked Questions (FAQ)](#frequently-asked-questions-faq)
+  - [Hello, World](#hello-world)
+  - [Pipeline architecture](#pipeline-architecture)
+  - [Building a pipeline](#building-a-pipeline)
+    - [Configuration sources](#configuration-sources)
+    - [Service registration](#service-registration)
+    - [Logging](#logging)
+  - [Middleware](#middleware)
+    - [Delegate middleware](#delegate-middleware)
+    - [Class middleware](#class-middleware)
+      - [Method injection (recommended)](#method-injection-recommended)
+      - [Constructor injection (advanced — singleton lifetime, root provider)](#constructor-injection-advanced--singleton-lifetime-root-provider)
+  - [Request lifecycle](#request-lifecycle)
+    - [Sharing data between middleware](#sharing-data-between-middleware)
+    - [Short-circuiting](#short-circuiting)
+    - [Pipelines with no response: `Unit`](#pipelines-with-no-response-unit)
+    - [Timeouts](#timeouts)
+    - [Error handling](#error-handling)
+  - [Testing your pipeline (preview)](#testing-your-pipeline-preview)
+  - [Sample app](#sample-app)
+  - [Advanced](#advanced)
+    - [Hosting inside an existing DI container](#hosting-inside-an-existing-di-container)
+    - [Multiple `Build()` calls](#multiple-build-calls)
+    - [Custom `TimeProvider` for tests](#custom-timeprovider-for-tests)
+  - [FAQ](#faq)
+  - [Migration v2.x → v3.x](#migration-v2x--v3x)
+    - [1. Interfaces removed](#1-interfaces-removed)
+    - [2. `Void` → `Unit`](#2-void--unit)
+    - [3. Configuration is no longer auto-loaded](#3-configuration-is-no-longer-auto-loaded)
+    - [4. `Services` and `Configuration` properties → callbacks](#4-services-and-configuration-properties--callbacks)
+    - [5. Scoped or transient services in middleware ctors → method injection](#5-scoped-or-transient-services-in-middleware-ctors--method-injection)
+    - [6. Timeout exceptions are distinguishable](#6-timeout-exceptions-are-distinguishable)
+    - [7. Handler is `IDisposable`](#7-handler-is-idisposable)
 
-## Introduction
+## When to reach for Plumber
+- Console apps and CLI tools that need ordered, composable steps with DI and config
+- AWS Lambda functions (API Gateway requests, SQS/SNS events, DynamoDB Streams, EventBridge)
+- Queue consumers (RabbitMQ, Kafka, Azure Service Bus)
+- File and ETL processors
+- Any pipeline you'd reach for ASP.NET Core middleware in, but without the web host
 
-Plumber is a C# library for dotnet that provides a generic middleware pipeline framework for applications that don't have a built-in host. It implements a request-response pattern with support for middleware functions and components, dependency injection, and configuration management.
+If your project already has a host (ASP.NET Core, generic host, etc.), you usually don't need Plumber — but you can still use it inside an existing DI container; see [Hosting inside an existing DI container](#hosting-inside-an-existing-di-container).
 
-### Inspiration
+The pipeline shape is borrowed from Steve Gordon's walkthrough of the ASP.NET Core middleware pipeline: [How is the ASP.NET Core Middleware Pipeline Built](https://www.stevejgordon.co.uk/how-is-the-asp-net-core-middleware-pipeline-built). If you're new to middleware, Microsoft also has a [primer in their docs](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/?view=aspnetcore-10.0).
 
-Plumber is based on this article:
-[How is the ASP.NET Core Middleware Pipeline Built - Steve Gorden, July 2020](https://www.stevejgordon.co.uk/how-is-the-asp-net-core-middleware-pipeline-built)
-
-### Use Cases
-
-Plumber is well-suited for various scenarios:
-
-#### Console Applications
-- CLI tools with complex processing steps
-- Batch processing applications
-- Data migration tools
-- System maintenance utilities
-
-#### AWS Lambda Functions
-- Functions requiring dependency injection services
-- API Gateway request processing
-- event handlers (SQS, SNS, DynamoDB Streams, CDC, etc)
-
-#### Message Queue Processing
-- RabbitMQ consumer applications
-- Azure Service Bus message handlers
-- Apache Kafka consumers
-- Custom message broker integrations
-
-#### File Processing Pipelines
-- Document conversion workflows
-- Image processing pipelines
-- ETL (Extract, Transform, Load) operations
-- Batch file processing systems
-
-#### API Integrations
-- Third-party API middleware
-- Webhook handlers
-- API gateway transformations
-- Microservice communication layers
-
-### Prerequisites
-- .NET 8.0 SDK or later
-- For AWS Lambda samples:
-  - AWS account with appropriate permissions
-  - AWS CLI installed and configured
-  - Amazon.Lambda.Tools Global Tool (instructions in sample projects)
-
-### Installation
-You can install the Plumber package using any of the following methods:
-
-#### Using .NET CLI
+## Installation
 ```bash
 dotnet add package MSL.Plumber.Pipeline
 ```
+Plumber targets .NET 10. Older targets are not supported in v3.
 
-#### Using Package Manager Console
-```powershell
-Install-Package MSL.Plumber.Pipeline
-```
-
-#### Using PackageReference in .csproj file
-```xml
-<PackageReference Include="MSL.Plumber.Pipeline" Version="2.3.2" />
-```
-
-## Getting Started
-If you're not familiar with middleware pipelines, Microsoft has a [good primer on how middleware works in ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/?view=aspnetcore-8.0).
-
-### Basic Setup
-Here's the basic flow for setting up and using a Plumber pipeline:
-
-1. Create a request handler builder
-2. Configure services and settings
-3. Build the request handler
-4. Add middleware components
-5. Invoke the pipeline with a request
-
+## Hello, World
+The smallest working pipeline:
 ```csharp
-// 1. Create a builder
-var builder = RequestHandlerBuilder.Create<MyRequest, MyResponse>(args);
+using Plumber;
 
-// 2. Register services
-builder.Services.AddSingleton<IMyService, MyService>();
-
-// 3. Build the handler
-var handler = builder.Build();
-
-// 4. Add middleware
-handler.Use<ValidationMiddleware>()
-    .Use<ProcessingMiddleware>()
-    .Use<LoggingMiddleware>();
-
-// 5. Invoke the pipeline
-var response = await handler.InvokeAsync(request);
-```
-
-### Configuration
-Plumber supports various configuration approaches:
-
-1. Create a builder with default configuration providers:
-```csharp
-// Automatically includes appsettings.json, environment variables, and command line args
-var builder = RequestHandlerBuilder.Create<TRequest, TResponse>(args);
-```
-
-2. Create a builder with custom configuration:
-```csharp
-var builder = RequestHandlerBuilder.Create<TRequest, TResponse>(args, (configuration, args) => 
-{
-    configuration.AddJsonFile("custom-settings.json")
-                .AddEnvironmentVariables("APP_");
-});
-```
-
-3. Add additional configuration after creation:
-```csharp
-builder.Configuration.AddInMemoryCollection(new Dictionary<string, string> 
-{
-    { "Logging:LogLevel:Default", "Information" },
-    { "RequestTimeout", "00:00:30" }
-});
-```
-
-### Service Registration
-Register services using the standard Microsoft.Extensions.DependencyInjection patterns:
-
-```csharp
-builder.Services
-    .AddSingleton<IMyService, MyService>()
-    .AddScoped<ITransientService, TransientService>()
-    .AddTransient<IScopedService, ScopedService>();
-```
-
-### Middleware Implementation
-Middleware components can be implemented in two ways:
-
-1. As delegates:
-```csharp
-handler.Use(async (context, next) =>
-{
-    // Pre-processing
-    context.CancellationToken.ThrowIfCancellationRequested();
-    
-    // Do something with the request
-    var modifiedRequest = ProcessRequest(context.Request);
-    
-    // Call the next middleware
-    await next(context);
-    
-    // Post-processing (after all subsequent middleware have executed)
-    if (context.Response != null)
-    {
-        context.Response = EnhanceResponse(context.Response);
-    }
-});
-```
-
-2. As classes:
-```csharp
-public sealed class LoggingMiddleware(RequestMiddleware<TRequest, TResponse> next, ILogger<LoggingMiddleware> logger)
-{
-    public async Task InvokeAsync(RequestContext<TRequest, TResponse> context)
-    {
-        context.CancellationToken.ThrowIfCancellationRequested();
-        
-        logger.LogInformation("Processing request {Id}", context.Id);
-        var stopwatch = Stopwatch.StartNew();
-        
-        try
-        {
-            await next(context);
-        }
-        finally
-        {
-            stopwatch.Stop();
-            logger.LogInformation("Request {Id} completed in {ElapsedMs}ms", 
-                context.Id, stopwatch.ElapsedMilliseconds);
-        }
-    }
-}
-```
-
-## Pipeline Architecture
-Plumber's pipeline works similar to ASP.NET Core's middleware pipeline but is designed for non-host environments:
-
-1. **Request Flow**: When `InvokeAsync` is called, a request context is created and passed through each middleware in sequence.
-
-2. **Middleware Execution Order**: Middleware components are executed in the order they are added to the pipeline, but they are built in reverse order (similar to a stack).
-
-3. **Service Lifetime**: Each request gets its own scoped service provider, ensuring proper lifetime management of your services.
-
-4. **Request Context**: The `RequestContext<TRequest, TResponse>` contains everything needed for processing:
-   - The original request
-   - A slot for the response
-   - A unique request ID for tracing
-   - Timestamp for measuring elapsed time
-   - Service provider for dependency injection
-   - Cancellation token for timeout handling
-   - Data dictionary for sharing state between middleware
-
-### Middleware Execution Order
-
-It's essential to understand the execution flow of middleware in the pipeline:
-
-1. Middleware is executed in the order they are added to the pipeline using the `Use` methods
-2. Code before the `await next(context)` call runs in the registration order (first to last)
-3. Code after the `await next(context)` call runs in reverse order (last to first)
-
-This creates a nested structure similar to an onion, where the request travels inward through each layer, and then the response travels outward in the reverse order.
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant MW1 as Middleware 1
-    participant MW2 as Middleware 2
-    participant MW3 as Middleware 3
-    participant Handler as Final Handler
-    
-    Client->>+MW1: Request
-    Note over MW1: Pre-processing
-    MW1->>+MW2: next(context)
-    Note over MW2: Pre-processing
-    MW2->>+MW3: next(context)
-    Note over MW3: Pre-processing
-    MW3->>+Handler: next(context)
-    Note over Handler: Process request
-    Handler-->>-MW3: Return
-    Note over MW3: Post-processing
-    MW3-->>-MW2: Return
-    Note over MW2: Post-processing
-    MW2-->>-MW1: Return
-    Note over MW1: Post-processing
-    MW1-->>-Client: Response
-```
-
-The execution flow demonstrates how:
-
-1. Pre-processing code runs in registration order (MW1 → MW2 → MW3)
-2. The final handler processes the core request logic
-3. Post-processing code runs in reverse order (MW3 → MW2 → MW1)
-4. Each middleware can modify both the request (on the way in) and the response (on the way out)
-
-Alternatively, here's a simplified representation of the execution flow:
-
-```
-Request → Middleware 1 (Pre) → Middleware 2 (Pre) → Middleware 3 (Pre) → Final Handler
-                                                           ↓
-Response ← Middleware 1 (Post) ← Middleware 2 (Post) ← Middleware 3 (Post)
-```
-
-Here's how the execution flows in a simple example with three middleware components:
-
-```csharp
-handler.Use(async (context, next) =>
-{
-    // 1. First pre-processing
-    Console.WriteLine("1. First middleware - Pre-processing");
-    
-    await next(context);
-    
-    // 6. First post-processing (runs last)
-    Console.WriteLine("6. First middleware - Post-processing");
-});
-
-handler.Use(async (context, next) =>
-{
-    // 2. Second pre-processing
-    Console.WriteLine("2. Second middleware - Pre-processing");
-    
-    await next(context);
-    
-    // 5. Second post-processing
-    Console.WriteLine("5. Second middleware - Post-processing");
-});
-
-handler.Use(async (context, next) =>
-{
-    // 3. Third pre-processing
-    Console.WriteLine("3. Third middleware - Pre-processing");
-    
-    await next(context);
-    
-    // 4. Third post-processing (runs first)
-    Console.WriteLine("4. Third middleware - Post-processing");
-});
-```
-
-Understanding this execution pattern is crucial when designing middleware that needs to transform requests before later middleware components process them, or transform responses after earlier middleware has processed them.
-
-## Examples
-The following examples demonstrate common usage scenarios.
-
-### Simplest Example - no config, no services, no middleware
-In this sample, we create a request handler that does nothing with no configuration, no service registration, and no user-defined middleware. This is the simplest possible example.
-```csharp
-var request = "Hello, World!";
-
-var handler = RequestHandlerBuilder
+using var handler = RequestHandlerBuilder
     .Create<string, string>()
     .Build();
 
-var response = await handler.InvokeAsync(request);
-
-Assert.True(string.IsNullOrEmpty(response));
-```
-
-### Middleware Delegate Example
-In this sample, we create a request handler with user-defined middleware that converts the request to uppercase.
-```csharp
-var request = "Hello, World!";
-
-var handler = RequestHandlerBuilder.Create<string, string>()
-    .Build()
-    .Use(async (context, next) =>
-    {
-        context.CancellationToken.ThrowIfCancellationRequested();
-        context.Response = context.Request.ToUpperInvariant();
-        await next(context); // call next to pass the request context to the next delegate in the pipeline
-    });
-
-var response = await handler.InvokeAsync(request);
-
-Assert.Equal(request.ToUpperInvariant(), response);
-```
-
-### Middleware Class Example
-In this sample, we create a request handler with a user-defined middleware class that converts the request to lowercase.
-
-First, we define the middleware class, which receives the next middleware delegate in the pipeline in its constructor.
-The middleware is responsible for invoking the `next` delegate. You will short-circuit the pipeline if you don't invoke the `next` delegate.
-An example short-circuit scenario might be a request validation middleware that returns an error response if the request is invalid. 
-The middleware is also responsible for short-circuiting when the pipeline is explicitly canceled via the `context.CancellationToken`.
-
-Constructor-based dependency injection is supported for middleware implementations, 
-with the condition that the `next` delegate must be the first argument in the constructor.
-```csharp
-internal sealed class ToLowerMiddleware(RequestMiddleware<string, string> next)
+handler.Use((context, next) =>
 {
-    public Task InvokeAsync(RequestContext<string, string> context)
-    {
-        context.CancellationToken.ThrowIfCancellationRequested();
-        context.Response = context.Request.ToLowerInvariant();
+    context.Response = $"Hello, {context.Request}!";
+    return next(context);
+});
 
-        // call next to pass the request context to the next delegate in the pipeline
+var greeting = await handler.InvokeAsync("World");
+Console.WriteLine(greeting); // Hello, World!
+```
+
+That's the whole shape: a builder, a built handler, one or more middleware, and an `InvokeAsync` call. Each invocation gets its own DI scope and cancellation token.
+
+`RequestHandler<TRequest, TResponse>` is `IDisposable` — always wrap it in `using` so the service provider it built gets cleaned up.
+
+## Pipeline architecture
+Middleware in Plumber forms an onion: code before `await next(context)` runs in registration order, code after runs in reverse. A request travels inward; the response travels outward.
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant MW1 as Middleware 1
+    participant MW2 as Middleware 2
+    participant MW3 as Middleware 3
+
+    Caller->>+MW1: request
+    Note over MW1: pre-processing
+    MW1->>+MW2: next(context)
+    Note over MW2: pre-processing
+    MW2->>+MW3: next(context)
+    Note over MW3: pre-processing
+    MW3-->>-MW2: return
+    Note over MW2: post-processing
+    MW2-->>-MW1: return
+    Note over MW1: post-processing
+    MW1-->>-Caller: response
+```
+
+Three rules:
+1. Middleware runs in the order you register it.
+2. Anything before `await next(context)` runs going in. Anything after runs coming back.
+3. Don't call `next` and the pipeline short-circuits — useful for validation, caching, and authorization.
+
+## Building a pipeline
+A typical Plumber pipeline has two halves:
+1. **Builder configuration** — registers configuration sources, services, and logging.
+2. **Pipeline configuration** — adds middleware to the built handler.
+
+Splitting these into two methods makes the pipeline trivial to test (see [Testing your pipeline](#testing-your-pipeline-preview)).
+
+```csharp
+internal static class Pipeline
+{
+    public static RequestHandlerBuilder<MyRequest, MyResponse> CreateBuilder(string[] args) =>
+        RequestHandlerBuilder.Create<MyRequest, MyResponse>(args)
+            .AddJsonFile("appsettings.json", optional: true)
+            .ConfigureLogging(logging => logging.AddConsole())
+            .ConfigureServices((services, configuration) =>
+            {
+                services.AddSingleton<IMyService, MyService>();
+            });
+
+    public static RequestHandler<MyRequest, MyResponse> Configure(
+        RequestHandler<MyRequest, MyResponse> handler) =>
+        handler
+            .Use<ValidationMiddleware>()
+            .Use<ProcessingMiddleware>();
+
+    public static RequestHandler<MyRequest, MyResponse> Build(string[] args) =>
+        Configure(CreateBuilder(args).Build());
+}
+```
+
+In `Program.cs`:
+```csharp
+using var handler = Pipeline.Build(args);
+var response = await handler.InvokeAsync(request);
+```
+
+This is the convention `Sample.Cli` uses. You're welcome to inline everything, but you'll regret it the first time you write a test.
+
+### Configuration sources
+v3 configuration is **opt-in**. Nothing is loaded automatically — except command-line args, which are appended last so they always win. Pick the sources you want:
+
+```csharp
+RequestHandlerBuilder.Create<TReq, TRes>(args)
+    .AddJsonFile("appsettings.json", optional: true)
+    .AddJsonFile($"appsettings.{env}.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables("MYAPP_")
+    .AddInMemoryCollection([
+        new("Feature:Enabled", "true"),
+    ]);
+```
+
+For ad-hoc cases, the existing extension methods on `IConfigurationBuilder` are available via a callback:
+```csharp
+builder.ConfigureConfiguration((config, args) =>
+{
+    config.AddCustomProvider();
+});
+```
+
+If you want the conventional set (`appsettings.json`, `appsettings.{env}.json`, `DOTNET_*` env vars, all env vars), call:
+```csharp
+builder.AddDefaultConfigurationSources();
+```
+User secrets are intentionally excluded — call `AddUserSecrets<T>()` explicitly with a type from your assembly when you want them.
+
+### Service registration
+Service registration runs at `Build()` time and gets the built `IConfiguration` so you can bind options or pick implementations:
+```csharp
+builder.ConfigureServices((services, configuration) =>
+{
+    var options = configuration.GetSection("Tokenizer").Get<TokenizerOptions>()
+        ?? TokenizerOptions.Defaults;
+    services
+        .AddSingleton(options)
+        .AddSingleton<ITokenizer, WhitespaceTokenizer>();
+});
+```
+
+A `TimeProvider` is registered automatically (defaulting to `TimeProvider.System`); register your own if you want to control timer firing in tests — see [Custom `TimeProvider` for tests](#custom-timeprovider-for-tests).
+
+### Logging
+Logging is opt-in. If you don't call `ConfigureLogging`, no logging infrastructure is registered.
+```csharp
+builder.ConfigureLogging(logging =>
+{
+    logging.SetMinimumLevel(LogLevel.Information);
+    logging.AddSimpleConsole(o => o.SingleLine = true);
+});
+```
+
+## Middleware
+Middleware is a piece of work that runs against a `RequestContext<TRequest, TResponse>`. It chooses whether to call `next(context)` (continue) or short-circuit by setting `context.Response` and returning.
+
+### Delegate middleware
+For one-off transformations, register an inline delegate:
+```csharp
+handler.Use(async (context, next) =>
+{
+    context.ThrowIfCanceled();
+
+    var stopwatch = Stopwatch.StartNew();
+    await next(context);
+    stopwatch.Stop();
+
+    Console.WriteLine($"{context.Id} took {stopwatch.ElapsedMilliseconds}ms");
+});
+```
+
+### Class middleware
+For middleware with dependencies, write a class. Plumber recognizes it by convention: a constructor whose first parameter is `RequestMiddleware<TRequest, TResponse> next`, and a `public Task InvokeAsync` method whose first parameter is `RequestContext<TRequest, TResponse>`.
+
+```csharp
+internal sealed class NormalizeMiddleware(RequestMiddleware<string, TextReport> next)
+{
+    public Task InvokeAsync(RequestContext<string, TextReport> context)
+    {
+        context.ThrowIfCanceled();
+        context.Data["normalized"] = context.Request.ToLowerInvariant();
         return next(context);
     }
 }
 ```
+Register with `handler.Use<NormalizeMiddleware>()`.
 
-`InvokeAsync` dependency injection is supported for middleware implementations, 
-with the condition that the `RequestContext<TRequest, TResponse>` must be the first argument.
+The terminal middleware at the end of the pipeline already checks cancellation before invoking, so the explicit `ThrowIfCanceled` calls above are defense-in-depth — useful in long-running middleware that does work before deferring to `next`, but not strictly required for short ones. If you'd rather short-circuit without throwing, check `context.IsCanceled` and set `context.Response` yourself.
+
+#### Method injection (recommended)
+You can declare additional `InvokeAsync` parameters. Plumber resolves them from the **per-request scope** on every invocation — this is the safe place for `DbContext`, `HttpClient`, and other scoped or transient services.
+
 ```csharp
-internal sealed class ToLowerMiddleware(RequestMiddleware<string, string> next)
+internal sealed class TokenizeMiddleware(RequestMiddleware<string, TextReport> next)
 {
     public Task InvokeAsync(
-        RequestContext<string, string> context, // context is first argument
-        IMyFavoriteService service) // second argument is injected by the pipeline's service scope
+        RequestContext<string, TextReport> context,  // first param must be the context
+        ITokenizer tokenizer)                         // resolved from context.Services on every request
     {
-        context.CancellationToken.ThrowIfCancellationRequested();
-        context.Response = service.DoSomethingWonderful(context.Request.ToLowerInvariant());
+        context.ThrowIfCanceled();
+        context.Data["tokens"] = tokenizer.Tokenize(context.Request);
+        return next(context);
+    }
+}
+```
+The dispatch is compiled to an expression tree once per registration — there's no per-invocation reflection cost.
 
-        // call next to pass the request context to the next delegate in the pipeline
-        return next(context); 
+#### Constructor injection (advanced — singleton lifetime, root provider)
+Constructor parameters after `next` are resolved from the **root** `IServiceProvider`, not the per-request scope. Plumber constructs the middleware **once** at registration and reuses that instance for every request — effectively a singleton, regardless of how the dependency is registered.
+
+> **Don't inject scoped or transient services via the constructor.** The captured instance is shared across all requests; you'll get stale data, thread-safety violations, or `ObjectDisposedException` from disposed dependencies. Use method injection on `InvokeAsync` instead.
+
+Constructor injection is appropriate when the dependency is genuinely a singleton — `ILogger<T>`, `TimeProvider`, an options instance bound from configuration:
+
+```csharp
+internal sealed class LoggingMiddleware(
+    RequestMiddleware<string, TextReport> next,
+    ILogger<LoggingMiddleware> logger)
+{
+    public async Task InvokeAsync(RequestContext<string, TextReport> context)
+    {
+        logger.LogInformation("processing {Id}", context.Id);
+        await next(context);
+        logger.LogInformation(
+            "completed {Id} in {Elapsed}ms",
+            context.Id,
+            context.Elapsed.TotalMilliseconds);
     }
 }
 ```
 
-Next, we register the middleware with the request handler with the `Use<T>` method.
+You can also pass extra constructor arguments at registration. Declare the constructor with `next` first, your extra parameters next, then any DI-resolved dependencies. `ActivatorUtilities` matches the supplied arguments by type before satisfying the rest from the root provider:
 ```csharp
-var request = "Hello, World!";
-
-var handler = RequestHandlerBuilder.Create<string, string>()
-    .Build()
-    .Use<ToLowerMiddleware>();
-
-var response = await handler.InvokeAsync(request);
-
-Assert.Equal(request.ToLowerInvariant(), response);
+handler.Use<RetryMiddleware>(3, TimeSpan.FromMilliseconds(200));
 ```
 
-### Builder Configuration Example
-Use the `IRequestHandlerBuilder.Configuration` property to add configuration providers, like `AddInMemory` or `AddJsonFile`.
-```csharp
-// default configuration providers are added in order
-// 1. optional appsettings.json
-// 2. optional appsettings.{env}.json
-// 3. environment variables
-// 4. if dev env, then user secrets
-// 5. command line args
-var builder = RequestHandlerBuilder.Create<string, string>(args);
+## Request lifecycle
 
-// extra configuration providers can be added
-builder.Configuration.AddInMemoryCollection(new Dictionary<string, string> { { "MyKey", "MyValue" } });
-
-var handler = builder.Build();
-```
-Provide your own set of configuration providers with the `Create` method.
+### Sharing data between middleware
+The `RequestContext.Data` dictionary lets middleware pass values down the chain without modifying the request or response:
 ```csharp
-// only user specified configuration providers are added
-var builder = RequestHandlerBuilder.Create<string, string>(args, (configuration, args) => 
+handler.Use((context, next) =>
 {
-    configuration.AddJsonFile("mysettings.json");
+    context.Data["user.id"] = AuthenticateAndExtractUserId(context.Request);
+    return next(context);
+});
+
+handler.Use((context, next) =>
+{
+    if (context.TryGetValue<string>("user.id", out var userId))
+    {
+        // ...
+    }
+    return next(context);
 });
 ```
+`TryGetValue<T>` returns `false` for missing keys, null values, and type mismatches — you only get `true` when there's a non-null `T` at the key. Note: zero/default values for value types still return `true` — the check is `value is T`, not `value != default`. If you stored `0` for an `int` key, the call returns `true` with `0`.
 
-### Builder Service Registration Example
-Use the `IRequestHandlerBuilder.Services` property to register services.
+The dictionary is allocated lazily on first access, so pipelines that don't share data pay no allocation cost.
+
+### Short-circuiting
+Don't call `next` and the rest of the pipeline doesn't run. This is the canonical pattern for validation, caching, and authorization:
 ```csharp
-var builder = RequestHandlerBuilder.Create<string, string>(args);
-
-builder.Services
-    .AddSingleton<IMyService, MyService>()
-    .AddSerilog(); // see https://github.com/marklauter/plumber.serilog.extensions
-
-var handler = builder.Build();
-```
-
-## Complete Application Example
-
-The following example shows how all the components fit together in a complete application:
-
-```csharp
-// Program.cs - a comprehensive example
-public class Program
+internal sealed class ValidationMiddleware(RequestMiddleware<string, TextReport> next)
 {
-    public static async Task Main(string[] args)
+    public Task InvokeAsync(RequestContext<string, TextReport> context)
     {
-        // 1. Build the pipeline
-        var builder = RequestHandlerBuilder
-            .Create<UserCommand, CommandResult>(args);
-        
-        // 2. Configure services
-        builder.Services
-            .AddSingleton<IUserRepository, UserRepository>()
-            .AddScoped<ICommandProcessor, CommandProcessor>()
-            .AddLogging(logging => {
-                logging.AddConsole();
-                logging.SetMinimumLevel(LogLevel.Information);
-            });
-            
-        // 3. Configure settings
-        builder.Configuration.AddJsonFile("appsettings.json", optional: true);
-        
-        // 4. Build the handler with middleware
-        var handler = builder.Build()
-            .Use<LoggingMiddleware>()
-            .Use<AuthenticationMiddleware>()
-            .Use<ValidationMiddleware>()
-            .Use<CommandProcessorMiddleware>()
-            .Use<ResponseFormattingMiddleware>();
-            
-        // 5. Process the request
-        var command = ParseCommandLine(args);
-        var result = await handler.InvokeAsync(command);
-        
-        // 6. Handle the result
-        if (result.Success)
+        context.ThrowIfCanceled();
+
+        if (string.IsNullOrWhiteSpace(context.Request))
         {
-            Console.WriteLine($"Command succeeded: {result.Message}");
-            return 0;
+            context.Response = new TextReport(
+                Original: context.Request ?? string.Empty,
+                Normalized: string.Empty,
+                Tokens: [],
+                WordCount: 0,
+                Elapsed: TimeSpan.Zero,
+                ErrorMessage: "input must be non-empty");
+            return Task.CompletedTask; // short-circuit: no next() call
         }
-        else
-        {
-            Console.Error.WriteLine($"Command failed: {result.Error}");
-            return 1;
-        }
+
+        return next(context);
     }
 }
 ```
+Middleware registered earlier than this still observes the short-circuit on the way out — code after their own `await next(context)` runs normally with `context.Response` already populated.
 
-## Sample AWS Lambda Projects
-- [Samples.Lambda.SQS](https://github.com/marklauter/Plumber/tree/main/Sample.AWSLambda.SQS)
-- [Samples.Lambda.SQS.Tests](https://github.com/marklauter/Plumber/tree/main/Sample.AWSLambda.SQS.Tests)
-- [Samples.Lambda.APIGateway](https://github.com/marklauter/Plumber/tree/main/Sample.AWSLambda.APIGateway)
-- [Samples.Lambda.APIGateway.Tests](https://github.com/marklauter/Plumber/tree/main/Sample.AWSLambda.APIGateway.Tests)
-
-## Advanced Techniques
-
-### Error Handling
-Handle errors in your middleware using try-catch blocks:
+### Pipelines with no response: `Unit`
+Some pipelines exist purely to do work — event handlers, queue consumers, notifications. `Unit` is Plumber's name for "no meaningful response":
 
 ```csharp
-public sealed class ErrorHandlingMiddleware(RequestMiddleware<TRequest, TResponse> next, ILogger<ErrorHandlingMiddleware> logger)
-{
-    public async Task InvokeAsync(RequestContext<TRequest, TResponse> context)
-    {
-        try
-        {
-            context.CancellationToken.ThrowIfCancellationRequested();
-            await next(context);
-        }
-        catch (OperationCanceledException)
-        {
-            // Handle timeout or cancellation
-            logger.LogWarning("Request {Id} was canceled", context.Id);
-            throw; // Re-throw to propagate cancellation
-        }
-        catch (Exception ex)
-        {
-            // Log the error
-            logger.LogError(ex, "Error processing request {Id}", context.Id);
-            
-            // For typed responses, you can set an error response
-            if (typeof(TResponse) == typeof(ApiResponse))
-            {
-                context.Response = (TResponse)(object)new ApiResponse { Success = false, Error = ex.Message };
-            }
-            else
-            {
-                throw; // Re-throw if we can't handle this response type
-            }
-        }
-    }
-}
+public readonly record struct Unit;
 ```
 
-### Request Timeout
-Customize request timeout handling:
-
+Use it as `TResponse`:
 ```csharp
-// Set a global timeout for all requests
-var handler = RequestHandlerBuilder.Create<TRequest, TResponse>()
-    .Build(TimeSpan.FromSeconds(30));
+using var handler = RequestHandlerBuilder
+    .Create<MessageBatch, Unit>()
+    .Build()
+    .Use<ValidateMiddleware>()
+    .Use<ProcessMiddleware>();
 
-// Or override the timeout for a specific request
+await handler.InvokeAsync(batch);
+```
+`Unit` is borrowed from F# (`unit`) and Haskell (`()`). It's more expressive than `object?` and keeps every handler typed as `RequestHandler<TRequest, TResponse>`, no separate void shape needed.
+
+### Timeouts
+Two timeout layers: the handler has a built-in timeout configured at `Build()`, and callers can layer a deadline of their own with a `CancellationToken`.
+
+Handler-wide:
+```csharp
+using var handler = builder.Build(TimeSpan.FromSeconds(30));
+```
+
+Caller-supplied:
+```csharp
 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 var response = await handler.InvokeAsync(request, cts.Token);
 ```
 
-### Middleware Data Sharing
-Plumber provides a built-in mechanism for sharing data between middleware components through the `RequestContext`'s `Data` dictionary and helper methods. This is useful for passing information or state from one middleware to another without having to modify the request or response objects.
+When the handler timeout elapses, `InvokeAsync` throws `TimeoutException`. When the caller's token cancels, it throws `OperationCanceledException`. If both fire, the caller wins. The parameterless `InvokeAsync(request)` overload skips the caller layer entirely — the handler timeout is the only cancellation signal in flight. The timer is driven by the registered `TimeProvider`, so `FakeTimeProvider` works in tests.
 
-#### The Data Dictionary
-Each `RequestContext<TRequest, TResponse>` instance includes a `Data` property, which is an `IDictionary<string, object?>` that can be used to store and retrieve arbitrary data throughout the pipeline execution. This dictionary is instantiated lazily when first accessed.
-
-#### Storing and Retrieving Data
-There are two main ways to work with shared data:
-
-1. **Direct dictionary access** - Using the `context.Data` property to add, modify, or retrieve values.
-2. **Type-safe helper method** - Using the `context.TryGetValue<T>()` method for safer type-casting when retrieving values.
-
+### Error handling
+Exceptions propagate through the pipeline by default. Wrap a try/catch at the outer edge if you want to convert or log them:
 ```csharp
-// First middleware in the pipeline
-handler.Use(async (context, next) =>
+internal sealed class ErrorBoundary<TReq, TRes>(
+    RequestMiddleware<TReq, TRes> next,
+    ILogger<ErrorBoundary<TReq, TRes>> logger)
+    where TReq : notnull
 {
-    // Add data for subsequent middleware
-    context.Data["SharedString"] = "MySharedData";
-    context.Data["SharedGuid"] = Guid.NewGuid();
-    
-    await next(context);
-});
-
-// Later middleware in the pipeline
-handler.Use(async (context, next) =>
-{
-    // Safely retrieve data with type checking
-    if (context.TryGetValue<string>("SharedString", out var sharedData))
+    public async Task InvokeAsync(RequestContext<TReq, TRes> context)
     {
-        // Use the shared data
-        Console.WriteLine($"Processing request with SharedString: {sharedData}");
-    }
-    
-    // Retrieve data with direct dictionary access (requires type casting)
-    if (context.TryGetValue<Guid>("SharedGuid", out var sharedGuid))
-    {
-        Console.WriteLine($"Processing request with SharedGuid: {sharedGuid}");
-    }
-    
-    await next(context);
-});
-```
-
-#### Common Use Cases for Data Sharing
-
-- **Authentication results** - Store user information after authentication for later authorization
-- **Validation results** - Share validation outcomes between validation and processing middleware
-- **Caching** - Store cached data to avoid redundant operations in subsequent middleware
-
-#### Best Practices
-
-1. **Use consistent keys** - Define constants for dictionary keys to avoid typos
-2. **Prefer TryGetValue<T>** - Use the context's type-safe TryGetValue<T> method when retrieving values
-3. **Document shared data** - Make it clear what data is being shared between middleware
-4. **Consider performance** - Don't store large objects in the Data dictionary unless necessary
-
-### Pipeline Short-Circuiting
-Short-circuit the pipeline by not calling `next`:
-
-```csharp
-public sealed class ValidationMiddleware(RequestMiddleware<UserRequest, ApiResponse> next)
-{
-    public Task InvokeAsync(RequestContext<UserRequest, ApiResponse> context)
-    {
-        context.CancellationToken.ThrowIfCancellationRequested();
-        
-        // Validate the request
-        if (string.IsNullOrEmpty(context.Request.Username))
+        try
         {
-            // Set response and don't call next - short-circuit the pipeline
-            context.Response = new ApiResponse
-            {
-                Success = false,
-                Error = "Username is required"
-            };
-            
-            // Return completed task without calling next
-            return Task.CompletedTask;
+            await next(context);
         }
-        
-        // Request is valid, continue the pipeline
-        return next(context);
-    }
-}
-```
-
-### Response Handling
-Effective response handling is a crucial aspect of using Plumber. There are several patterns and approaches you can use to set, transform, and return responses from your middleware pipeline.
-
-#### Setting the Response
-The `RequestContext<TRequest, TResponse>` object includes a `Response` property that can be set by any middleware in the pipeline:
-
-```csharp
-public sealed class ResponseMiddleware(RequestMiddleware<UserRequest, ApiResponse> next)
-{
-    public async Task InvokeAsync(RequestContext<UserRequest, ApiResponse> context)
-    {
-        context.CancellationToken.ThrowIfCancellationRequested();
-        
-        // Set an initial response
-        context.Response = new ApiResponse
+        catch (OperationCanceledException)
         {
-            Success = true,
-            Data = new UserData()
-        };
-        
-        // Continue the pipeline
-        await next(context);
-    }
-}
-```
-
-#### Multi-Stage Response Composition
-You can build a response in stages by having multiple middleware components contribute to it:
-
-```csharp
-// First middleware builds the base response
-handler.Use(async (context, next) =>
-{
-    // Initialize the response
-    context.Response = new CompositeResponse
-    {
-        RequestId = context.Id.ToString(),
-        Timestamp = context.Timestamp
-    };
-    
-    await next(context);
-});
-
-// Second middleware adds user data
-handler.Use(async (context, next) =>
-{
-    if (context.Response is CompositeResponse response)
-    {
-        // Add user data from the request
-        response.UserData = await GetUserDataAsync(context.Request.UserId);
-    }
-    
-    await next(context);
-});
-
-// Third middleware adds permission data
-handler.Use(async (context, next) =>
-{
-    if (context.Response is CompositeResponse response && response.UserData != null)
-    {
-        // Add permissions based on user data
-        response.Permissions = await GetPermissionsAsync(response.UserData.Role);
-    }
-    
-    await next(context);
-});
-```
-
-#### Response Transformation
-Middleware that executes after the response has been set can transform it:
-
-```csharp
-handler.Use(async (context, next) =>
-{
-    // Let other middleware set the initial response
-    await next(context);
-    
-    // Transform the response after the pipeline has executed
-    if (context.Response != null)
-    {
-        context.Response = new EnhancedApiResponse
-        {
-            OriginalResponse = context.Response,
-            ProcessingTime = context.Elapsed,
-            ServerInfo = Environment.MachineName
-        };
-    }
-});
-```
-
-### Using Void Response Type
-Many pipeline scenarios, especially in event handling, don't require returning a response. For these cases, Plumber provides the `Void` type, which can be used as the `TResponse` type parameter to indicate that no response is expected.
-
-#### What is the Void Type?
-The `Void` type is a simple readonly record struct:
-
-```csharp
-public readonly record struct Void;
-```
-
-It serves as a more expressive alternative to using `object?` or another arbitrary type when no response is needed.
-
-#### Creating a Void Pipeline
-Here's how to create a pipeline that doesn't return a response:
-
-```csharp
-// Create a pipeline that processes messages but doesn't return a response
-var handler = RequestHandlerBuilder.Create<SQSEvent, Void>(args)
-    .Build()
-    .Use<LoggingMiddleware>()
-    .Use<MessageProcessingMiddleware>();
-
-// Invoke the pipeline - we don't care about the return value
-var sqsEvent = new SQSEvent { /* ... */ };
-await handler.InvokeAsync(sqsEvent);
-```
-
-#### Real-World Void Pipeline Example
-Here's a more complete example showing how to use the `Void` type in an AWS Lambda SQS event handler:
-
-```csharp
-public class Function
-{
-    private readonly IRequestHandler<SQSEvent, Void> handler;
-
-    public Function()
-    {
-        var builder = RequestHandlerBuilder.Create<SQSEvent, Void>();
-        
-        builder.Services
-            .AddSingleton<IUserRepository, UserRepository>()
-            .AddScoped<ICommandProcessor, CommandProcessor>()
-            .AddLogging(logging => {
-                logging.AddConsole();
-                logging.SetMinimumLevel(LogLevel.Information);
-            });
-            
-        handler = builder.Build()
-            .Use<LoggingMiddleware>()
-            .Use<MessageValidationMiddleware>()
-            .Use<MessageProcessingMiddleware>();
-    }
-
-    public async Task FunctionHandler(SQSEvent sqsEvent, ILambdaContext context)
-    {
-        // We don't need to check the response since it's Void
-        await handler.InvokeAsync(sqsEvent, context.CancellationToken);
-    }
-}
-
-// Example middleware for processing SQS messages
-public sealed class MessageProcessingMiddleware(RequestMiddleware<SQSEvent, Void> next)
-{
-    public async Task InvokeAsync(RequestContext<SQSEvent, Void> context)
-    {
-        context.CancellationToken.ThrowIfCancellationRequested();
-        
-        foreach (var record in context.Request.Records)
-        {
-            await ProcessMessageAsync(record.Body);
+            logger.LogWarning("request {Id} was cancelled", context.Id);
+            throw;
         }
-        
-        // We don't need to set a response since TResponse is Void
-        // Just continue the pipeline
-        await next(context);
-    }
-}
-```
-
-#### When to Use Void
-The `Void` response type is particularly useful in these scenarios:
-
-1. **Event processors** - SQS, SNS, EventBridge, and other event-driven handlers
-2. **Queue consumers** - RabbitMQ, Kafka, and other message queue processors
-3. **Notification handlers** - Push notification senders, email dispatchers
-4. **Background tasks** - File processors, batch jobs, scheduled tasks
-5. **Write-only operations** - Database writers, logging services
-
-#### Benefits of Using Void
-
-1. **Intent clarity** - Using `Void` explicitly communicates that no response is expected
-2. **Type safety** - More type-safe than using `object?` or other placeholder types
-3. **Simplified middleware** - Middleware doesn't need to worry about setting a response
-4. **Self-documenting code** - Makes it clear to other developers that the pipeline doesn't return a value
-
-### Middleware Method Injection
-In addition to constructor injection, Plumber supports dependency injection directly into middleware's `InvokeAsync` method parameters. This provides more flexibility when you need a dependency only for a specific method rather than for the entire middleware class.
-
-```csharp
-// 1. Register your services with the builder
-var builder = RequestHandlerBuilder
-    .Create<OrderRequest, OrderResponse>();
-
-// Register services that will be injected
-builder.Services
-    .AddSingleton<IOrderValidator, OrderValidator>()
-    .AddScoped<IOrderProcessor, OrderProcessor>()
-    .AddTransient<INotificationService, EmailNotificationService>();
-
-// 2. Create middleware that uses method injection
-public sealed class OrderProcessingMiddleware(RequestMiddleware<OrderRequest, OrderResponse> next)
-{
-    public async Task InvokeAsync(
-        RequestContext<OrderRequest, OrderResponse> context, // Must be first parameter
-        IOrderValidator validator,       // Will be injected from service provider
-        IOrderProcessor processor,       // Will be injected from service provider
-        INotificationService notifier,   // Will be injected from service provider
-        ILogger<OrderProcessingMiddleware> logger) // Even framework services can be injected
-    {
-        // Ensure the pipeline doesn't proceed if cancellation is requested
-        context.CancellationToken.ThrowIfCancellationRequested();
-        
-        // Use the injected validator service
-        var validationResult = validator.Validate(context.Request);
-        if (!validationResult.IsValid)
+        catch (TimeoutException)
         {
-            logger.LogWarning("Order validation failed: {Errors}", 
-                string.Join(", ", validationResult.Errors));
-                
-            context.Response = new OrderResponse
-            {
-                Success = false,
-                ErrorMessage = "Validation failed: " + validationResult.Errors.First()
-            };
-            
-            // Short-circuit the pipeline - don't call next
-            return;
+            logger.LogWarning("request {Id} timed out", context.Id);
+            throw;
         }
-        
-        // Use the injected processor service
-        var orderResult = await processor.ProcessOrderAsync(
-            context.Request, 
-            context.CancellationToken);
-            
-        // Create the response
-        context.Response = new OrderResponse
+        catch (Exception ex)
         {
-            Success = true,
-            OrderId = orderResult.OrderId,
-            EstimatedDelivery = orderResult.EstimatedDelivery
-        };
-        
-        // Continue the middleware pipeline
-        await next(context);
-        
-        // After next completes, use another injected service for post-processing
-        if (context.Response.Success)
-        {
-            await notifier.SendOrderConfirmationAsync(
-                context.Request.CustomerEmail,
-                context.Response.OrderId,
-                context.CancellationToken);
-                
-            logger.LogInformation("Order {OrderId} processed successfully and confirmation sent", 
-                context.Response.OrderId);
+            logger.LogError(ex, "request {Id} failed", context.Id);
+            throw;
         }
     }
 }
+```
+Register the boundary first if you want it to see every exception in the pipeline. The class is generic, so spell out the closed generic when you register it:
+```csharp
+handler.Use<ErrorBoundary<MyRequest, MyResponse>>();
+```
 
-// 3. Build the handler and add the middleware
-var handler = builder.Build()
-    .Use<OrderProcessingMiddleware>();
+## Testing your pipeline (preview)
 
-// 4. Invoke the pipeline
-var request = new OrderRequest
+> **Preview — `Plumber.Testing` is in the source tree but is not yet published to NuGet.** Once published, this becomes the recommended way to test pipelines; until then, take a project reference to `Plumber.Testing` directly.
+
+`Plumber.Testing` ships a `PlumberApplicationFactory<TRequest, TResponse>` modeled on ASP.NET Core's `WebApplicationFactory<TEntryPoint>`. It builds your real pipeline once per test, lets you swap services or configuration, and disposes everything when the test ends.
+
+```csharp
+using Plumber.Testing;
+
+public sealed class PipelineTests
 {
-    CustomerEmail = "customer@example.com",
-    Items = new[] { new OrderItem("Product1", 2), new OrderItem("Product2", 1) }
-};
+    [Fact]
+    public async Task ValidInputProducesReportAsync()
+    {
+        using var factory = new PlumberApplicationFactory<string, TextReport>(
+            Pipeline.CreateBuilder,
+            Pipeline.Configure);
+
+        var report = await factory.InvokeAsync("Hello, World!");
+
+        Assert.NotNull(report);
+        Assert.Equal("hello, world!", report.Normalized);
+    }
+
+    [Fact]
+    public async Task StubTokenizerAsync()
+    {
+        using var factory = new PlumberApplicationFactory<string, TextReport>(
+                Pipeline.CreateBuilder,
+                Pipeline.Configure)
+            .WithServices(services =>
+                services.AddSingleton<ITokenizer>(new StubTokenizer(["a", "b", "c"])));
+
+        var report = await factory.InvokeAsync("anything");
+
+        Assert.Equal(3, report!.WordCount);
+    }
+}
+```
+
+Customization hooks:
+
+| Method | What it does |
+|---|---|
+| `WithBuilder(Action<RequestHandlerBuilder<TReq,TRes>>)` | Escape hatch — full access to the builder |
+| `WithServices(Action<IServiceCollection>)` | Swap or add services |
+| `WithServices(Action<IServiceCollection, IConfiguration>)` | Same, with `IConfiguration` available |
+| `WithLogging(Action<ILoggingBuilder>)` | Adjust logging |
+| `WithConfiguration(Action<IConfigurationBuilder>)` | Add config sources |
+| `WithInMemorySettings(IEnumerable<KeyValuePair<string, string?>>)` | Seed config keys |
+
+`CreateHandler()` is idempotent — call it as many times as you like; the same handler comes back. Once it's been called, builder hooks are frozen; trying to add more throws.
+
+## Sample app
+[`Sample.Cli`](Sample.Cli) is a complete, working version of the same shape. It's a small CLI that reads stdin (or argv), runs it through validation → normalization → tokenization → reporting, and prints the result. The earlier README snippets are simplified for teaching — the sample's middleware add logging and use shared `DataKeys` constants for the `context.Data` keys. It demonstrates:
+
+- The `CreateBuilder` + `Configure` split
+- Configuration via `ConfigureConfiguration` and bound configuration POCOs
+- DI-registered services (`ITokenizer`)
+- Method injection on class middleware
+- Structured logging via `ConfigureLogging`
+- A timing wrapper that uses `record with` to enrich the response
+
+[`Sample.Cli.Tests`](Sample.Cli.Tests) shows both direct testing of the built pipeline and the `PlumberApplicationFactory` pattern.
+
+## Advanced
+
+### Hosting inside an existing DI container
+If your application already has a built `IServiceProvider` — an ASP.NET Core host, a generic host, or any other container — you can build a Plumber handler that **reuses** that provider instead of creating its own:
+```csharp
+using var handler = RequestHandler
+    .Create<MyRequest, MyResponse>(serviceProvider)
+    .Use<MyMiddleware1>()
+    .Use<MyMiddleware2>();
 
 var response = await handler.InvokeAsync(request);
 ```
+The handler does **not** take ownership: when it's disposed, your provider is left untouched. The provider must support `IServiceScopeFactory` (any provider built from `ServiceCollection.BuildServiceProvider` or a host already does) — Plumber needs it to create the per-request scope.
 
-#### Key Points About Method Injection
+If a `TimeProvider` is registered in the provider, it's used for `Elapsed` and timeouts; otherwise `TimeProvider.System` is used.
 
-- The `RequestContext<TRequest, TResponse>` must be the first parameter of the `InvokeAsync` method
-- Services are resolved from the scoped service provider created for each request
-- Method injection allows you to request only the services you need for a specific middleware method
-- This approach is useful when:
-  - A dependency is only needed for one method
-  - You want to avoid storing injected services as fields
-  - You need to inject services with scoped lifetime
-- You can combine constructor and method injection in the same middleware class
+This is the path to take when you want a Plumber pipeline inside an ASP.NET Core minimal API, an existing console app with `IHostBuilder`, or any other context that already owns a DI root.
 
-## Frequently Asked Questions (FAQ)
-
-### General Questions
-
-**Q: How does Plumber compare to ASP.NET Core middleware?**  
-A: Plumber is inspired by ASP.NET Core's middleware pattern but designed for applications without a web host. It follows similar principles but is tailored for console applications, AWS Lambda functions, queue processors, and other non-web scenarios.
-
-**Q: Can I use Plumber with ASP.NET Core?**  
-A: Yes, but it's generally unnecessary as ASP.NET Core already has its own middleware pipeline. However, you could use Plumber for specific processing pipelines within an ASP.NET Core application where you need separate pipeline management.
-
-**Q: Is Plumber thread-safe?**  
-A: Yes, the pipeline is thread-safe and can handle concurrent requests. Each request gets its own scope for scoped services, similar to how ASP.NET Core handles request scoping.
-
-### Implementation Questions
-
-**Q: How do I handle exceptions in my pipeline?**  
-A: Exceptions propagate through the pipeline by default. Add error handling middleware at the beginning of your pipeline to catch and process exceptions. See the [Error Handling](#error-handling) section for an example.
-
-**Q: Can I have conditional middleware?**  
-A: Yes, implement middleware that checks conditions and either continues the pipeline or short-circuits based on your logic. See the [Pipeline Short-Circuiting](#pipeline-short-circuiting) section for an example.
-
-**Q: How do I pass data between middleware components?**  
-A: Use the `context.Data` dictionary to store and retrieve shared data between middleware components. See the [Middleware Data Sharing](#middleware-data-sharing) section for an example.
-
-**Q: Can I inject services into my middleware?**  
-A: Yes, through two mechanisms:
-1. Constructor injection - services can be injected into the middleware class constructor after the required `next` parameter
-2. Method injection - services can be injected into the `InvokeAsync` method parameters after the required context parameter
-
-**Q: How do I handle requests that don't need a response?**  
-A: For pipelines that don't need to return a response (like SQS event handlers), you can use the `Void` type as the generic argument for `TResponse`:
+### Multiple `Build()` calls
+A builder is a recipe; each `Build()` produces an independent handler with its own service provider and configuration root. Use this to spin up a fresh handler per test, or to vary the timeout per build:
 ```csharp
-var handler = RequestHandlerBuilder.Create<MyRequest, Void>().Build();
+var builder = Pipeline.CreateBuilder(args);
+using var fast = builder.Build(TimeSpan.FromSeconds(1));
+using var slow = builder.Build(TimeSpan.FromSeconds(60));
+```
+Both handlers share the same recipe but are independent at runtime.
+
+### Custom `TimeProvider` for tests
+The handler resolves `TimeProvider` from the service collection. Register your own to control elapsed time and timer firing in tests:
+```csharp
+builder.ConfigureServices((services, _) =>
+    services.AddSingleton<TimeProvider>(new FakeTimeProvider()));
+```
+`FakeTimeProvider` lives in `Microsoft.Extensions.TimeProvider.Testing`.
+
+## FAQ
+
+**How does Plumber compare to ASP.NET Core middleware?**
+Same shape, different host. Plumber's `RequestContext<TRequest, TResponse>` is the typed analogue of `HttpContext`; the `Use` overloads, the onion execution model, and the per-request DI scope all behave the same way.
+
+**Can I use Plumber alongside ASP.NET Core?**
+Yes — see [Hosting inside an existing DI container](#hosting-inside-an-existing-di-container). It's useful when you have a non-HTTP pipeline (a background worker, a queue handler) that should share the host's services.
+
+**My class middleware doesn't run — what's wrong?**
+Common causes: an earlier middleware short-circuited (didn't call `next`), an exception was thrown earlier in the pipeline, or your class signature doesn't match the convention. Plumber expects `RequestMiddleware<TReq, TRes> next` as the first constructor parameter (it's passed positionally first) and requires `RequestContext<TReq, TRes>` as the first `InvokeAsync` parameter; the `InvokeAsync` method must be `public` and return a `Task`.
+
+**Why isn't my appsettings.json loaded?**
+v3 doesn't auto-load configuration. Call `AddJsonFile("appsettings.json", optional: true)` (or `AddDefaultConfigurationSources()` for the conventional set) explicitly. See [Configuration sources](#configuration-sources).
+
+**Can I add middleware after the pipeline has been invoked?**
+No. The first call to `InvokeAsync` builds the pipeline; further `Use` calls throw `InvalidOperationException`. Configure all your middleware before your first invocation.
+
+## Migration v2.x → v3.x
+
+v3 reshapes the public API around concrete types and explicit configuration. The migrations below cover the common cases.
+
+### 1. Interfaces removed
+Both `IRequestHandlerBuilder<TRequest, TResponse>` and `IRequestHandler<TRequest, TResponse>` are gone. Type your variables and parameters with the concrete classes instead.
+```csharp
+// v2
+IRequestHandlerBuilder<MyReq, MyRes> builder = RequestHandlerBuilder.Create<MyReq, MyRes>();
+IRequestHandler<MyReq, MyRes> handler = builder.Build();
+```
+```csharp
+// v3
+RequestHandlerBuilder<MyReq, MyRes> builder = RequestHandlerBuilder.Create<MyReq, MyRes>();
+RequestHandler<MyReq, MyRes> handler = builder.Build();
 ```
 
-### Performance and Architecture
+### 2. `Void` → `Unit`
+The no-response type was renamed:
+```csharp
+// v2
+RequestHandlerBuilder.Create<SqsEvent, Void>();
+```
+```csharp
+// v3
+RequestHandlerBuilder.Create<SqsEvent, Unit>();
+```
 
-**Q: Is there a performance overhead compared to direct code?**  
-A: There is a minimal overhead from the pipeline infrastructure, but it's generally negligible compared to the benefits of modular, maintainable code with proper separation of concerns.
+### 3. Configuration is no longer auto-loaded
+v2 implicitly added `appsettings.json`, environment variables, and user secrets. v3 doesn't:
+```csharp
+// v2 — implicit
+var builder = RequestHandlerBuilder.Create<TReq, TRes>(args);
+```
+```csharp
+// v3 — explicit; either pick sources individually
+var builder = RequestHandlerBuilder.Create<TReq, TRes>(args)
+    .AddJsonFile("appsettings.json", optional: true)
+    .AddEnvironmentVariables();
 
-**Q: What's the execution order of middleware components?**  
-A: Middleware components execute in the order they are added to the pipeline using the `Use` methods. However, the pipeline is built in reverse order (last-in-first-out), which means that post-processing code (after the `next` call) executes in reverse order.
+// or opt back into the conventional set
+var builder = RequestHandlerBuilder.Create<TReq, TRes>(args)
+    .AddDefaultConfigurationSources();
+```
+`AddDefaultConfigurationSources()` does **not** include user secrets — call `AddUserSecrets<T>()` explicitly.
 
-**Q: How does dependency injection work with Plumber?**  
-A: Plumber uses Microsoft's standard dependency injection container. Services are registered with the `Services` property on the builder. Scoped services are created per request, and the service scope is passed to the request context.
+### 4. `Services` and `Configuration` properties → callbacks
+The builder no longer exposes mutable `Services` and `Configuration` properties. Use the `Configure*` callbacks; they run at `Build()` time, with the built `IConfiguration` available where appropriate.
+```csharp
+// v2
+var builder = RequestHandlerBuilder.Create<TReq, TRes>();
+builder.Services.AddSingleton<IMyService, MyService>();
+builder.Configuration.AddInMemoryCollection(...);
+```
+```csharp
+// v3
+var builder = RequestHandlerBuilder.Create<TReq, TRes>()
+    .AddInMemoryCollection(...)
+    .ConfigureServices((services, configuration) =>
+    {
+        services.AddSingleton<IMyService, MyService>();
+    });
+```
 
-**Q: Can I register middleware with different lifetimes?**  
-A: Middleware instances are created once when the pipeline is built, so they effectively have a singleton lifetime. However, they can use scoped or transient services through the request context's service provider.
+### 5. Scoped or transient services in middleware ctors → method injection
+v2 let you inject anything into a middleware constructor. v3 still does, but the constructor parameters are resolved from the **root** provider, and the middleware itself is constructed **once** at registration time. Constructor injection of scoped or transient services is now a footgun — use method injection on `InvokeAsync` instead.
+```csharp
+// v2 — works, but the DbContext is captured in the singleton middleware
+internal sealed class SaveMiddleware(
+    RequestMiddleware<TReq, TRes> next,
+    AppDbContext db)
+{
+    public async Task InvokeAsync(RequestContext<TReq, TRes> context)
+    {
+        await db.SaveAsync(context.Request);
+        await next(context);
+    }
+}
+```
+```csharp
+// v3 — DbContext is resolved fresh from the per-request scope
+internal sealed class SaveMiddleware(RequestMiddleware<TReq, TRes> next)
+{
+    public async Task InvokeAsync(
+        RequestContext<TReq, TRes> context,
+        AppDbContext db)
+    {
+        await db.SaveAsync(context.Request);
+        await next(context);
+    }
+}
+```
 
-### Troubleshooting
+### 6. Timeout exceptions are distinguishable
+v2 surfaced both handler timeouts and caller cancellation as `OperationCanceledException`. v3 throws `TimeoutException` for handler timeouts and `OperationCanceledException` for caller cancellation. Update any catch clauses that distinguished them by message:
+```csharp
+// v2
+catch (OperationCanceledException ex)
+{
+    if (ex.Message.Contains("timeout")) { /* ... */ }
+}
+```
+```csharp
+// v3
+catch (TimeoutException) { /* handler timeout */ }
+catch (OperationCanceledException) { /* caller cancellation */ }
+```
 
-**Q: Why is my middleware not executing?**  
-A: Common reasons include:
-- Middleware is registered but the pipeline is short-circuited earlier by another middleware not calling `next`
-- An exception is thrown earlier in the pipeline
-- Your middleware class doesn't meet the required pattern (check constructor and method signatures)
-
-**Q: How do I debug my pipeline?**  
-A: Add logging middleware at the beginning of your pipeline to log request details and at the end to log response details. You can also use `context.Data` to store diagnostic information throughout the pipeline.
-
-**Q: Configuration is not loading, what should I check?**  
-A: Verify that:
-- `appsettings.json` is copied to the output directory
-- Environment variables follow naming conventions
-- Configuration providers are added in the correct order (most general to most specific)
-- File paths are correct for any custom configuration files
+### 7. Handler is `IDisposable`
+Always wrap the handler in `using`. The handler owns the service provider it built — leaking it leaks the provider, any file watchers the configuration registered (e.g. `AddJsonFile(..., reloadOnChange: true)`), and any `IDisposable` services.
+```csharp
+// v2
+var handler = builder.Build();
+var response = await handler.InvokeAsync(request);
+```
+```csharp
+// v3
+using var handler = builder.Build();
+var response = await handler.InvokeAsync(request);
+```
+The exception is host-mode handlers built via `RequestHandler.Create(IServiceProvider)` — those don't own the provider and don't dispose it; the wrapping `using` only marks the handler itself disposed.

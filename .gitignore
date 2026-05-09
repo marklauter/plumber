@@ -400,3 +400,6 @@ FodyWeavers.xsd
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# local scratch
+.tmp/

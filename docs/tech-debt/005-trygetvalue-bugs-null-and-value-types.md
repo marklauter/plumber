@@ -2,7 +2,7 @@
 
 - **Area:** RequestContext (data dictionary)
 - **Priority:** Medium
-- **Status:** Open
+- **Status:** Resolved
 
 ## Problem
 The `TryGetValue<T>` method has two bugs:
@@ -14,8 +14,23 @@ The `TryGetValue<T>` method has two bugs:
 ## Suggested Fix
 Rewrite as a standard method body using `value is T typed` pattern matching.
 
+## Resolution
+Rewritten using the `value is T typed` pattern. Behavior now:
+- Missing key → `false`, `item = default(T)`
+- Stored null → `false` (consistent with `[NotNullWhen(true)]`)
+- Type mismatch → `false`, no throw (was `InvalidCastException`)
+- Match → `true`, `item` is the typed value
+
+XML docs cleaned up inline (removed misleading `<remarks>`, filled in `<param name="item">`, fixed `<returns>`).
+
+Regression tests added in `Plumber.Tests/PlumberTests.cs`:
+- `TryGetValueFalseWhenValueTypeKeyNotFound` — pins Bug 1.
+- `TryGetValueTrueForStoredValueType` — round-trip for value types.
+- `TryGetValueFalseWhenStoredValueIsNull` — pins null-value semantics.
+- `TryGetValueFalseOnTypeMismatchDoesNotThrow` — pins no-throw contract.
+
 ## Code References
-- `Plumber/RequestContext{TRequest, TResponse}.cs:39-40` — `TryGetValue<T>` implementation
+- `Plumber/RequestContext{TRequest, TResponse}.cs` — `TryGetValue<T>` implementation
 
 ## Notes
 None.

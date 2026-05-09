@@ -7,7 +7,7 @@ internal sealed class DependencyInjectedMiddleware(RequestMiddleware<string, str
 {
     public Task InvokeAsync(RequestContext<string, string> context, IInjected injected)
     {
-        context.CancellationToken.ThrowIfCancellationRequested();
+        context.ThrowIfCanceled();
         context.Response = context.Request.ToLowerInvariant() + " - " + injected.Value;
         return next(context);
     }

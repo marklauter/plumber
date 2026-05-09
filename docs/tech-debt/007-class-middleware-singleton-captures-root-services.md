@@ -2,17 +2,16 @@
 
 - **Area:** RequestHandler / MiddlewareFactory (middleware lifecycle)
 - **Priority:** Medium
-- **Status:** Open
+- **Status:** Resolved — working as designed; documented
 
-## Problem
-`Use<TMiddleware>()` instantiates middleware via `ActivatorUtilities.CreateInstance` at registration time using the root `ServiceProvider`. Constructor-injected scoped services (e.g., `DbContext`) will receive root-level instances that are shared across all requests, causing stale data, concurrency issues, or disposed context errors. Services injected into `InvokeAsync` parameters correctly use the scoped `context.Services`, but constructor injection does not.
+## Resolution
+This is the intended design, mirroring ASP.NET Core's convention-based middleware: a class middleware instance has effectively a singleton lifetime, and scoped/transient services are consumed via `InvokeAsync` parameter injection (resolved per-request from `context.Services`). The README covers this in *Middleware Method Injection* and the FAQ entry on middleware lifetimes.
 
-## Suggested Fix
-Document this behavior clearly. Consider per-request middleware instantiation or an `IMiddlewareFactory` pattern.
+The discoverability gap — a developer ctor-injecting a `DbContext` and silently getting singleton behavior — is addressed by `<remarks>` on both `Use<TMiddleware>` overloads in `Plumber/RequestHandler{TRequest, TResponse}.cs`, which spell out the singleton lifetime, the root-provider resolution of ctor params, and the InvokeAsync-parameter escape hatch.
 
 ## Code References
-- `Plumber/RequestHandler{TRequest, TResponse}.cs:143-146` — `ActivatorUtilities.CreateInstance` uses root `Services`
-- `Plumber/RequestHandler{TRequest, TResponse}.cs:167-178` — `InvokeAsync` injection correctly uses scoped provider
+- `Plumber/RequestHandler{TRequest, TResponse}.cs` — `Use<TMiddleware>` overloads carry the lifetime contract in XML docs
+- `Plumber/RequestHandler{TRequest, TResponse}.cs` — `InvokeAsync` parameter injection resolves from the per-request scope (`context.Services`)
 
 ## Notes
-None.
+A future enhancement could add a registration-time guard that throws when a ctor parameter type is registered as `Scoped` in the DI container, converting the footgun into a loud error. Not pursued here because it would require reflecting over the ctor and probing `IServiceProviderIsService`/descriptor lifetimes at `Use<T>()` time.
