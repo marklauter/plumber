@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Reflection;
 
 namespace Plumber;
 
@@ -19,9 +18,10 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
     private readonly IConfigurationBuilder configurationBuilder = new ConfigurationBuilder()
         .SetBasePath(Directory.GetCurrentDirectory());
     private readonly List<Action<IConfigurationBuilder, string[]>> configureConfiguration = [];
-    private readonly List<Action<IConfiguration, IServiceCollection>> configureServices = [];
-    private readonly List<Action<IConfiguration, ILoggingBuilder>> configureLogging = [];
+    private readonly List<Action<IServiceCollection, IConfiguration>> configureServices = [];
+    private readonly List<Action<ILoggingBuilder>> configureLogging = [];
 
+    // internal prevents unintended construction
     internal RequestHandlerBuilder(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
@@ -29,9 +29,10 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
     }
 
     /// <summary>
-    /// Adds a configuration source authoring callback. Runs in registration order before the configuration root is built.
+    /// Adds a configuration source authoring callback. Runs against the per-Build configuration builder during <see cref="Build(TimeSpan)"/>, before <c>AddCommandLine</c> is appended.
     /// </summary>
-    /// <exception cref="InvalidOperationException">Thrown when the builder was created with a pre-built <see cref="IConfiguration"/>.</exception>
+    /// <param name="configure">Callback receiving the per-Build <see cref="IConfigurationBuilder"/> and the original <c>args</c> array.</param>
+    /// <returns>The builder for chaining.</returns>
     public RequestHandlerBuilder<TRequest, TResponse> ConfigureConfiguration(Action<IConfigurationBuilder, string[]> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
@@ -40,9 +41,11 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
     }
 
     /// <summary>
-    /// Adds a service registration callback. Runs in registration order with the built <see cref="IConfiguration"/>.
+    /// Adds a service registration callback. Runs during <see cref="Build(TimeSpan)"/> with the built <see cref="IConfiguration"/> available for binding options or selecting registrations.
     /// </summary>
-    public RequestHandlerBuilder<TRequest, TResponse> ConfigureServices(Action<IConfiguration, IServiceCollection> configure)
+    /// <param name="configure">Callback receiving the <see cref="IServiceCollection"/> and the built <see cref="IConfiguration"/>.</param>
+    /// <returns>The builder for chaining.</returns>
+    public RequestHandlerBuilder<TRequest, TResponse> ConfigureServices(Action<IServiceCollection, IConfiguration> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
         configureServices.Add(configure);
@@ -50,9 +53,11 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
     }
 
     /// <summary>
-    /// Adds a logging configuration callback. Runs inside <see cref="LoggingServiceCollectionExtensions.AddLogging(IServiceCollection, Action{ILoggingBuilder})"/>.
+    /// Adds a logging configuration callback. Runs inside <see cref="LoggingServiceCollectionExtensions.AddLogging(IServiceCollection, Action{ILoggingBuilder})"/> during <see cref="Build(TimeSpan)"/>. Logging infrastructure is only registered when at least one logging callback is present.
     /// </summary>
-    public RequestHandlerBuilder<TRequest, TResponse> ConfigureLogging(Action<IConfiguration, ILoggingBuilder> configure)
+    /// <param name="configure">Callback receiving the <see cref="ILoggingBuilder"/>.</param>
+    /// <returns>The builder for chaining.</returns>
+    public RequestHandlerBuilder<TRequest, TResponse> ConfigureLogging(Action<ILoggingBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
         configureLogging.Add(configure);
@@ -60,7 +65,8 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
     }
 
     /// <summary>
-    /// Call Build to create an instance of <see cref="RequestHandler{TRequest, TResponse}"/>.
+    /// Builds a <see cref="RequestHandler{TRequest, TResponse}"/> from the current recipe.
+    /// May be called multiple times — each call produces an independent handler with its own service provider and configuration root, both disposed when the handler is disposed.
     /// </summary>
     /// <returns><see cref="RequestHandler{TRequest, TResponse}"/></returns>
     public RequestHandler<TRequest, TResponse> Build() =>
@@ -204,46 +210,78 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
     }
 
     /// <summary>
-    /// Call Build to create an instance of <see cref="RequestHandler{TRequest, TResponse}"/> with a custom request timeout.
+    /// Builds a <see cref="RequestHandler{TRequest, TResponse}"/> from the current recipe with a custom request timeout.
+    /// May be called multiple times — each call produces an independent handler with its own service provider and configuration root.
     /// </summary>
     /// <param name="timeout">The timeout applied to each request invocation.</param>
     /// <returns><see cref="RequestHandler{TRequest, TResponse}"/></returns>
     public RequestHandler<TRequest, TResponse> Build(TimeSpan timeout)
     {
-        foreach (var c in configureConfiguration)
-        {
-            c(configurationBuilder, args);
-        }
-
+        var perBuild = CreatePerBuildConfigurationBuilder();
+        ApplyConfigurationCallbacks(perBuild);
         // command-line args last so they take precedence over user-supplied sources
-        _ = configurationBuilder.AddCommandLine(args);
+        _ = perBuild.AddCommandLine(args);
 
-        var configuration = configurationBuilder.Build();
-
-        var services = new ServiceCollection();
+        var configuration = perBuild.Build();
+        var serviceCollection = new ServiceCollection();
         // factory registration so DI captures the IConfigurationRoot for disposal
-        _ = services.AddSingleton<IConfiguration>(_ => configuration);
-        ApplyServiceAndLoggingCallbacks(configuration, services);
+        _ = serviceCollection.AddSingleton<IConfiguration>(_ => configuration);
 
-        return new RequestHandler<TRequest, TResponse>(services, timeout);
+        ApplyLoggingCallbacks(serviceCollection);
+        ApplyServiceCallbacks(serviceCollection, configuration);
+
+        return new RequestHandler<TRequest, TResponse>(serviceCollection, timeout);
     }
 
-    private void ApplyServiceAndLoggingCallbacks(IConfiguration configuration, IServiceCollection services)
+    // Shallow-copies sources and properties from the shared configurationBuilder into a fresh
+    // ConfigurationBuilder so that callbacks and AddCommandLine don't accumulate on the shared
+    // field across multiple Build() calls. Source instances are reused; each Build still produces
+    // a distinct IConfigurationRoot with its own provider instances.
+    private ConfigurationBuilder CreatePerBuildConfigurationBuilder()
     {
-        if (configureLogging.Count > 0)
+        var perBuild = new ConfigurationBuilder();
+        foreach (var src in configurationBuilder.Sources)
         {
-            _ = services.AddLogging(b =>
-            {
-                foreach (var c in configureLogging)
-                {
-                    c(configuration, b);
-                }
-            });
+            perBuild.Sources.Add(src);
         }
 
+        foreach (var kv in configurationBuilder.Properties)
+        {
+            perBuild.Properties[kv.Key] = kv.Value;
+        }
+
+        return perBuild;
+    }
+
+    private void ApplyConfigurationCallbacks(IConfigurationBuilder perBuild)
+    {
+        foreach (var c in configureConfiguration)
+        {
+            c(perBuild, args);
+        }
+    }
+
+    private void ApplyLoggingCallbacks(IServiceCollection serviceCollection)
+    {
+        if (configureLogging.Count == 0)
+        {
+            return;
+        }
+
+        _ = serviceCollection.AddLogging(b =>
+        {
+            foreach (var c in configureLogging)
+            {
+                c(b);
+            }
+        });
+    }
+
+    private void ApplyServiceCallbacks(IServiceCollection serviceCollection, IConfiguration configuration)
+    {
         foreach (var c in configureServices)
         {
-            c(configuration, services);
+            c(serviceCollection, configuration);
         }
     }
 }
