@@ -330,6 +330,92 @@ public sealed class PlumberTests
         Assert.Equal("request - injected", response);
     }
 
+    private sealed class ScopedProbeInjectedMiddleware(RequestMiddleware<string, string> next)
+    {
+        public Task InvokeAsync(RequestContext<string, string> context, ScopedProbe probe)
+        {
+            context.Response = probe.ScopeId.ToString();
+            return next(context);
+        }
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    public async Task ScopedServiceInjectedAsInvokeAsyncParamGetsFreshInstancePerInvocationAsync()
+    {
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .ConfigureServices((services, _) => services.AddScoped<ScopedProbe>())
+            .Build()
+            .Use<ScopedProbeInjectedMiddleware>();
+
+        var first = await handler.InvokeAsync("a", TestContext.Current.CancellationToken);
+        var second = await handler.InvokeAsync("b", TestContext.Current.CancellationToken);
+
+        Assert.False(string.IsNullOrEmpty(first));
+        Assert.False(string.IsNullOrEmpty(second));
+        Assert.True(Guid.TryParse(first, out _));
+        Assert.True(Guid.TryParse(second, out _));
+        Assert.NotEqual(first, second);
+    }
+
+    private sealed class OnionTrace
+    {
+        public List<string> Entries { get; } = [];
+    }
+
+    private sealed class OnionInjectedA(RequestMiddleware<string, string> next)
+    {
+        public async Task InvokeAsync(RequestContext<string, string> context, OnionTrace trace)
+        {
+            trace.Entries.Add("A-pre");
+            await next(context);
+            trace.Entries.Add("A-post");
+        }
+    }
+
+    private sealed class OnionInjectedB(RequestMiddleware<string, string> next)
+    {
+        public async Task InvokeAsync(RequestContext<string, string> context, OnionTrace trace)
+        {
+            trace.Entries.Add("B-pre");
+            await next(context);
+            trace.Entries.Add("B-post");
+        }
+    }
+
+    private sealed class OnionInjectedC(RequestMiddleware<string, string> next)
+    {
+        public Task InvokeAsync(RequestContext<string, string> context, OnionTrace trace)
+        {
+            trace.Entries.Add("core");
+            return next(context);
+        }
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    public async Task InjectedClassMiddlewareExecutesInOnionOrderAsync()
+    {
+        OnionTrace? captured = null;
+
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .ConfigureServices((services, _) => services.AddScoped<OnionTrace>())
+            .Build()
+            .Use<OnionInjectedA>()
+            .Use<OnionInjectedB>()
+            .Use<OnionInjectedC>()
+            .Use((context, next) =>
+            {
+                captured = context.Services.GetRequiredService<OnionTrace>();
+                return next(context);
+            });
+
+        _ = await handler.InvokeAsync("request", TestContext.Current.CancellationToken);
+
+        Assert.NotNull(captured);
+        Assert.Equal(["A-pre", "B-pre", "core", "B-post", "A-post"], captured.Entries);
+    }
+
     [Fact]
     public async Task InjectedMiddlewareReturningNullTaskThrowsDescriptiveAsync()
     {
