@@ -970,3 +970,96 @@ public sealed class PlumberTests
         Assert.Equal(1, BuildCounterMiddleware.Constructions);
     }
 }
+
+public sealed class InjectedServiceProviderTests
+{
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    public async Task CreateWithInjectedProviderResolvesServicesAsync()
+    {
+        using var provider = new ServiceCollection()
+            .AddSingleton(TimeProvider.System)
+            .AddSingleton<Greeter>()
+            .BuildServiceProvider();
+
+        using var handler = RequestHandler.Create<string, string>(provider)
+            .Use((context, next) =>
+            {
+                context.Response = context.Services.GetRequiredService<Greeter>().Greet(context.Request);
+                return next(context);
+            });
+
+        var response = await handler.InvokeAsync("world", TestContext.Current.CancellationToken);
+
+        Assert.Equal("hello world", response);
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP017:Prefer using", Justification = "Test deliberately calls Dispose to assert ownership semantics on the externally-owned provider.")]
+    public void DisposingHandlerDoesNotDisposeInjectedProvider()
+    {
+        var tracker = new DisposalTracker();
+        using var provider = new ServiceCollection()
+            .AddSingleton(tracker)
+            .BuildServiceProvider();
+
+        using var handler = RequestHandler.Create<string, string>(provider);
+        handler.Dispose();
+
+        Assert.False(tracker.Disposed, "handler.Dispose must not dispose the externally-owned provider");
+
+        // resolution still works against the live external provider
+        Assert.Same(tracker, provider.GetRequiredService<DisposalTracker>());
+    }
+
+    [Fact]
+    public void CreateThrowsWhenInjectedProviderHasNoScopeFactory()
+    {
+        var stub = new NullServiceProvider();
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () =>
+            {
+                using var _ = RequestHandler.Create<string, string>(stub);
+            });
+
+        Assert.Contains(nameof(IServiceScopeFactory), ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    public async Task CreateFallsBackToSystemTimeProviderWhenNotRegisteredAsync()
+    {
+        using var provider = new ServiceCollection().BuildServiceProvider();
+
+        DateTime captured = default;
+        using var handler = RequestHandler.Create<string, string>(provider)
+            .Use((context, next) =>
+            {
+                captured = context.Timestamp;
+                context.Response = context.Request;
+                return next(context);
+            });
+
+        _ = await handler.InvokeAsync("ok", TestContext.Current.CancellationToken);
+
+        Assert.NotEqual(default, captured);
+    }
+
+    private sealed class Greeter
+    {
+        private readonly string salutation = "hello";
+        public string Greet(string name) => $"{salutation} {name}";
+    }
+
+    private sealed class DisposalTracker : IDisposable
+    {
+        public bool Disposed { get; private set; }
+        public void Dispose() => Disposed = true;
+    }
+
+    private sealed class NullServiceProvider : IServiceProvider
+    {
+        public object? GetService(Type serviceType) => null;
+    }
+}

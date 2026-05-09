@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -14,7 +15,9 @@ public sealed class RequestHandler<TRequest, TResponse>
     where TRequest : notnull
 {
     private readonly List<Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>>> components = [];
-    private readonly ServiceProvider serviceProvider;
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP008:Don't assign member with injected and created disposables", Justification = "Ownership is tracked via ownsProvider; only owned providers are disposed in Dispose().")]
+    private readonly IServiceProvider serviceProvider;
+    private readonly bool ownsProvider;
     private readonly TimeProvider timeProvider;
     private readonly Lazy<RequestMiddleware<TRequest, TResponse>> handler;
     private bool disposed;
@@ -24,7 +27,26 @@ public sealed class RequestHandler<TRequest, TResponse>
         TimeSpan timeout)
     {
         serviceProvider = serviceCollection.BuildServiceProvider();
+        ownsProvider = true;
         timeProvider = serviceProvider.GetRequiredService<TimeProvider>();
+        handler = new Lazy<RequestMiddleware<TRequest, TResponse>>(BuildPipeline);
+        Timeout = timeout;
+    }
+
+    internal RequestHandler(
+        IServiceProvider services,
+        TimeSpan timeout)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        if (services.GetService<IServiceScopeFactory>() is null)
+        {
+            throw new InvalidOperationException(
+                $"The injected {nameof(IServiceProvider)} must support {nameof(IServiceScopeFactory)} (typically obtained from {nameof(ServiceCollection)}.{nameof(ServiceCollectionContainerBuilderExtensions.BuildServiceProvider)} or a host-built provider).");
+        }
+
+        serviceProvider = services;
+        ownsProvider = false;
+        timeProvider = services.GetService<TimeProvider>() ?? TimeProvider.System;
         handler = new Lazy<RequestMiddleware<TRequest, TResponse>>(BuildPipeline);
         Timeout = timeout;
     }
@@ -313,7 +335,11 @@ public sealed class RequestHandler<TRequest, TResponse>
             return;
         }
 
-        serviceProvider.Dispose();
+        if (ownsProvider)
+        {
+            (serviceProvider as IDisposable)?.Dispose();
+        }
+
         disposed = true;
     }
 
