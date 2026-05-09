@@ -3,8 +3,8 @@ name: .NET Publish
 on:
   release:
     types: [published]
+
 permissions:
-  contents: write
   packages: write
 
 jobs:
@@ -17,6 +17,14 @@ jobs:
       with:
         dotnet-version: 10.0.x
 
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
     - name: Restore dependencies
       run: dotnet restore
 
@@ -26,30 +34,8 @@ jobs:
     - name: Test
       run: dotnet test --no-build
 
-  version:
-    needs: test
-    runs-on: ubuntu-latest
-    outputs:
-      PACKAGE_VERSION: ${{ steps.version-tag.outputs.package_version }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Get Build Version
-        id: version-tag
-        run: |
-          current_tag=$(git tag --sort=committerdate | tail -1)
-          echo current tag: $current_tag
-          major=$(echo $current_tag | cut -d "." -f 1 | cut -d "v" -f 2)
-          minor=$(echo $current_tag | cut -d "." -f 2)
-          patch=$(echo $current_tag | cut -d "." -f 3)
-          package_version="$major.$minor.$patch"
-          echo "PACKAGE_VERSION=$package_version" >> $GITHUB_OUTPUT
-  
   publish:
-    needs: 
-    - test
-    - version
+    needs: test
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -58,20 +44,36 @@ jobs:
       with:
         dotnet-version: 10.0.x
 
-    - name: Echo Package Version
-      run: echo ${{ needs.version.outputs.PACKAGE_VERSION }}
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Resolve package version
+      env:
+        TAG: ${{ github.event.release.tag_name }}
+      run: |
+        version="${TAG#v}"
+        echo "Publishing version $version"
+        echo "PACKAGE_VERSION=$version" >> "$GITHUB_ENV"
 
     - name: Restore
       working-directory: Plumber
       run: dotnet restore
 
-    - name: Build
-      working-directory: Plumber
-      run: dotnet build --no-restore -c Release -p:Version=${{ needs.version.outputs.PACKAGE_VERSION }}
-
     - name: Pack
       working-directory: Plumber
-      run: dotnet pack -c Release -o nuget -p:PackageVersion=${{ needs.version.outputs.PACKAGE_VERSION }} -p:Version=${{ needs.version.outputs.PACKAGE_VERSION }}
+      run: dotnet pack -c Release --no-restore -o nuget -p:PackageVersion=${{ env.PACKAGE_VERSION }} -p:Version=${{ env.PACKAGE_VERSION }}
+
+    - name: Upload package artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-packages
+        path: Plumber/nuget/*
+        retention-days: 30
 
     - name: Publish to nuget.pkg.github.com
       working-directory: Plumber
