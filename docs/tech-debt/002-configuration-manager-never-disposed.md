@@ -2,7 +2,7 @@
 
 - **Area:** RequestHandlerBuilder (configuration lifecycle)
 - **Priority:** Medium
-- **Status:** Open
+- **Status:** Resolved
 
 ## Problem
 `ConfigurationManager` is created and registered as `IConfiguration` singleton. The DI container only disposes singletons it *created* itself — externally provided instances are not tracked for disposal. The file watchers from `reloadOnChange: true` will never be disposed, leaking file handles.
@@ -17,3 +17,6 @@ Register the `ConfigurationManager` as its concrete type so the DI container tra
 
 ## Notes
 None.
+
+## Resolution
+`RequestHandlerBuilder<TRequest, TResponse>` passes its `ConfigurationManager` to `RequestHandler<TRequest, TResponse>` at `Build()` time. `RequestHandler.Dispose()` disposes both the service provider and the owned `ConfigurationManager`, releasing the file watchers from `reloadOnChange: true`.
