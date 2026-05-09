@@ -45,6 +45,8 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     /// <summary>
     /// Customize the builder before <c>Build()</c> is called. Multiple hooks compose in registration order.
     /// </summary>
+    /// <param name="configure">Callback that mutates the <see cref="RequestHandlerBuilder{TRequest, TResponse}"/> before the handler is built.</param>
+    /// <returns>This factory for chaining.</returns>
     /// <remarks>WAF analog: <c>WithWebHostBuilder</c>.</remarks>
     public PlumberApplicationFactory<TRequest, TResponse> WithBuilder(
         Action<RequestHandlerBuilder<TRequest, TResponse>> configure)
@@ -65,6 +67,8 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     /// <summary>
     /// Customize service registrations before the pipeline is built. Sugar for the most common case.
     /// </summary>
+    /// <param name="configure">Callback that mutates the <see cref="IServiceCollection"/> before the handler is built.</param>
+    /// <returns>This factory for chaining.</returns>
     /// <remarks>WAF analog: <c>ConfigureTestServices</c>.</remarks>
     public PlumberApplicationFactory<TRequest, TResponse> WithServices(Action<IServiceCollection> configure)
     {
@@ -75,6 +79,9 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     /// <summary>
     /// Customize service registrations before the pipeline is built, with the built <see cref="IConfiguration"/> available.
     /// </summary>
+    /// <param name="configure">Callback that receives the <see cref="IServiceCollection"/> and the built <see cref="IConfiguration"/>.</param>
+    /// <returns>This factory for chaining.</returns>
+    /// <remarks>WAF analog: <c>ConfigureTestServices</c>.</remarks>
     public PlumberApplicationFactory<TRequest, TResponse> WithServices(Action<IServiceCollection, IConfiguration> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
@@ -84,6 +91,8 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     /// <summary>
     /// Customize logging before the pipeline is built. Sugar over <see cref="WithBuilder"/>.
     /// </summary>
+    /// <param name="configure">Callback that mutates the <see cref="ILoggingBuilder"/> before the handler is built.</param>
+    /// <returns>This factory for chaining.</returns>
     public PlumberApplicationFactory<TRequest, TResponse> WithLogging(Action<ILoggingBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
@@ -93,6 +102,8 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     /// <summary>
     /// Customize configuration sources before the pipeline is built. Sugar over <see cref="WithBuilder"/>.
     /// </summary>
+    /// <param name="configure">Callback that mutates the <see cref="IConfigurationBuilder"/> before the handler is built.</param>
+    /// <returns>This factory for chaining.</returns>
     public PlumberApplicationFactory<TRequest, TResponse> WithConfiguration(Action<IConfigurationBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
@@ -103,6 +114,7 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     /// Seeds the configuration with an in-memory key/value collection. Common test-setup pattern for stubbing settings.
     /// </summary>
     /// <param name="settings">Key/value pairs added as a configuration source.</param>
+    /// <returns>This factory for chaining.</returns>
     public PlumberApplicationFactory<TRequest, TResponse> WithInMemorySettings(IEnumerable<KeyValuePair<string, string?>> settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
@@ -112,6 +124,7 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     /// <summary>
     /// Build (or return the cached) handler. Subsequent calls return the same instance.
     /// </summary>
+    /// <returns>The built <see cref="RequestHandler{TRequest, TResponse}"/>; the same instance on every call until the factory is disposed.</returns>
     /// <remarks>WAF analog: <c>CreateClient</c>.</remarks>
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
         Justification = "the RequestHandler returned by configurePipeline is the same instance assigned to the handler field")]
@@ -137,6 +150,9 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     /// <summary>
     /// Convenience: invoke the pipeline with a single request.
     /// </summary>
+    /// <param name="request">The request value flowed through the pipeline.</param>
+    /// <param name="cancellationToken">Caller-supplied cancellation token forwarded to <see cref="RequestHandler{TRequest, TResponse}.InvokeAsync(TRequest, CancellationToken)"/>.</param>
+    /// <returns>A task that completes with the pipeline's response, or <see langword="null"/> if no middleware assigned <c>Response</c>.</returns>
     public Task<TResponse?> InvokeAsync(TRequest request, CancellationToken cancellationToken = default) =>
         CreateHandler().InvokeAsync(request, cancellationToken);
 

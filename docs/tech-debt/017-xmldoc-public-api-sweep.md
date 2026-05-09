@@ -2,7 +2,7 @@
 
 - **Area:** Public API documentation (Plumber + Plumber.Testing)
 - **Priority:** Medium
-- **Status:** Open
+- **Status:** Resolved — see "Remaining" below
 
 ## Problem
 
@@ -14,6 +14,10 @@ After the upgrade-net10 refactors (interface removal, callback-based builder, co
 - **Missing** — public members with no `<param>` or `<returns>` documentation.
 
 Consumers reading these docs from the IDE or generated reference will get inaccurate guidance. The static factory's `Create<>` summary is the worst offender — it actively claims behavior that doesn't happen.
+
+## Remaining
+
+Items 2 (`TryGetValue` doc) and parts of item 6 ("Contructor", "dicionary") were already fixed by an unrelated refactor before this sweep was applied. Items 1, 3, 4, 5, 6 ("cancelation"), and the Optional polish items have been applied and the build is clean (the IDISP007 suppression on `Dispose` was removed — analyzer no longer fires, confirming it was dead). `CLAUDE.md`'s two invariants describing the old builder shape and configuration ownership were also rewritten to match the current callback-based builder and DI-owned configuration.
 
 ## Suggested Fix
 

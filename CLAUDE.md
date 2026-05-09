@@ -14,8 +14,8 @@ Read `.claude/tech-stack.md` for platform and dependency info.
 
 ## Architecture — non-obvious invariants
 
-- `RequestHandlerBuilder<TReq, TRes>` implements `ILoggingBuilder` + `IMetricsBuilder` in addition to exposing `Services` and `Configuration`.
-- `ConfigurationManager` ownership transfers from builder to handler at `Build()`. The handler disposes both the service provider and the configuration manager.
+- `RequestHandlerBuilder<TReq, TRes>` is callback-based: `ConfigureServices`, `ConfigureLogging`, and `ConfigureConfiguration` queue actions that run during `Build()`. The builder does not implement `ILoggingBuilder`/`IMetricsBuilder` and does not expose `Services` or `Configuration` properties.
+- `IConfiguration` is registered with the service provider via factory registration during `Build()`, so the DI container owns its lifetime. The handler's `Dispose` only disposes the service provider; the configuration is disposed transitively.
 - The pipeline is built lazily on the first `InvokeAsync()` — `Use()` calls after that point will not be picked up.
 - `TRequest` is constrained `where TRequest : notnull` (not `class`) so value-type requests work.
 - Cross-middleware state goes through `RequestContext.Data`. `Unit` is the response type for event-style pipelines with no return value.

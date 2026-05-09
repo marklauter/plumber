@@ -7,11 +7,11 @@ namespace Plumber;
 /// </summary>
 /// <typeparam name="TRequest">The type of request handled by the pipeline.</typeparam>
 /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
-/// <param name="request">The request.</param>
-/// <param name="id">Id for tracing the request. <see cref="Ulid"/></param>
-/// <param name="timeProvider">Time source used to capture <see cref="Timestamp"/> and measure <see cref="Elapsed"/>. <see cref="TimeProvider"/></param>
-/// <param name="services"><see cref="IServiceProvider"/></param>
-/// <param name="cancellationToken">Each delegate should call CancelationToken.ThrowIfCancellationRequested() before processing or forwarding the request context. <see cref="CancellationToken"/> </param>
+/// <param name="request">The request value flowed through the pipeline.</param>
+/// <param name="id">A <see cref="Ulid"/> used to trace the request across logs and middleware.</param>
+/// <param name="timeProvider">Time source used to capture <see cref="Timestamp"/> and measure <see cref="Elapsed"/>.</param>
+/// <param name="services">Per-request scoped <see cref="IServiceProvider"/>; resolves services for middleware running in this invocation.</param>
+/// <param name="cancellationToken">Cancellation signal for the request. Each delegate should call <c>CancellationToken.ThrowIfCancellationRequested()</c> before processing or forwarding the context.</param>
 public sealed class RequestContext<TRequest, TResponse>(
     TRequest request,
     Ulid id,
