@@ -29,6 +29,10 @@
 		<PackageReference Include="Microsoft.Extensions.Diagnostics.Abstractions" />
 		<PackageReference Include="Microsoft.Extensions.Logging" />
 		<PackageReference Include="Ulid" />
+		<PackageReference Include="Microsoft.SourceLink.GitHub">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
 	</ItemGroup>
 
 	<ItemGroup>
