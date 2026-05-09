@@ -1,8 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<GenerateDocumentationFile>True</GenerateDocumentationFile>
-
 		<Title>Plumber: Pipelines for AWS Lambda</Title>
 		<PackageId>MSL.$(AssemblyName).Pipeline</PackageId>
 		<ProductName>Plumber: Pipelines for AWS Lambda</ProductName>
@@ -19,7 +17,6 @@
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<PackageIcon>plumber.png</PackageIcon>
-		<WarningLevel>9999</WarningLevel>
 	</PropertyGroup>
 
 	<ItemGroup>

@@ -1,10 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<GenerateDocumentationFile>True</GenerateDocumentationFile>
-		<WarningLevel>9999</WarningLevel>
-	</PropertyGroup>
-
 	<ItemGroup>
 		<ProjectReference Include="..\Plumber\Plumber.csproj" />
 	</ItemGroup>
