@@ -11,7 +11,7 @@
 
 Plumber gives console apps, Lambdas, queue consumers, and other host-free .NET projects the same middleware-pipeline shape that ASP.NET Core gives web apps. You define a request type, a response type, and a chain of middleware components. Plumber wires up DI, configuration, logging, scoping, timeouts, and cancellation; you focus on the steps in your pipeline.
 
-> **Upgrading from v2.x?** Many APIs changed in v3 — interfaces removed, configuration no longer auto-loaded, builder reshaped. See [Migration v2.x → v3.x](#migration-v2x--v3x) at the bottom.
+> **Upgrading from v2.x?** Many APIs changed in v3 — interfaces removed, configuration no longer auto-loaded, builder reshaped. See [Migration v2.x → v3.x](#migration-v2x--v3x) at the bottom. v3 is also a modernization and bug-fix pass: faster middleware dispatch (expression-tree-compiled), monotonic `Elapsed`, distinguishable timeout exceptions, and a host-mode factory for reusing an existing DI container.
 
 ## Table of Contents
 - [Plumber](#plumber)
@@ -76,12 +76,13 @@ using Plumber;
 
 using var handler = RequestHandlerBuilder
     .Create<string, string>()
-    .Build()
-    .Use((context, next) =>
-    {
-        context.Response = $"Hello, {context.Request}!";
-        return next(context);
-    });
+    .Build();
+
+handler.Use((context, next) =>
+{
+    context.Response = $"Hello, {context.Request}!";
+    return next(context);
+});
 
 var greeting = await handler.InvokeAsync("World");
 Console.WriteLine(greeting); // Hello, World!
