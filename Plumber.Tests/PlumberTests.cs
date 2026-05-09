@@ -688,13 +688,14 @@ public sealed class PlumberTests
     }
 
     /// <summary>
-    /// Test fixture for verifying the <see cref="Lazy{T}"/>-backed pipeline is built exactly
-    /// once across overlapping invocations. The construction counter is a <c>static</c> field,
-    /// so this fixture must only be used by a single test. xUnit serializes tests within a
-    /// class, but separate test classes run in parallel — if a second test in another class
-    /// uses this fixture, the two will race and the build-once invariant becomes meaningless.
-    /// If you need to reuse the pattern, instantiate a new fixture per test instead of sharing
-    /// this one.
+    /// Smoke-test fixture: counts how many times the pipeline is built across a single test.
+    /// Used to confirm two <see cref="RequestHandler{TRequest, TResponse}.InvokeAsync(TRequest)"/>
+    /// calls share a single built pipeline rather than rebuilding per-call. Does NOT test
+    /// thread-safety of the build — that is delegated to <see cref="Lazy{T}"/> in its default
+    /// <see cref="LazyThreadSafetyMode.ExecutionAndPublication"/> mode (BCL contract, not ours
+    /// to verify). The construction counter is a <c>static</c> field, so this fixture must only
+    /// be used by a single test: xUnit serializes tests within a class, but separate test
+    /// classes run in parallel.
     /// </summary>
     private sealed class BuildCounterMiddleware(RequestMiddleware<string, string> next)
     {
@@ -716,9 +717,27 @@ public sealed class PlumberTests
         public Task InvokeAsync(RequestContext<string, string> context) => next(context);
     }
 
+    /// <summary>
+    /// Smoke test: two <see cref="RequestHandler{TRequest, TResponse}.InvokeAsync(TRequest)"/>
+    /// calls held in flight at the same time both complete and produce independent outputs.
+    /// </summary>
+    /// <remarks>
+    /// What this test proves:
+    /// <list type="bullet">
+    ///   <item>The pipeline accepts a second invocation while a first is still in flight (no implicit single-flight serialization, no deadlock).</item>
+    ///   <item>Each invocation receives its own <see cref="RequestContext{TRequest, TResponse}"/> and its own scoped <see cref="IServiceScope"/>.</item>
+    /// </list>
+    /// <para>
+    /// What this test does NOT prove:
+    /// <list type="bullet">
+    ///   <item>Anything about <see cref="Lazy{T}"/>'s build-once-under-contention behavior. By the time the gates fire, <c>t1</c> is already past <c>handler.Value</c> with the pipeline fully built; <c>t2</c> never races the build. We delegate that invariant to the BCL.</item>
+    ///   <item>That distinct <see cref="RequestContext.Id"/> or distinct DI scope require concurrency — both are also true sequentially. The asserts are kept as smoke checks; the only invariant unique to this test is "two in-flight invocations don't deadlock."</item>
+    /// </list>
+    /// </para>
+    /// </remarks>
     [Fact]
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
-    public async Task OverlappingInvocationsHaveIsolatedContextAndScopeAsync()
+    public async Task TwoInFlightInvocationsCompleteWithoutDeadlockAsync()
     {
         BuildCounterMiddleware.Constructions = 0;
 
