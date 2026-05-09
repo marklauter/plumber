@@ -6,7 +6,7 @@
 - **Purpose**: Implements request-response pattern with middleware, DI, and configuration support
 - **Key Types**:
   - `RequestHandlerBuilder<TReq, TRes>`: Creates and configures a request handler
-  - `IRequestHandler<TReq, TRes>`: The pipeline that processes requests
+  - `RequestHandler<TReq, TRes>`: The pipeline that processes requests
   - `RequestContext<TReq, TRes>`: Contains request, response, and contextual data
   - `RequestMiddleware<TReq, TRes>`: Represents a middleware component
   - `Void`: Special type for pipelines without responses

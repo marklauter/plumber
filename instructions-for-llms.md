@@ -18,7 +18,7 @@ This document is specifically designed to help AI agents and LLMs understand how
 ### Primary Types
 
 - `RequestHandlerBuilder<TRequest, TResponse>`: Creates and configures a request handler.
-- `IRequestHandler<TRequest, TResponse>`: Represents the pipeline that processes requests.
+- `RequestHandler<TRequest, TResponse>`: Represents the pipeline that processes requests.
 - `RequestContext<TRequest, TResponse>`: Contains the request, response, and other contextual data.
 - `RequestMiddleware<TRequest, TResponse>`: Represents a middleware component in the pipeline.
 - `Void`: Special type for pipelines that don't need to return a response.
@@ -631,7 +631,7 @@ For organizing Lambda function logic, especially when processing:
 ```csharp
 public class Function
 {
-    private readonly IRequestHandler<SQSEvent, Void> handler;
+    private readonly RequestHandler<SQSEvent, Void> handler;
 
     public Function()
     {
@@ -681,7 +681,7 @@ For organizing queue consumer logic:
 ```csharp
 public class QueueConsumer
 {
-    private readonly IRequestHandler<Message, Void> handler;
+    private readonly RequestHandler<Message, Void> handler;
     
     public QueueConsumer()
     {

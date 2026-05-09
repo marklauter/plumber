@@ -1,8 +1,8 @@
 ## Build Status
 [![.NET Tests](https://github.com/marklauter/plumber/actions/workflows/dotnet.tests.yml/badge.svg)](https://github.com/marklauter/plumber/actions/workflows/dotnet.tests.yml)
 [![.NET Publish](https://github.com/marklauter/plumber/actions/workflows/dotnet.publish.yml/badge.svg)](https://github.com/marklauter/plumber/actions/workflows/dotnet.publish.yml)
-[![Nuget](https://img.shields.io/badge/Nuget-v2.3.2-blue)](https://www.nuget.org/packages/MSL.Plumber.Pipeline/)
-[![Nuget](https://img.shields.io/badge/.NET-8.0-blue)](https://dotnet.microsoft.com/en-us/download/dotnet/8.0/)
+[![NuGet](https://img.shields.io/nuget/v/MSL.Plumber.Pipeline?logo=nuget)](https://www.nuget.org/packages/MSL.Plumber.Pipeline/)
+[![Nuget](https://img.shields.io/badge/.NET-10.0-blue)](https://dotnet.microsoft.com/en-us/download/dotnet/10.0/)
 
 ## 
 ![Plumber Logo](https://raw.githubusercontent.com/marklauter/plumber/main/images/plumber.png "Plumber Logo")
@@ -84,7 +84,7 @@ Plumber is well-suited for various scenarios:
 - Microservice communication layers
 
 ### Prerequisites
-- .NET 8.0 SDK or later
+- .NET 10.0 SDK or later
 - For AWS Lambda samples:
   - AWS account with appropriate permissions
   - AWS CLI installed and configured
@@ -105,11 +105,11 @@ Install-Package MSL.Plumber.Pipeline
 
 #### Using PackageReference in .csproj file
 ```xml
-<PackageReference Include="MSL.Plumber.Pipeline" Version="2.3.2" />
+<PackageReference Include="MSL.Plumber.Pipeline" Version="<latest>" />
 ```
 
 ## Getting Started
-If you're not familiar with middleware pipelines, Microsoft has a [good primer on how middleware works in ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/?view=aspnetcore-8.0).
+If you're not familiar with middleware pipelines, Microsoft has a [good primer on how middleware works in ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/?view=aspnetcore-10.0).
 
 ### Basic Setup
 Here's the basic flow for setting up and using a Plumber pipeline:
@@ -424,7 +424,7 @@ Assert.Equal(request.ToLowerInvariant(), response);
 ```
 
 ### Builder Configuration Example
-Use the `IRequestHandlerBuilder.Configuration` property to add configuration providers, like `AddInMemory` or `AddJsonFile`.
+Use the `RequestHandlerBuilder.Configuration` property to add configuration providers, like `AddInMemory` or `AddJsonFile`.
 ```csharp
 // default configuration providers are added in order
 // 1. optional appsettings.json
@@ -449,7 +449,7 @@ var builder = RequestHandlerBuilder.Create<string, string>(args, (configuration,
 ```
 
 ### Builder Service Registration Example
-Use the `IRequestHandlerBuilder.Services` property to register services.
+Use the `RequestHandlerBuilder.Services` property to register services.
 ```csharp
 var builder = RequestHandlerBuilder.Create<string, string>(args);
 
@@ -781,7 +781,7 @@ Here's a more complete example showing how to use the `Void` type in an AWS Lamb
 ```csharp
 public class Function
 {
-    private readonly IRequestHandler<SQSEvent, Void> handler;
+    private readonly RequestHandler<SQSEvent, Void> handler;
 
     public Function()
     {
