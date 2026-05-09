@@ -586,6 +586,81 @@ public sealed class PlumberTests
 
     [Fact]
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    public async Task UseClassMiddlewareWithoutInvokeAsyncThrowsAsync()
+    {
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .Build()
+            .Use<NoInvokeAsyncMiddleware>();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => handler.InvokeAsync("request", TestContext.Current.CancellationToken));
+        Assert.Contains("InvokeAsync", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    public async Task UseClassMiddlewareWithNonTaskReturnTypeThrowsAsync()
+    {
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .Build()
+            .Use<WrongReturnTypeMiddleware>();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => handler.InvokeAsync("request", TestContext.Current.CancellationToken));
+        Assert.Contains("Task", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    public async Task UseClassMiddlewareWithWrongFirstParamThrowsAsync()
+    {
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .Build()
+            .Use<WrongFirstParamMiddleware>();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => handler.InvokeAsync("request", TestContext.Current.CancellationToken));
+        Assert.Contains("first parameter", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP017:Prefer using", Justification = "handler1 is intentionally disposed mid-test to verify handler2 stays functional")]
+    public async Task BuildTwiceProducesIndependentHandlersWithPerBuildSnapshotAsync()
+    {
+        var builder = RequestHandlerBuilder.Create<string, string>()
+            .AddInMemoryCollection([KeyValuePair.Create<string, string?>("Key1", "FromFirst")]);
+
+        var handler1 = builder.Build()
+            .Use((context, next) =>
+            {
+                var cfg = context.Services.GetRequiredService<IConfiguration>();
+                context.Response = $"{cfg["Key1"]}|{cfg["Key2"] ?? "missing"}";
+                return next(context);
+            });
+
+        _ = builder.AddInMemoryCollection([KeyValuePair.Create<string, string?>("Key2", "FromSecond")]);
+
+        using var handler2 = builder.Build()
+            .Use((context, next) =>
+            {
+                var cfg = context.Services.GetRequiredService<IConfiguration>();
+                context.Response = $"{cfg["Key1"]}|{cfg["Key2"] ?? "missing"}";
+                return next(context);
+            });
+
+        // handler1 captured sources at its Build() time — Key2 added later is invisible
+        Assert.Equal("FromFirst|missing", await handler1.InvokeAsync("x", TestContext.Current.CancellationToken));
+        // handler2 sees both keys
+        Assert.Equal("FromFirst|FromSecond", await handler2.InvokeAsync("x", TestContext.Current.CancellationToken));
+
+        // disposing one handler must not affect the other
+        handler1.Dispose();
+        Assert.Equal("FromFirst|FromSecond", await handler2.InvokeAsync("x", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
     public async Task CallerCancellationWinsRaceAgainstTimeoutAsync()
     {
         using var cts = new CancellationTokenSource();
