@@ -2,7 +2,7 @@
 
 - **Area:** RequestHandler / MiddlewareFactory (middleware lifecycle)
 - **Priority:** Medium
-- **Status:** Closed — working as designed; documented
+- **Status:** Resolved — working as designed; documented
 
 ## Resolution
 This is the intended design, mirroring ASP.NET Core's convention-based middleware: a class middleware instance has effectively a singleton lifetime, and scoped/transient services are consumed via `InvokeAsync` parameter injection (resolved per-request from `context.Services`). The README covers this in *Middleware Method Injection* and the FAQ entry on middleware lifetimes.
