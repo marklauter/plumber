@@ -113,7 +113,7 @@ public sealed class RequestContextTests
     public void TryGetValueNotNullWhenTrue()
     {
         using var services = new ServiceCollection().BuildServiceProvider();
-        var context = new RequestContext<string, string>("request", Ulid.NewUlid(), DateTime.UtcNow, services, CancellationToken.None);
+        var context = new RequestContext<string, string>("request", Ulid.NewUlid(), TimeProvider.System, services, CancellationToken.None);
 
         context.Data["key"] = "value";
         Assert.True(context.TryGetValue<string>("key", out var value));
@@ -124,7 +124,7 @@ public sealed class RequestContextTests
     public void TryGetValueFalseWhenDataIsNull()
     {
         using var services = new ServiceCollection().BuildServiceProvider();
-        var context = new RequestContext<string, string>("request", Ulid.NewUlid(), DateTime.UtcNow, services, CancellationToken.None);
+        var context = new RequestContext<string, string>("request", Ulid.NewUlid(), TimeProvider.System, services, CancellationToken.None);
 
         Assert.False(context.TryGetValue<string>("key", out var value));
     }
@@ -133,7 +133,7 @@ public sealed class RequestContextTests
     public void TryGetValueFalseWhenKeyNotFound()
     {
         using var services = new ServiceCollection().BuildServiceProvider();
-        var context = new RequestContext<string, string>("request", Ulid.NewUlid(), DateTime.UtcNow, services, CancellationToken.None);
+        var context = new RequestContext<string, string>("request", Ulid.NewUlid(), TimeProvider.System, services, CancellationToken.None);
 
         context.Data["key1"] = "value";
         Assert.False(context.TryGetValue<string>("key2", out var value));
@@ -143,7 +143,7 @@ public sealed class RequestContextTests
     public void TryGetValueFalseWhenValueTypeKeyNotFound()
     {
         using var services = new ServiceCollection().BuildServiceProvider();
-        var context = new RequestContext<string, string>("request", Ulid.NewUlid(), DateTime.UtcNow, services, CancellationToken.None);
+        var context = new RequestContext<string, string>("request", Ulid.NewUlid(), TimeProvider.System, services, CancellationToken.None);
 
         context.Data["other"] = 1;
         Assert.False(context.TryGetValue<int>("missing", out var value));
@@ -154,7 +154,7 @@ public sealed class RequestContextTests
     public void TryGetValueTrueForStoredValueType()
     {
         using var services = new ServiceCollection().BuildServiceProvider();
-        var context = new RequestContext<string, string>("request", Ulid.NewUlid(), DateTime.UtcNow, services, CancellationToken.None);
+        var context = new RequestContext<string, string>("request", Ulid.NewUlid(), TimeProvider.System, services, CancellationToken.None);
 
         context.Data["count"] = 42;
         Assert.True(context.TryGetValue<int>("count", out var value));
@@ -165,7 +165,7 @@ public sealed class RequestContextTests
     public void TryGetValueFalseWhenStoredValueIsNull()
     {
         using var services = new ServiceCollection().BuildServiceProvider();
-        var context = new RequestContext<string, string>("request", Ulid.NewUlid(), DateTime.UtcNow, services, CancellationToken.None);
+        var context = new RequestContext<string, string>("request", Ulid.NewUlid(), TimeProvider.System, services, CancellationToken.None);
 
         context.Data["key"] = null;
         Assert.False(context.TryGetValue<string>("key", out var value));
@@ -176,7 +176,7 @@ public sealed class RequestContextTests
     public void TryGetValueFalseOnTypeMismatchDoesNotThrow()
     {
         using var services = new ServiceCollection().BuildServiceProvider();
-        var context = new RequestContext<string, string>("request", Ulid.NewUlid(), DateTime.UtcNow, services, CancellationToken.None);
+        var context = new RequestContext<string, string>("request", Ulid.NewUlid(), TimeProvider.System, services, CancellationToken.None);
 
         context.Data["key"] = 99;
         Assert.False(context.TryGetValue<string>("key", out var value));
@@ -294,7 +294,7 @@ public sealed class PlumberTests
         var context = new RequestContext<string, string>(
             request,
             Ulid.NewUlid(),
-            DateTime.UtcNow,
+            TimeProvider.System,
             services,
             CancellationToken.None);
         await middleware.InvokeAsync(context);
@@ -545,7 +545,7 @@ public sealed class PlumberTests
             });
 
         var ex = await Assert.ThrowsAsync<TimeoutException>(() => handler.InvokeAsync("request"));
-        _ = Assert.IsAssignableFrom<OperationCanceledException>(ex.InnerException);
+        _ = Assert.IsType<OperationCanceledException>(ex.InnerException, exactMatch: false);
     }
 
     [Fact]
@@ -562,7 +562,7 @@ public sealed class PlumberTests
 
         var ex = await Assert.ThrowsAsync<TimeoutException>(
             () => handler.InvokeAsync("request", TestContext.Current.CancellationToken));
-        _ = Assert.IsAssignableFrom<OperationCanceledException>(ex.InnerException);
+        _ = Assert.IsType<OperationCanceledException>(ex.InnerException, exactMatch: false);
     }
 
     [Fact]
@@ -626,6 +626,7 @@ public sealed class PlumberTests
     [Fact]
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP017:Prefer using", Justification = "handler1 is intentionally disposed mid-test to verify handler2 stays functional")]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP007:Don't dispose injected", Justification = "handler1 is owned by this method, intentionally disposed mid-test")]
     public async Task BuildTwiceProducesIndependentHandlersWithPerBuildSnapshotAsync()
     {
         var builder = RequestHandlerBuilder.Create<string, string>()

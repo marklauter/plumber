@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 
@@ -237,6 +238,8 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
 
             ApplyLoggingCallbacks(serviceCollection);
             ApplyServiceCallbacks(serviceCollection, configuration);
+            // registered after user callbacks so a user-supplied TimeProvider wins
+            serviceCollection.TryAddSingleton(TimeProvider.System);
 
             return new RequestHandler<TRequest, TResponse>(serviceCollection, timeout);
         }

@@ -15,6 +15,7 @@ public sealed class RequestHandler<TRequest, TResponse>
 {
     private readonly List<Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>>> components = [];
     private readonly ServiceProvider serviceProvider;
+    private readonly TimeProvider timeProvider;
     private readonly Lazy<RequestMiddleware<TRequest, TResponse>> handler;
     private bool disposed;
 
@@ -23,6 +24,7 @@ public sealed class RequestHandler<TRequest, TResponse>
         TimeSpan timeout)
     {
         serviceProvider = serviceCollection.BuildServiceProvider();
+        timeProvider = serviceProvider.GetRequiredService<TimeProvider>();
         handler = new Lazy<RequestMiddleware<TRequest, TResponse>>(BuildPipeline);
         Timeout = timeout;
     }
@@ -200,7 +202,7 @@ public sealed class RequestHandler<TRequest, TResponse>
         var context = new RequestContext<TRequest, TResponse>(
             request,
             Ulid.NewUlid(),
-            DateTime.UtcNow,
+            timeProvider,
             serviceScope.ServiceProvider,
             cancellationToken);
 

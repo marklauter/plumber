@@ -9,17 +9,21 @@ namespace Plumber;
 /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
 /// <param name="request">The request.</param>
 /// <param name="id">Id for tracing the request. <see cref="Ulid"/></param>
-/// <param name="timestamp">Request timestamp. <see cref="DateTime"/></param>
+/// <param name="timeProvider">Time source used to capture <see cref="Timestamp"/> and measure <see cref="Elapsed"/>. <see cref="TimeProvider"/></param>
 /// <param name="services"><see cref="IServiceProvider"/></param>
 /// <param name="cancellationToken">Each delegate should call CancelationToken.ThrowIfCancellationRequested() before processing or forwarding the request context. <see cref="CancellationToken"/> </param>
 public sealed class RequestContext<TRequest, TResponse>(
     TRequest request,
     Ulid id,
-    DateTime timestamp,
+    TimeProvider timeProvider,
     IServiceProvider services,
     CancellationToken cancellationToken)
     where TRequest : notnull
 {
+    // Stopwatch tick captured at construction so Elapsed uses the monotonic, high-resolution clock
+    // rather than DateTime arithmetic (which has ~15.6ms resolution on Windows and is exposed to
+    // wall-clock adjustments).
+    private readonly long startTimestamp = timeProvider.GetTimestamp();
     private Dictionary<string, object?>? data;
 
     /// <summary>
@@ -33,9 +37,9 @@ public sealed class RequestContext<TRequest, TResponse>(
     public Ulid Id => id;
 
     /// <summary>
-    /// Request timestamp.
+    /// Wall-clock timestamp captured when the context was created. Suitable for logging and correlation.
     /// </summary>
-    public DateTime Timestamp => timestamp;
+    public DateTime Timestamp { get; } = timeProvider.GetUtcNow().UtcDateTime;
 
     /// <summary>
     /// The scoped <see cref="IServiceProvider"/> for the request.
@@ -77,7 +81,7 @@ public sealed class RequestContext<TRequest, TResponse>(
     public TResponse? Response { get; set; }
 
     /// <summary>
-    /// Time since the request was created.
+    /// Time since the request was created, measured against the monotonic clock exposed by the configured <see cref="TimeProvider"/>.
     /// </summary>
-    public TimeSpan Elapsed => DateTime.UtcNow - timestamp;
+    public TimeSpan Elapsed => timeProvider.GetElapsedTime(startTimestamp);
 }
