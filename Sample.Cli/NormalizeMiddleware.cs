@@ -1,13 +1,18 @@
+using Microsoft.Extensions.Logging;
 using Plumber;
 
 namespace Sample.Cli;
 
-internal sealed class NormalizeMiddleware(RequestMiddleware<string, TextReport> next)
+internal sealed class NormalizeMiddleware(
+    RequestMiddleware<string, TextReport> next,
+    ILogger<NormalizeMiddleware> logger)
 {
     public Task InvokeAsync(RequestContext<string, TextReport> context)
     {
         context.CancellationToken.ThrowIfCancellationRequested();
-        context.Data[DataKeys.Normalized] = context.Request.ToLowerInvariant();
+        var normalized = context.Request.ToLowerInvariant();
+        context.Data[DataKeys.Normalized] = normalized;
+        logger.LogDebug("normalized {Length} chars", normalized.Length);
         return next(context);
     }
 }

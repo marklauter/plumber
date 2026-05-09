@@ -1,3 +1,6 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Plumber;
 using System.Diagnostics.CodeAnalysis;
 
@@ -6,7 +9,27 @@ namespace Sample.Cli;
 internal static class Pipeline
 {
     public static RequestHandlerBuilder<string, TextReport> CreateBuilder(string[] args) =>
-        RequestHandlerBuilder.Create<string, TextReport>(args);
+        RequestHandlerBuilder.Create<string, TextReport>(args)
+            .ConfigureConfiguration((config, _) => config.AddInMemoryCollection([
+                new($"{TokenizerOptions.SectionName}:{nameof(TokenizerOptions.Separators)}", TokenizerOptions.Defaults.Separators),
+                new($"{TokenizerOptions.SectionName}:{nameof(TokenizerOptions.RemoveEmptyEntries)}", TokenizerOptions.Defaults.RemoveEmptyEntries.ToString()),
+                new($"{TokenizerOptions.SectionName}:{nameof(TokenizerOptions.TrimEntries)}", TokenizerOptions.Defaults.TrimEntries.ToString()),
+            ]))
+            .ConfigureLogging(logging => logging
+                .SetMinimumLevel(LogLevel.Information)
+                .AddSimpleConsole(o =>
+                {
+                    o.SingleLine = true;
+                    o.IncludeScopes = false;
+                }))
+            .ConfigureServices((services, configuration) =>
+            {
+                var options = configuration.GetSection(TokenizerOptions.SectionName).Get<TokenizerOptions>()
+                    ?? TokenizerOptions.Defaults;
+                _ = services
+                    .AddSingleton(options)
+                    .AddSingleton<ITokenizer, WhitespaceTokenizer>();
+            });
 
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
         Justification = "fluent .Use() returns the same handler instance; caller disposes")]
@@ -23,18 +46,7 @@ internal static class Pipeline
             })
             .Use<ValidationMiddleware>()
             .Use<NormalizeMiddleware>()
-            .Use((context, next) =>
-            {
-                context.CancellationToken.ThrowIfCancellationRequested();
-                if (context.TryGetValue<string>(DataKeys.Normalized, out var normalized))
-                {
-                    context.Data[DataKeys.Tokens] = normalized.Split(
-                        ' ',
-                        StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                }
-
-                return next(context);
-            })
+            .Use<TokenizeMiddleware>()
             .Use<ReportMiddleware>();
 
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
