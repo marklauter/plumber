@@ -33,6 +33,7 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// <remarks>
     /// When Timeout is set to <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> <see cref="CancellationToken.None"/> is passed to the <see cref="RequestContext{TRequest, TResponse}"/> constructor.
     /// Otherwise, a timeout-based <see cref="CancellationTokenSource"/> is used to provide the cancelation token for the request context.
+    /// When the timeout elapses before the pipeline completes, <see cref="InvokeAsync(TRequest)"/> throws <see cref="TimeoutException"/> rather than <see cref="OperationCanceledException"/>, so timeouts can be distinguished from caller-initiated cancellation.
     /// </remarks>
     public TimeSpan Timeout { get; }
 
@@ -46,6 +47,7 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// The service provider passed to the RequestContext constructor is scoped to the request handler's ServiceProvider, and is disposed of after the request handler's pipeline completes.
     /// So there is no need for users of the RequestContext.Services property to call CreateScope().
     /// </remarks>
+    /// <exception cref="TimeoutException">Thrown when <see cref="Timeout"/> elapses before the pipeline completes.</exception>
     public Task<TResponse?> InvokeAsync(TRequest request) =>
         ThrowIfDisposed()
         .Timeout == System.Threading.Timeout.InfiniteTimeSpan
@@ -62,7 +64,10 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// InvokeAsync creates a new <see cref="RequestContext{TRequest, TResponse}"/> and passes it through the request handler's pipeline.
     /// The service provider passed to the RequestContext constructor is scoped to the request handler's ServiceProvider, and is disposed of after the request handler's pipeline completes.
     /// So there is no need for users of the RequestContext.Services property to call CreateScope().
+    /// When both <paramref name="cancellationToken"/> and the internal timeout fire, caller cancellation wins (an <see cref="OperationCanceledException"/> propagates rather than a <see cref="TimeoutException"/>).
     /// </remarks>
+    /// <exception cref="TimeoutException">Thrown when <see cref="Timeout"/> elapses before the pipeline completes and <paramref name="cancellationToken"/> was not cancelled.</exception>
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is cancelled.</exception>
     public Task<TResponse?> InvokeAsync(TRequest request, CancellationToken cancellationToken) =>
         ThrowIfDisposed()
         .Timeout == System.Threading.Timeout.InfiniteTimeSpan
@@ -126,7 +131,14 @@ public sealed class RequestHandler<TRequest, TResponse>
     private async Task<TResponse?> InvokeInternalAsync(TRequest request, TimeSpan timeout)
     {
         using var timeoutTokenSource = new CancellationTokenSource(timeout);
-        return await InvokeInternalAsync(request, timeoutTokenSource.Token);
+        try
+        {
+            return await InvokeInternalAsync(request, timeoutTokenSource.Token);
+        }
+        catch (OperationCanceledException ex) when (timeoutTokenSource.IsCancellationRequested)
+        {
+            throw new TimeoutException($"Pipeline exceeded timeout of {timeout}.", ex);
+        }
     }
 
     private async Task<TResponse?> InvokeInternalAsync(TRequest request, TimeSpan timeout, CancellationToken cancellationToken)
@@ -135,7 +147,15 @@ public sealed class RequestHandler<TRequest, TResponse>
         using var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken,
             timeoutTokenSource.Token);
-        return await InvokeInternalAsync(request, linkedTokenSource.Token);
+        try
+        {
+            return await InvokeInternalAsync(request, linkedTokenSource.Token);
+        }
+        catch (OperationCanceledException ex)
+            when (timeoutTokenSource.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException($"Pipeline exceeded timeout of {timeout}.", ex);
+        }
     }
 
     private async Task<TResponse?> InvokeInternalAsync(TRequest request, CancellationToken cancellationToken)
