@@ -128,6 +128,8 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     /// <remarks>WAF analog: <c>CreateClient</c>.</remarks>
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
         Justification = "the RequestHandler returned by configurePipeline is the same instance assigned to the handler field")]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP001:Dispose created",
+        Justification = "ownership of 'built' transfers to the handler field on success; the catch disposes it on failure")]
     public RequestHandler<TRequest, TResponse> CreateHandler()
     {
         ObjectDisposedException.ThrowIf(disposed, this);
@@ -143,7 +145,17 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
             hook(builder);
         }
 
-        handler = configurePipeline(builder.Build());
+        var built = builder.Build();
+        try
+        {
+            handler = configurePipeline(built);
+        }
+        catch
+        {
+            built.Dispose();
+            throw;
+        }
+
         return handler;
     }
 

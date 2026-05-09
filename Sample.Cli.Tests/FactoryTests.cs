@@ -1,3 +1,4 @@
+using Plumber;
 using Plumber.Testing;
 using System.Diagnostics.CodeAnalysis;
 
@@ -94,6 +95,24 @@ public sealed class FactoryTests
         var second = factory.CreateHandler();
 
         Assert.Same(first, second);
+    }
+
+    [Fact]
+    public void CreateHandlerDisposesBuiltHandlerWhenConfigurePipelineThrows()
+    {
+        RequestHandler<string, TextReport>? leaked = null;
+        using var factory = new PlumberApplicationFactory<string, TextReport>(
+            Pipeline.CreateBuilder,
+            handler =>
+            {
+                leaked = handler;
+                throw new InvalidOperationException("boom");
+            });
+
+        _ = Assert.Throws<InvalidOperationException>(factory.CreateHandler);
+
+        Assert.NotNull(leaked);
+        _ = Assert.Throws<ObjectDisposedException>(() => leaked.Use(next => next));
     }
 
     [Fact]

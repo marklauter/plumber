@@ -28,7 +28,7 @@ public sealed class RequestHandler<TRequest, TResponse>
     {
         serviceProvider = serviceCollection.BuildServiceProvider();
         ownsProvider = true;
-        timeProvider = serviceProvider.GetRequiredService<TimeProvider>();
+        timeProvider = serviceProvider.GetService<TimeProvider>() ?? TimeProvider.System;
         handler = new Lazy<RequestMiddleware<TRequest, TResponse>>(BuildPipeline);
         Timeout = timeout;
     }
