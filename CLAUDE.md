@@ -28,13 +28,12 @@ Read `.claude/testing.md` before creating test projects and before writing tests
 
 The pipeline follows a builder → handler → middleware chain pattern:
 
-- `RequestHandlerBuilder` — static factory, creates `IRequestHandlerBuilder<TReq, TRes>` via `Create<TReq, TRes>()`. Configures DI services and configuration sources.
-- `IRequestHandlerBuilder<TReq, TRes>` — exposes `Services` (IServiceCollection), `Configuration` (IConfigurationManager), and `Build()`.
-- `IRequestHandler<TReq, TRes>` — the built pipeline. Middleware added via fluent `.Use()` calls. Pipeline lazily constructed on first `InvokeAsync()`.
-- `RequestContext<TReq, TRes>` — record passed through middleware. Contains `Request`, `Response`, `Id` (ULID), `Timestamp`, `Services` (scoped provider), `CancellationToken`, `Data` dictionary, and `Elapsed`.
+- `RequestHandlerBuilder` — static factory, creates `RequestHandlerBuilder<TReq, TRes>` via `Create<TReq, TRes>()`. Configures DI services and configuration sources.
+- `RequestHandlerBuilder<TReq, TRes>` — public sealed class. Exposes `Services` (IServiceCollection), `Configuration` (IConfigurationManager), `Build()`, and implements `ILoggingBuilder` + `IMetricsBuilder`. Ownership of the `ConfigurationManager` transfers to the handler at `Build()` time.
+- `RequestHandler<TReq, TRes>` — public sealed class. The built pipeline. Middleware added via fluent `.Use()` calls. Pipeline lazily constructed on first `InvokeAsync()`. Internal ctor — consumers obtain instances via the builder. Disposes both the service provider and the owned `ConfigurationManager`.
+- `RequestContext<TReq, TRes>` — record passed through middleware. Contains `Request`, `Response`, `Id` (ULID), `Timestamp`, `Services` (scoped provider, `IServiceProvider`), `CancellationToken`, `Data` dictionary, and `Elapsed`.
 - `RequestMiddleware<TReq, TRes>` — delegate type for middleware functions.
 - `Void` — readonly record struct for pipelines with no response (event handlers).
-- `RequestHandler<TReq, TRes>` (internal) — stores middleware as list of functions, builds pipeline lazily, creates scoped service provider per request, handles timeouts.
 
 ### Middleware execution
 
