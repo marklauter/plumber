@@ -681,4 +681,83 @@ public sealed class PlumberTests
             () => handler.InvokeAsync("request", cts.Token));
         Assert.IsNotType<TimeoutException>(ex);
     }
+
+    private sealed class ScopedProbe
+    {
+        public Guid ScopeId { get; } = Guid.NewGuid();
+    }
+
+    /// <summary>
+    /// Test fixture for verifying the <see cref="Lazy{T}"/>-backed pipeline is built exactly
+    /// once across overlapping invocations. The construction counter is a <c>static</c> field,
+    /// so this fixture must only be used by a single test. xUnit serializes tests within a
+    /// class, but separate test classes run in parallel — if a second test in another class
+    /// uses this fixture, the two will race and the build-once invariant becomes meaningless.
+    /// If you need to reuse the pattern, instantiate a new fixture per test instead of sharing
+    /// this one.
+    /// </summary>
+    private sealed class BuildCounterMiddleware(RequestMiddleware<string, string> next)
+    {
+        public static int Constructions;
+
+        static BuildCounterMiddleware()
+        {
+            Constructions = 0;
+        }
+
+        private readonly RequestMiddleware<string, string> next = ConstructionTracker(next);
+
+        private static RequestMiddleware<string, string> ConstructionTracker(RequestMiddleware<string, string> next)
+        {
+            _ = Interlocked.Increment(ref Constructions);
+            return next;
+        }
+
+        public Task InvokeAsync(RequestContext<string, string> context) => next(context);
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    public async Task OverlappingInvocationsHaveIsolatedContextAndScopeAsync()
+    {
+        BuildCounterMiddleware.Constructions = 0;
+
+        var firstArrived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondArrived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var observed = new System.Collections.Concurrent.ConcurrentBag<(Ulid id, Guid scopeId)>();
+
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .ConfigureServices((s, _) => s.AddScoped<ScopedProbe>())
+            .Build()
+            .Use<BuildCounterMiddleware>()
+            .Use(async (context, next) =>
+            {
+                observed.Add((context.Id, context.Services.GetRequiredService<ScopedProbe>().ScopeId));
+                if (!firstArrived.TrySetResult())
+                {
+                    secondArrived.SetResult();
+                }
+
+                await release.Task;
+                await next(context);
+            });
+
+        var t1 = handler.InvokeAsync("a", TestContext.Current.CancellationToken);
+        await firstArrived.Task;
+        var t2 = handler.InvokeAsync("b", TestContext.Current.CancellationToken);
+        await secondArrived.Task;
+
+        // both invocations are now parked inside the pipeline at the same time
+        release.SetResult();
+        _ = await Task.WhenAll(t1, t2);
+
+        var snapshot = observed.ToArray();
+        Assert.Equal(2, snapshot.Length);
+        Assert.NotEqual(snapshot[0].id, snapshot[1].id);
+        Assert.NotEqual(snapshot[0].scopeId, snapshot[1].scopeId);
+
+        // Lazy<T> built the pipeline exactly once across both overlapping invocations
+        Assert.Equal(1, BuildCounterMiddleware.Constructions);
+    }
 }

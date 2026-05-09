@@ -16,7 +16,7 @@ Coverage closed across batches A/B/C and follow-on test passes:
 - **Configuration loading** — three configuration tests plus `BuildTwiceProducesIndependentHandlersWithPerBuildSnapshotAsync` for #015 recipe semantics.
 - **`Build(TimeSpan)` overload** — `FiniteTimeout*` tests.
 - **`Create(args, configure)` overload** — N/A; that overload no longer exists post-refactor. The two surviving `Create` overloads are both covered.
-- **Concurrent invocations** — intentionally not tested. Pipeline-build thread-safety is delegated to `Lazy<T>` (BCL contract); per-invocation state lives in scoped `RequestContext`/`IServiceScope`. Threaded tests would test the framework, not Plumber, and would add CI flakiness without protecting an invariant we own.
+- **Concurrent invocations** — `OverlappingInvocationsHaveIsolatedContextAndScopeAsync` uses a two-task TCS rendezvous: two invocations park inside the pipeline at the same time (proven by the gates), the test releases them together, then asserts distinct `RequestContext.Id`s, distinct DI scopes, and that `Lazy<T>` built the pipeline exactly once. Deterministic — failure mode is deadlock, not flake — and tests the actual isolation invariants rather than just "didn't crash."
 
 Coverage report after these additions: 99%+ line coverage on `Plumber`. The two remaining gaps are defensive paths (`(configuration as IDisposable)?.Dispose()` null branch and the `AddLogging` lambda body when no consumer resolves `ILoggerFactory`).
 

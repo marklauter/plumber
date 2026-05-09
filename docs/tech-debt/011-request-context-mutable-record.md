@@ -2,7 +2,7 @@
 
 - **Area:** RequestContext (type design)
 - **Priority:** Low
-- **Status:** Open
+- **Status:** Resolved
 
 ## Problem
 `RequestContext` is a `record` with mutable state (`Response` setter, lazy `Data` dictionary). Records provide value-based equality, but mutation makes `Equals`/`GetHashCode` unstable. If used in a collection, hash lookups would break after mutation.

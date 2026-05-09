@@ -1,4 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Plumber;
 
@@ -7,21 +7,45 @@ namespace Plumber;
 /// </summary>
 /// <typeparam name="TRequest">The type of request handled by the pipeline.</typeparam>
 /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
-/// <param name="Request">The request.</param>
-/// <param name="Id">Id for tracing the request. <see cref="Ulid"/></param>
-/// <param name="Timestamp">Request timestamp. <see cref="DateTime"/></param>
-/// <param name="Services"><see cref="IServiceProvider"/></param>
-/// <param name="CancellationToken">Each delegate should call CancelationToken.ThrowIfCancellationRequested() before processing or forwarding the request context. <see cref="CancellationToken"/> </param>
-public record RequestContext<TRequest, TResponse>(
-    TRequest Request,
-    Ulid Id,
-    DateTime Timestamp,
-    IServiceProvider Services,
-    CancellationToken CancellationToken)
+/// <param name="request">The request.</param>
+/// <param name="id">Id for tracing the request. <see cref="Ulid"/></param>
+/// <param name="timestamp">Request timestamp. <see cref="DateTime"/></param>
+/// <param name="services"><see cref="IServiceProvider"/></param>
+/// <param name="cancellationToken">Each delegate should call CancelationToken.ThrowIfCancellationRequested() before processing or forwarding the request context. <see cref="CancellationToken"/> </param>
+public sealed class RequestContext<TRequest, TResponse>(
+    TRequest request,
+    Ulid id,
+    DateTime timestamp,
+    IServiceProvider services,
+    CancellationToken cancellationToken)
     where TRequest : notnull
 {
-
     private Dictionary<string, object?>? data;
+
+    /// <summary>
+    /// The request.
+    /// </summary>
+    public TRequest Request => request;
+
+    /// <summary>
+    /// Id for tracing the request.
+    /// </summary>
+    public Ulid Id => id;
+
+    /// <summary>
+    /// Request timestamp.
+    /// </summary>
+    public DateTime Timestamp => timestamp;
+
+    /// <summary>
+    /// The scoped <see cref="IServiceProvider"/> for the request.
+    /// </summary>
+    public IServiceProvider Services { get; } = services ?? throw new ArgumentNullException(nameof(services));
+
+    /// <summary>
+    /// Cancellation token for the request.
+    /// </summary>
+    public CancellationToken CancellationToken => cancellationToken;
 
     /// <summary>
     /// Data that can be passed from one middleware to another.
@@ -55,5 +79,5 @@ public record RequestContext<TRequest, TResponse>(
     /// <summary>
     /// Time since the request was created.
     /// </summary>
-    public TimeSpan Elapsed => DateTime.UtcNow - Timestamp;
+    public TimeSpan Elapsed => DateTime.UtcNow - timestamp;
 }
