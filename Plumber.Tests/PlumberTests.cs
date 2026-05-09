@@ -584,44 +584,71 @@ public sealed class PlumberTests
 
     [Fact]
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
-    public async Task RequestContextIdTimestampElapsedSetPerInvocationAsync()
+    public async Task RequestContextIdIsUniquePerInvocationAsync()
     {
         var ids = new List<Ulid>();
-        var timestamps = new List<DateTime>();
-        var elapsedOnEntry = new List<TimeSpan>();
-        var elapsedAfterDelay = new List<TimeSpan>();
 
         using var handler = RequestHandlerBuilder.Create<string, string>()
             .Build()
-            .Use(async (context, next) =>
+            .Use((context, next) =>
             {
                 ids.Add(context.Id);
-                timestamps.Add(context.Timestamp);
-                elapsedOnEntry.Add(context.Elapsed);
-                await Task.Delay(50, context.CancellationToken);
-                elapsedAfterDelay.Add(context.Elapsed);
-                await next(context);
+                return next(context);
             });
 
-        var before1 = DateTime.UtcNow;
         _ = await handler.InvokeAsync("first", TestContext.Current.CancellationToken);
-        var after1 = DateTime.UtcNow;
-
-        var before2 = DateTime.UtcNow;
         _ = await handler.InvokeAsync("second", TestContext.Current.CancellationToken);
-        var after2 = DateTime.UtcNow;
 
         Assert.NotEqual(default, ids[0]);
         Assert.NotEqual(default, ids[1]);
         Assert.NotEqual(ids[0], ids[1]);
+    }
 
-        Assert.InRange(timestamps[0], before1, after1);
-        Assert.InRange(timestamps[1], before2, after2);
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    public async Task RequestContextTimestampReflectsConfiguredTimeProviderAsync()
+    {
+        var fakeTime = new FakeTimeProvider();
+        DateTime captured = default;
 
-        Assert.True(elapsedOnEntry[0] >= TimeSpan.Zero);
-        Assert.True(elapsedAfterDelay[0] > elapsedOnEntry[0]);
-        Assert.True(elapsedOnEntry[1] >= TimeSpan.Zero);
-        Assert.True(elapsedAfterDelay[1] > elapsedOnEntry[1]);
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .ConfigureServices((s, _) => s.AddSingleton<TimeProvider>(fakeTime))
+            .Build()
+            .Use((context, next) =>
+            {
+                captured = context.Timestamp;
+                return next(context);
+            });
+
+        var expected = fakeTime.GetUtcNow().UtcDateTime;
+        _ = await handler.InvokeAsync("request", TestContext.Current.CancellationToken);
+
+        Assert.Equal(expected, captured);
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    public async Task RequestContextElapsedReflectsConfiguredTimeProviderAsync()
+    {
+        var fakeTime = new FakeTimeProvider();
+        TimeSpan onEntry = default;
+        TimeSpan afterAdvance = default;
+
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .ConfigureServices((s, _) => s.AddSingleton<TimeProvider>(fakeTime))
+            .Build()
+            .Use((context, next) =>
+            {
+                onEntry = context.Elapsed;
+                fakeTime.Advance(TimeSpan.FromSeconds(5));
+                afterAdvance = context.Elapsed;
+                return next(context);
+            });
+
+        _ = await handler.InvokeAsync("request", TestContext.Current.CancellationToken);
+
+        Assert.Equal(TimeSpan.Zero, onEntry);
+        Assert.True(afterAdvance >= TimeSpan.FromSeconds(5));
     }
 
     [Fact]
@@ -853,17 +880,19 @@ public sealed class PlumberTests
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
     public async Task CallerCancellationWinsRaceAgainstTimeoutAsync()
     {
+        var fakeTime = new FakeTimeProvider();
         using var cts = new CancellationTokenSource();
 
         using var handler = RequestHandlerBuilder.Create<string, string>()
-            .Build(TimeSpan.FromMilliseconds(50))
+            .ConfigureServices((s, _) => s.AddSingleton<TimeProvider>(fakeTime))
+            .Build(TimeSpan.FromSeconds(5))
             .Use(async (context, next) =>
             {
+                // cancel the caller token first, then advance fake time past the
+                // configured timeout so both tokens are cancelled when the
+                // OperationCanceledException reaches the catch filter
                 await cts.CancelAsync();
-                // wait long enough that the 50ms timeout token has also fired,
-                // so both the caller token and the timeout token are cancelled
-                // when the OperationCanceledException reaches the catch filter
-                await Task.Delay(200, CancellationToken.None);
+                fakeTime.Advance(TimeSpan.FromSeconds(10));
                 throw new OperationCanceledException(context.CancellationToken);
             });
 
