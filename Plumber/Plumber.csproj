@@ -19,17 +19,6 @@
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<PackageIcon>plumber.png</PackageIcon>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-		<IsTrimmable>True</IsTrimmable>
-		<IsAotCompatible>True</IsAotCompatible>
-		<WarningLevel>9999</WarningLevel>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-		<IsTrimmable>True</IsTrimmable>
-		<IsAotCompatible>True</IsAotCompatible>
 		<WarningLevel>9999</WarningLevel>
 	</PropertyGroup>
 
@@ -42,7 +31,6 @@
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
 		<PackageReference Include="Microsoft.Extensions.Diagnostics.Abstractions" />
 		<PackageReference Include="Microsoft.Extensions.Logging" />
-		<PackageReference Include="Microsoft.NET.ILLink.Tasks" />
 		<PackageReference Include="Ulid" />
 	</ItemGroup>
 

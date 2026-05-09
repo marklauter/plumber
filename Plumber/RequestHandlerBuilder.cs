@@ -1,10 +1,10 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 
 namespace Plumber;
 
 /// <summary>
 /// Extensions to create new typed request handler builders.
-/// <seealso cref="IRequestHandlerBuilder{TRequest, TResponse}"/>
+/// <seealso cref="RequestHandlerBuilder{TRequest, TResponse}"/>
 /// </summary>
 public static class RequestHandlerBuilder
 {
@@ -15,14 +15,14 @@ public static class RequestHandlerBuilder
     ///     - AddJsonFile($"appsettings.{ENV}.json", optional: true)
     ///     - AddEnvironmentVariables("DOTNET_")
     ///     - AddEnvironmentVariables
-    ///     - if ENV == DEV then AddUserSecrets 
+    ///     - if ENV == DEV then AddUserSecrets
     ///     - AddCommandLine([]) // empty
     /// </summary>
     /// <typeparam name="TRequest">The type of request handled by the pipeline.</typeparam>
     /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
-    /// <returns><see cref="IRequestHandlerBuilder{TRequest, TResponse}"/></returns>
-    public static IRequestHandlerBuilder<TRequest, TResponse> Create<TRequest, TResponse>()
-        where TRequest : notnull => new RequestHandlerBuilder<TRequest, TResponse>([]);
+    /// <returns><see cref="RequestHandlerBuilder{TRequest, TResponse}"/></returns>
+    public static RequestHandlerBuilder<TRequest, TResponse> Create<TRequest, TResponse>()
+        where TRequest : notnull => new([]);
 
     /// <summary>
     /// Creates a new request handler builder with default configuration providers:
@@ -31,15 +31,15 @@ public static class RequestHandlerBuilder
     ///     - AddJsonFile($"appsettings.{ENV}.json", optional: true)
     ///     - AddEnvironmentVariables("DOTNET_")
     ///     - AddEnvironmentVariables
-    ///     - if ENV == DEV then AddUserSecrets 
+    ///     - if ENV == DEV then AddUserSecrets
     ///     - AddCommandLine(args)
     /// </summary>
     /// <typeparam name="TRequest">The type of request handled by the pipeline.</typeparam>
     /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
     /// <param name="args">Program args passed into Main(). Used to build <see cref="IConfiguration"/> with <see cref="IConfigurationBuilder"/>.AddCommandLine(args)</param>
-    /// <returns><see cref="IRequestHandlerBuilder{TRequest, TResponse}"/></returns>
-    public static IRequestHandlerBuilder<TRequest, TResponse> Create<TRequest, TResponse>(string[] args)
-        where TRequest : notnull => new RequestHandlerBuilder<TRequest, TResponse>(args);
+    /// <returns><see cref="RequestHandlerBuilder{TRequest, TResponse}"/></returns>
+    public static RequestHandlerBuilder<TRequest, TResponse> Create<TRequest, TResponse>(string[] args)
+        where TRequest : notnull => new(args);
 
     /// <summary>
     /// Creates a new request handler builder, does NOT build a default configuration, and allows for custom configuration through the <paramref name="configure"/> action.
@@ -48,8 +48,7 @@ public static class RequestHandlerBuilder
     /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
     /// <param name="args">Program args passed into Main(). Used to build <see cref="IConfiguration"/> with <see cref="IConfigurationBuilder"/>.AddCommandLine(args)</param>
     /// <param name="configure"></param>
-    /// <returns><see cref="IRequestHandlerBuilder{TRequest, TResponse}"/></returns>
-    public static IRequestHandlerBuilder<TRequest, TResponse> Create<TRequest, TResponse>(string[] args, Action<IConfiguration, string[]> configure)
-        where TRequest : notnull => new RequestHandlerBuilder<TRequest, TResponse>(args, configure);
+    /// <returns><see cref="RequestHandlerBuilder{TRequest, TResponse}"/></returns>
+    public static RequestHandlerBuilder<TRequest, TResponse> Create<TRequest, TResponse>(string[] args, Action<IConfiguration, string[]> configure)
+        where TRequest : notnull => new(args, configure);
 }
-

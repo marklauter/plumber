@@ -1,39 +1,89 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace Plumber;
 
-internal sealed class RequestHandler<TRequest, TResponse>(
-    IServiceCollection services,
-    TimeSpan timeout)
-    : IRequestHandler<TRequest, TResponse>, IDisposable where TRequest : notnull
+/// <summary>
+/// Use RequestHandler to setup and invoke the request/response pipeline.
+/// </summary>
+/// <typeparam name="TRequest">The type of request handled by the pipeline.</typeparam>
+/// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
+public sealed class RequestHandler<TRequest, TResponse> : IDisposable
+    where TRequest : notnull
 {
-    private const DynamicallyAccessedMemberTypes DynamicFlags =
-        DynamicallyAccessedMemberTypes.PublicConstructors |
-        DynamicallyAccessedMemberTypes.PublicMethods;
-
     private readonly List<Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>>> components = [];
+    private readonly ServiceProvider serviceProvider;
+    private readonly ConfigurationManager? ownedConfiguration;
     private RequestMiddleware<TRequest, TResponse>? handler;
     private bool disposed;
 
-    public ServiceProvider Services { get; } = services?.BuildServiceProvider() ?? throw new ArgumentNullException(nameof(services));
+    internal RequestHandler(
+        IServiceCollection services,
+        TimeSpan timeout,
+        ConfigurationManager? ownedConfiguration)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        serviceProvider = services.BuildServiceProvider();
+        Timeout = timeout;
+        this.ownedConfiguration = ownedConfiguration;
+    }
 
-    public TimeSpan Timeout => timeout;
+    /// <summary>
+    /// Handler-level service provider.
+    /// </summary>
+    public IServiceProvider Services => serviceProvider;
 
+    /// <summary>
+    /// The timeout for the request handler's pipeline.
+    /// </summary>
+    /// <remarks>
+    /// When Timeout is set to <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> <see cref="CancellationToken.None"/> is passed to the <see cref="RequestContext{TRequest, TResponse}"/> constructor.
+    /// Otherwise, a timeout-based <see cref="CancellationTokenSource"/> is used to provide the cancelation token for the request context.
+    /// </remarks>
+    public TimeSpan Timeout { get; }
+
+    /// <summary>
+    /// Invokes the request handler's pipeline.
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns>Task{TResponse}</returns>
+    /// <remarks>
+    /// InvokeAsync creates a new <see cref="RequestContext{TRequest, TResponse}"/> and passes it through the request handler's pipeline.
+    /// The service provider passed to the RequestContext constructor is scoped to the request handler's ServiceProvider, and is disposed of after the request handler's pipeline completes.
+    /// So there is no need for users of the RequestContext.Services property to call CreateScope().
+    /// </remarks>
     public Task<TResponse?> InvokeAsync(TRequest request) =>
         ThrowIfDisposed()
         .Timeout == System.Threading.Timeout.InfiniteTimeSpan
             ? InvokeInternalAsync(request, CancellationToken.None)
             : InvokeInternalAsync(request, Timeout);
 
+    /// <summary>
+    /// Invokes the request handler's pipeline.
+    /// </summary>
+    /// <param name="request"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns>Task{TResponse}</returns>
+    /// <remarks>
+    /// InvokeAsync creates a new <see cref="RequestContext{TRequest, TResponse}"/> and passes it through the request handler's pipeline.
+    /// The service provider passed to the RequestContext constructor is scoped to the request handler's ServiceProvider, and is disposed of after the request handler's pipeline completes.
+    /// So there is no need for users of the RequestContext.Services property to call CreateScope().
+    /// </remarks>
     public Task<TResponse?> InvokeAsync(TRequest request, CancellationToken cancellationToken) =>
         ThrowIfDisposed()
         .Timeout == System.Threading.Timeout.InfiniteTimeSpan
             ? InvokeInternalAsync(request, cancellationToken)
             : InvokeInternalAsync(request, Timeout, cancellationToken);
 
-    public IRequestHandler<TRequest, TResponse> Use(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware)
+    /// <summary>
+    /// Adds a middleware to the request handler's pipeline.
+    /// </summary>
+    /// <param name="middleware"><see cref="Func{T, TResult}"/>, <see cref="RequestMiddleware{TRequest, TResponse}"/></param>
+    /// <returns><see cref="RequestHandler{TRequest, TResponse}"/></returns>
+    /// <exception cref="InvalidOperationException">New middleware components can't be added after the pipeline has been built. The pipeline is built on the first call to InvokeAsync.</exception>
+    public RequestHandler<TRequest, TResponse> Use(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware)
     {
         if (handler is not null)
         {
@@ -44,19 +94,41 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         return this;
     }
 
-    public IRequestHandler<TRequest, TResponse> Use(Func<RequestContext<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>, Task> middleware) =>
+    /// <summary>
+    /// Adds a middleware to the request handler's pipeline.
+    /// </summary>
+    /// <param name="middleware"><see cref="Func{T1, T2, TResult}"/>, <see cref="RequestContext{TRequest, TResponse}"/>, <see cref="RequestMiddleware{TRequest, TResponse}"/>, <see cref="Task"/></param>
+    /// <returns><see cref="RequestHandler{TRequest, TResponse}"/></returns>
+    /// <exception cref="InvalidOperationException">New middleware components can't be added after the pipeline has been built. The pipeline is built on the first call to InvokeAsync.</exception>
+    public RequestHandler<TRequest, TResponse> Use(Func<RequestContext<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>, Task> middleware) =>
         Use(next => context => middleware(context, next));
 
-    public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicFlags)] TMiddleware>(params object[] parameters)
+    /// <summary>
+    /// Adds a class-based middleware to the request handler's pipeline with constructor parameters.
+    /// </summary>
+    /// <typeparam name="TMiddleware">A class that contains an InvokeAsync method that receives a context.</typeparam>
+    /// <param name="parameters">Contructor arguments for the middleware implementation.</param>
+    /// <returns><see cref="RequestHandler{TRequest, TResponse}"/></returns>
+    /// <exception cref="InvalidOperationException">New middleware components can't be added after the pipeline has been built. The pipeline is built on the first call to InvokeAsync.</exception>
+    /// <remarks>
+    /// Constructor arguments are always passed after the Next middleware argument and before arguments provided by the service provider.
+    /// </remarks>
+    public RequestHandler<TRequest, TResponse> Use<TMiddleware>(params object[] parameters)
         where TMiddleware : class =>
         Use(next =>
-            new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), Services, next, parameters)
+            new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), serviceProvider, next, parameters)
                 .CreateMiddleware());
 
-    public IRequestHandler<TRequest, TResponse> Use<[DynamicallyAccessedMembers(DynamicFlags)] TMiddleware>()
+    /// <summary>
+    /// Adds a class-based middleware to the request handler's pipeline.
+    /// </summary>
+    /// <typeparam name="TMiddleware">A class that contains an InvokeAsync method that receives a context.</typeparam>
+    /// <returns><see cref="RequestHandler{TRequest, TResponse}"/></returns>
+    /// <exception cref="InvalidOperationException">New middleware components can't be added after the pipeline has been built. The pipeline is built on the first call to InvokeAsync.</exception>
+    public RequestHandler<TRequest, TResponse> Use<TMiddleware>()
         where TMiddleware : class =>
         Use(next =>
-            new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), Services, next, null)
+            new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), serviceProvider, next, null)
                 .CreateMiddleware());
 
     private async Task<TResponse?> InvokeInternalAsync(TRequest request, TimeSpan timeout)
@@ -76,7 +148,7 @@ internal sealed class RequestHandler<TRequest, TResponse>(
 
     private async Task<TResponse?> InvokeInternalAsync(TRequest request, CancellationToken cancellationToken)
     {
-        using var serviceScope = Services.CreateScope();
+        using var serviceScope = serviceProvider.CreateScope();
         var context = new RequestContext<TRequest, TResponse>(
             request,
             Ulid.NewUlid(),
@@ -115,7 +187,6 @@ internal sealed class RequestHandler<TRequest, TResponse>(
         private static readonly Type ContextType = typeof(RequestContext<TRequest, TResponse>);
 
         public MiddlewareFactory(
-            [DynamicallyAccessedMembers(DynamicFlags)]
             Type type,
             IServiceProvider services,
             RequestMiddleware<TRequest, TResponse> next,
@@ -178,6 +249,9 @@ internal sealed class RequestHandler<TRequest, TResponse>(
             };
     }
 
+    /// <inheritdoc/>
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP007:Don't dispose injected",
+        Justification = "ownership of ConfigurationManager transfers from RequestHandlerBuilder at Build() time")]
     public void Dispose()
     {
         if (disposed)
@@ -185,7 +259,8 @@ internal sealed class RequestHandler<TRequest, TResponse>(
             return;
         }
 
-        Services.Dispose();
+        serviceProvider.Dispose();
+        ownedConfiguration?.Dispose();
 
         disposed = true;
     }

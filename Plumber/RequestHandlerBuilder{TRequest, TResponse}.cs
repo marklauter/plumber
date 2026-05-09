@@ -1,20 +1,37 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Diagnostics.Metrics;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace Plumber;
 
-internal sealed class RequestHandlerBuilder<TRequest, TResponse>
-    : IRequestHandlerBuilder<TRequest, TResponse>
+/// <summary>
+/// A builder for request handlers.
+/// Configure, register services for, and build <see cref="RequestHandler{TRequest, TResponse}"/>.
+/// </summary>
+/// <typeparam name="TRequest">The type of request handled by the pipeline.</typeparam>
+/// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
+public sealed class RequestHandlerBuilder<TRequest, TResponse>
+    : ILoggingBuilder
+    , IMetricsBuilder
     where TRequest : notnull
 {
     private const string DevEnv = "Development";
 
-    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP006:Implement IDisposable", Justification = "it's registered as singleton in Build()")]
+    /// <summary>
+    /// The <see cref="IConfigurationManager"/> for the request handler.
+    /// </summary>
+    /// <remarks><seealso href="https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration/?view=aspnetcore-8.0"/></remarks>
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP006:Implement IDisposable",
+        Justification = "ownership transfers to RequestHandler at Build()")]
     public IConfigurationManager Configuration { get; } = new ConfigurationManager();
 
+    /// <summary>
+    /// The <see cref="IServiceCollection"/> for the request handler.
+    /// </summary>
     public IServiceCollection Services { get; } = new ServiceCollection();
 
     internal RequestHandlerBuilder(string[] args)
@@ -35,18 +52,25 @@ internal sealed class RequestHandlerBuilder<TRequest, TResponse>
         configure(Configuration, args);
     }
 
-    [RequiresUnreferencedCode("Calls Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue<T>(String, T)")]
-    public IRequestHandler<TRequest, TResponse> Build() =>
+    /// <summary>
+    /// Call Build to create an instance of <see cref="RequestHandler{TRequest, TResponse}"/>.
+    /// </summary>
+    /// <returns><see cref="RequestHandler{TRequest, TResponse}"/></returns>
+    public RequestHandler<TRequest, TResponse> Build() =>
         Build(Configuration.GetValue("RequestTimeout", Timeout.InfiniteTimeSpan));
 
-    [RequiresUnreferencedCode("Calls Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue<T>(String, T)")]
-    public IRequestHandler<TRequest, TResponse> Build(TimeSpan requestTimeout)
+    /// <summary>
+    /// Call Build to create an instance of <see cref="RequestHandler{TRequest, TResponse}"/> with a custom request timeout.
+    /// </summary>
+    /// <param name="requestTimeout">The timeout applied to each request invocation.</param>
+    /// <returns><see cref="RequestHandler{TRequest, TResponse}"/></returns>
+    public RequestHandler<TRequest, TResponse> Build(TimeSpan requestTimeout)
     {
         Services.TryAddSingleton<IConfiguration>(Configuration);
 
         return new RequestHandler<TRequest, TResponse>(
             Services,
-            requestTimeout);
+            requestTimeout,
+            (ConfigurationManager)Configuration);
     }
 }
-

@@ -4,9 +4,9 @@ using System.Diagnostics.CodeAnalysis;
 namespace Sample.Cli.Tests;
 
 [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
-    Justification = "the IRequestHandler returned by CreateHandler is owned by the factory; the using-scoped factory disposes it")]
+    Justification = "the RequestHandler returned by CreateHandler is owned by the factory; the using-scoped factory disposes it")]
 [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP001:Dispose created",
-    Justification = "the IRequestHandler returned by CreateHandler is owned by the factory; the using-scoped factory disposes it")]
+    Justification = "the RequestHandler returned by CreateHandler is owned by the factory; the using-scoped factory disposes it")]
 public sealed class FactoryTests
 {
     private static PlumberApplicationFactory<string, TextReport> CreateFactory() =>

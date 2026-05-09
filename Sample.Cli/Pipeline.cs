@@ -5,12 +5,12 @@ namespace Sample.Cli;
 
 internal static class Pipeline
 {
-    public static IRequestHandlerBuilder<string, TextReport> CreateBuilder(string[] args) =>
+    public static RequestHandlerBuilder<string, TextReport> CreateBuilder(string[] args) =>
         RequestHandlerBuilder.Create<string, TextReport>(args);
 
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
         Justification = "fluent .Use() returns the same handler instance; caller disposes")]
-    public static IRequestHandler<string, TextReport> Configure(IRequestHandler<string, TextReport> handler) =>
+    public static RequestHandler<string, TextReport> Configure(RequestHandler<string, TextReport> handler) =>
         handler
             .Use(async (context, next) =>
             {
@@ -36,6 +36,8 @@ internal static class Pipeline
             })
             .Use<ReportMiddleware>();
 
-    public static IRequestHandler<string, TextReport> Build(string[] args) =>
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
+        Justification = "handler ownership transfers to caller via return value")]
+    public static RequestHandler<string, TextReport> Build(string[] args) =>
         Configure(CreateBuilder(args).Build());
 }

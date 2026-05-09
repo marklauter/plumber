@@ -14,7 +14,6 @@
 		<PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.7" />
 		<PackageVersion Include="Microsoft.Extensions.Diagnostics.Abstractions" Version="10.0.7" />
 		<PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.7" />
-		<PackageVersion Include="Microsoft.NET.ILLink.Tasks" Version="10.0.7" />
 		<PackageVersion Include="Ulid" Version="1.4.1" />
 
 		<!-- Test infrastructure -->

@@ -17,10 +17,10 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     where TRequest : notnull
 {
     private readonly string[] args;
-    private readonly Func<string[], IRequestHandlerBuilder<TRequest, TResponse>> createBuilder;
-    private readonly Func<IRequestHandler<TRequest, TResponse>, IRequestHandler<TRequest, TResponse>> configurePipeline;
-    private readonly List<Action<IRequestHandlerBuilder<TRequest, TResponse>>> builderHooks = [];
-    private IRequestHandler<TRequest, TResponse>? handler;
+    private readonly Func<string[], RequestHandlerBuilder<TRequest, TResponse>> createBuilder;
+    private readonly Func<RequestHandler<TRequest, TResponse>, RequestHandler<TRequest, TResponse>> configurePipeline;
+    private readonly List<Action<RequestHandlerBuilder<TRequest, TResponse>>> builderHooks = [];
+    private RequestHandler<TRequest, TResponse>? handler;
     private bool disposed;
 
     /// <summary>
@@ -30,8 +30,8 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     /// <param name="configurePipeline">Adds middleware to a built handler. Typically the application's <c>Pipeline.Configure</c>.</param>
     /// <param name="args">Command-line args forwarded to the builder. Defaults to empty.</param>
     public PlumberApplicationFactory(
-        Func<string[], IRequestHandlerBuilder<TRequest, TResponse>> createBuilder,
-        Func<IRequestHandler<TRequest, TResponse>, IRequestHandler<TRequest, TResponse>> configurePipeline,
+        Func<string[], RequestHandlerBuilder<TRequest, TResponse>> createBuilder,
+        Func<RequestHandler<TRequest, TResponse>, RequestHandler<TRequest, TResponse>> configurePipeline,
         string[]? args = null)
     {
         ArgumentNullException.ThrowIfNull(createBuilder);
@@ -47,7 +47,7 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     /// </summary>
     /// <remarks>WAF analog: <c>WithWebHostBuilder</c>.</remarks>
     public PlumberApplicationFactory<TRequest, TResponse> WithBuilder(
-        Action<IRequestHandlerBuilder<TRequest, TResponse>> configure)
+        Action<RequestHandlerBuilder<TRequest, TResponse>> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
         ObjectDisposedException.ThrowIf(disposed, this);
@@ -94,10 +94,9 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     /// Build (or return the cached) handler. Subsequent calls return the same instance.
     /// </summary>
     /// <remarks>WAF analog: <c>CreateClient</c>.</remarks>
-    [RequiresUnreferencedCode("Calls IRequestHandlerBuilder<TRequest, TResponse>.Build() which is unsafe under trimming.")]
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
-        Justification = "the IRequestHandler returned by configurePipeline is the same instance assigned to the handler field")]
-    public IRequestHandler<TRequest, TResponse> CreateHandler()
+        Justification = "the RequestHandler returned by configurePipeline is the same instance assigned to the handler field")]
+    public RequestHandler<TRequest, TResponse> CreateHandler()
     {
         ObjectDisposedException.ThrowIf(disposed, this);
 
@@ -119,7 +118,6 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     /// <summary>
     /// Convenience: invoke the pipeline with a single request.
     /// </summary>
-    [RequiresUnreferencedCode("Calls CreateHandler() which calls Build() — unsafe under trimming.")]
     public Task<TResponse?> InvokeAsync(TRequest request, CancellationToken cancellationToken = default) =>
         CreateHandler().InvokeAsync(request, cancellationToken);
 
