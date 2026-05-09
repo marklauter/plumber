@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Plumber;
 
@@ -146,6 +147,7 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
     /// <param name="secretsid">The user-secrets identifier (matches the <c>UserSecretsId</c> MSBuild property of the source project).</param>
     /// <param name="optional">If <c>true</c>, missing secrets storage is allowed; otherwise an exception is thrown.</param>
     /// <returns>The builder for chaining.</returns>
+    [ExcludeFromCodeCoverage(Justification = "thin pass-through to IConfigurationBuilder.AddUserSecrets; testing requires a UserSecretsId on the test assembly")]
     public RequestHandlerBuilder<TRequest, TResponse> AddUserSecrets(string secretsid, bool optional)
     {
         _ = configurationBuilder.AddUserSecrets(secretsid, optional);
@@ -157,6 +159,7 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
     /// </summary>
     /// <typeparam name="T">A type from the consumer's assembly. The assembly must declare <c>UserSecretsId</c> in its csproj.</typeparam>
     /// <returns>The builder for chaining.</returns>
+    [ExcludeFromCodeCoverage(Justification = "thin pass-through to IConfigurationBuilder.AddUserSecrets; testing requires a UserSecretsId on the test assembly")]
     public RequestHandlerBuilder<TRequest, TResponse> AddUserSecrets<T>()
         where T : class
     {
@@ -170,6 +173,7 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
     /// <typeparam name="T">A type from the consumer's assembly. The assembly must declare <c>UserSecretsId</c> in its csproj.</typeparam>
     /// <param name="optional">If <c>true</c>, missing secrets storage is allowed; otherwise an exception is thrown.</param>
     /// <returns>The builder for chaining.</returns>
+    [ExcludeFromCodeCoverage(Justification = "thin pass-through to IConfigurationBuilder.AddUserSecrets; testing requires a UserSecretsId on the test assembly")]
     public RequestHandlerBuilder<TRequest, TResponse> AddUserSecrets<T>(bool optional)
         where T : class
     {
@@ -184,6 +188,7 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
     /// <param name="optional">If <c>true</c>, missing secrets storage is allowed; otherwise an exception is thrown.</param>
     /// <param name="reloadOnChange">If <c>true</c>, the secrets file is watched and configuration is reloaded when it changes.</param>
     /// <returns>The builder for chaining.</returns>
+    [ExcludeFromCodeCoverage(Justification = "thin pass-through to IConfigurationBuilder.AddUserSecrets; testing requires a UserSecretsId on the test assembly")]
     public RequestHandlerBuilder<TRequest, TResponse> AddUserSecrets<T>(bool optional, bool reloadOnChange)
         where T : class
     {
@@ -197,6 +202,7 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
     /// User secrets are not included — call <see cref="AddUserSecrets{T}()"/> explicitly with a type from your assembly.
     /// </summary>
     /// <returns>The builder for chaining.</returns>
+    [ExcludeFromCodeCoverage(Justification = "composite over already-covered AddJsonFile/AddEnvironmentVariables; DOTNET_ENVIRONMENT branch needs global env-var manipulation that risks test isolation")]
     public RequestHandlerBuilder<TRequest, TResponse> AddDefaultConfigurationSources()
     {
         var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? DevEnv;

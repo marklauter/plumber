@@ -15,7 +15,7 @@ public sealed class RequestHandler<TRequest, TResponse>
 {
     private readonly List<Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>>> components = [];
     private readonly ServiceProvider serviceProvider;
-    private RequestMiddleware<TRequest, TResponse>? handler;
+    private readonly Lazy<RequestMiddleware<TRequest, TResponse>> handler;
     private bool disposed;
 
     internal RequestHandler(
@@ -23,6 +23,7 @@ public sealed class RequestHandler<TRequest, TResponse>
         TimeSpan timeout)
     {
         serviceProvider = serviceCollection.BuildServiceProvider();
+        handler = new Lazy<RequestMiddleware<TRequest, TResponse>>(BuildPipeline);
         Timeout = timeout;
     }
 
@@ -76,7 +77,7 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// <exception cref="InvalidOperationException">New middleware components can't be added after the pipeline has been built. The pipeline is built on the first call to InvokeAsync.</exception>
     public RequestHandler<TRequest, TResponse> Use(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware)
     {
-        if (handler is not null)
+        if (handler.IsValueCreated)
         {
             throw new InvalidOperationException("middleware components cannot be added after the pipeline has been built.");
         }
@@ -147,12 +148,10 @@ public sealed class RequestHandler<TRequest, TResponse>
             serviceScope.ServiceProvider,
             cancellationToken);
 
-        await EnsureHandler()(context);
+        await handler.Value(context);
 
         return context.Response;
     }
-
-    private RequestMiddleware<TRequest, TResponse> EnsureHandler() => handler ??= BuildPipeline();
 
     private RequestMiddleware<TRequest, TResponse> BuildPipeline()
     {
@@ -236,7 +235,8 @@ public sealed class RequestHandler<TRequest, TResponse>
                     args[i] = context.Services.GetRequiredService(injectedTypes[i - 1]);
                 }
 
-                return (Task)method.Invoke(middleware, args)!;
+                return (Task)(method.Invoke(middleware, args)
+                    ?? throw new InvalidOperationException($"{method.DeclaringType?.FullName}.{method.Name} returned null."));
             };
     }
 
