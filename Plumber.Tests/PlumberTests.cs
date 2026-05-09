@@ -358,6 +358,89 @@ public sealed class PlumberTests
         Assert.NotEqual(first, second);
     }
 
+    private interface IDep1 { string Name { get; } }
+    private interface IDep2 { string Name { get; } }
+    private interface IDep3 { string Name { get; } }
+
+    private sealed record Dep1(string Name) : IDep1;
+    private sealed record Dep2(string Name) : IDep2;
+    private sealed record Dep3(string Name) : IDep3;
+
+    private sealed class ThreeDepsMiddleware(RequestMiddleware<string, string> next)
+    {
+        public Task InvokeAsync(RequestContext<string, string> context, IDep1 d1, IDep2 d2, IDep3 d3)
+        {
+            context.Response = $"{d1.Name}|{d2.Name}|{d3.Name}";
+            return next(context);
+        }
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    public async Task MultipleInjectedParamsResolveInDeclarationOrderAsync()
+    {
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .ConfigureServices((services, _) => services
+                .AddSingleton<IDep1>(new Dep1("one"))
+                .AddSingleton<IDep2>(new Dep2("two"))
+                .AddSingleton<IDep3>(new Dep3("three")))
+            .Build()
+            .Use<ThreeDepsMiddleware>();
+
+        var response = await handler.InvokeAsync("request", TestContext.Current.CancellationToken);
+
+        Assert.Equal("one|two|three", response);
+    }
+
+    private sealed class NullTaskNoInjectionMiddleware(RequestMiddleware<string, string> next)
+    {
+        public Task InvokeAsync(RequestContext<string, string> context)
+        {
+            _ = next;
+            _ = context;
+            return null!;
+        }
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    public async Task NoInjectionMiddlewareReturningNullTaskThrowsDescriptiveAsync()
+    {
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .Build()
+            .Use<NullTaskNoInjectionMiddleware>();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => handler.InvokeAsync("request", TestContext.Current.CancellationToken));
+
+        Assert.Contains(nameof(NullTaskNoInjectionMiddleware), ex.Message, StringComparison.Ordinal);
+        Assert.Contains("InvokeAsync", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("returned null", ex.Message, StringComparison.Ordinal);
+    }
+
+    private sealed class GenericTaskReturnMiddleware(RequestMiddleware<string, string> next)
+    {
+        public async Task<int> InvokeAsync(RequestContext<string, string> context)
+        {
+            context.Response = context.Request.ToUpperInvariant();
+            await next(context);
+            return 42;
+        }
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    public async Task ClassMiddlewareWithGenericTaskReturnTypeDispatchesCorrectlyAsync()
+    {
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .Build()
+            .Use<GenericTaskReturnMiddleware>();
+
+        var response = await handler.InvokeAsync("hello", TestContext.Current.CancellationToken);
+
+        Assert.Equal("HELLO", response);
+    }
+
     private sealed class OnionTrace
     {
         public List<string> Entries { get; } = [];

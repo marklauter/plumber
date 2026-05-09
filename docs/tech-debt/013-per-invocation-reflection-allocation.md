@@ -2,7 +2,7 @@
 
 - **Area:** MiddlewareFactory (performance)
 - **Priority:** Low
-- **Status:** Open
+- **Status:** Resolved
 
 ## Problem
 `CreateInjectedMiddleware()` allocates a new `object[]` and uses `method.Invoke` (reflection) on every invocation. In high-throughput scenarios, this creates GC pressure.

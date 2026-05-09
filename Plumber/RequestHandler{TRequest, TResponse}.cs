@@ -1,11 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
-using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
 using System.Reflection;
 
 namespace Plumber;
 
 /// <summary>
-/// Use RequestHandler to setup and invoke the request/response pipeline.
+/// Setup and invoke the request/response pipeline. Obtained from <see cref="RequestHandlerBuilder{TRequest, TResponse}.Build()"/>; not constructable directly.
 /// </summary>
 /// <typeparam name="TRequest">The type of request handled by the pipeline.</typeparam>
 /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
@@ -34,7 +34,7 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// </summary>
     /// <remarks>
     /// When Timeout is set to <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> <see cref="CancellationToken.None"/> is passed to the <see cref="RequestContext{TRequest, TResponse}"/> constructor.
-    /// Otherwise, a timeout-based <see cref="CancellationTokenSource"/> is used to provide the cancelation token for the request context.
+    /// Otherwise, a timeout-based <see cref="CancellationTokenSource"/> is used to provide the cancellation token for the request context.
     /// When the timeout elapses before the pipeline completes, <see cref="InvokeAsync(TRequest)"/> throws <see cref="TimeoutException"/> rather than <see cref="OperationCanceledException"/>, so timeouts can be distinguished from caller-initiated cancellation.
     /// </remarks>
     public TimeSpan Timeout { get; }
@@ -42,12 +42,11 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// <summary>
     /// Invokes the request handler's pipeline.
     /// </summary>
-    /// <param name="request"></param>
-    /// <returns>Task{TResponse}</returns>
+    /// <param name="request">The request value flowed through the pipeline as <see cref="RequestContext{TRequest, TResponse}.Request"/>.</param>
+    /// <returns>A task that completes with the value of <see cref="RequestContext{TRequest, TResponse}.Response"/> after the pipeline returns; <see langword="null"/> if no middleware assigned <c>Response</c>.</returns>
     /// <remarks>
-    /// InvokeAsync creates a new <see cref="RequestContext{TRequest, TResponse}"/> and passes it through the request handler's pipeline.
-    /// The service provider passed to the RequestContext constructor is scoped to the request handler's ServiceProvider, and is disposed of after the request handler's pipeline completes.
-    /// So there is no need for users of the RequestContext.Services property to call CreateScope().
+    /// Each invocation creates a new DI scope; <see cref="RequestContext{TRequest, TResponse}.Services"/> is the per-request scoped provider and is disposed when the pipeline returns.
+    /// Consumers of <c>RequestContext.Services</c> do not need to call <c>CreateScope()</c>.
     /// </remarks>
     /// <exception cref="TimeoutException">Thrown when <see cref="Timeout"/> elapses before the pipeline completes.</exception>
     public Task<TResponse?> InvokeAsync(TRequest request) =>
@@ -59,13 +58,12 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// <summary>
     /// Invokes the request handler's pipeline.
     /// </summary>
-    /// <param name="request"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns>Task{TResponse}</returns>
+    /// <param name="request">The request value flowed through the pipeline as <see cref="RequestContext{TRequest, TResponse}.Request"/>.</param>
+    /// <param name="cancellationToken">Caller-supplied cancellation token. Linked with the internal timeout source when <see cref="Timeout"/> is finite.</param>
+    /// <returns>A task that completes with the value of <see cref="RequestContext{TRequest, TResponse}.Response"/> after the pipeline returns; <see langword="null"/> if no middleware assigned <c>Response</c>.</returns>
     /// <remarks>
-    /// InvokeAsync creates a new <see cref="RequestContext{TRequest, TResponse}"/> and passes it through the request handler's pipeline.
-    /// The service provider passed to the RequestContext constructor is scoped to the request handler's ServiceProvider, and is disposed of after the request handler's pipeline completes.
-    /// So there is no need for users of the RequestContext.Services property to call CreateScope().
+    /// Each invocation creates a new DI scope; <see cref="RequestContext{TRequest, TResponse}.Services"/> is the per-request scoped provider and is disposed when the pipeline returns.
+    /// Consumers of <c>RequestContext.Services</c> do not need to call <c>CreateScope()</c>.
     /// When both <paramref name="cancellationToken"/> and the internal timeout fire, caller cancellation wins (an <see cref="OperationCanceledException"/> propagates rather than a <see cref="TimeoutException"/>).
     /// </remarks>
     /// <exception cref="TimeoutException">Thrown when <see cref="Timeout"/> elapses before the pipeline completes and <paramref name="cancellationToken"/> was not cancelled.</exception>
@@ -79,8 +77,8 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// <summary>
     /// Adds a middleware to the request handler's pipeline.
     /// </summary>
-    /// <param name="middleware"><see cref="Func{T, TResult}"/>, <see cref="RequestMiddleware{TRequest, TResponse}"/></param>
-    /// <returns><see cref="RequestHandler{TRequest, TResponse}"/></returns>
+    /// <param name="middleware">A delegate that receives the next middleware in the chain and returns a wrapped <see cref="RequestMiddleware{TRequest, TResponse}"/>.</param>
+    /// <returns>This <see cref="RequestHandler{TRequest, TResponse}"/> for chaining.</returns>
     /// <exception cref="InvalidOperationException">New middleware components can't be added after the pipeline has been built. The pipeline is built on the first call to InvokeAsync.</exception>
     public RequestHandler<TRequest, TResponse> Use(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware)
     {
@@ -96,8 +94,8 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// <summary>
     /// Adds a middleware to the request handler's pipeline.
     /// </summary>
-    /// <param name="middleware"><see cref="Func{T1, T2, TResult}"/>, <see cref="RequestContext{TRequest, TResponse}"/>, <see cref="RequestMiddleware{TRequest, TResponse}"/>, <see cref="Task"/></param>
-    /// <returns><see cref="RequestHandler{TRequest, TResponse}"/></returns>
+    /// <param name="middleware">An async delegate receiving the <see cref="RequestContext{TRequest, TResponse}"/> and the next middleware delegate; returns a <see cref="Task"/> that completes when this middleware (and any downstream middleware it awaits) finishes.</param>
+    /// <returns>This <see cref="RequestHandler{TRequest, TResponse}"/> for chaining.</returns>
     /// <exception cref="InvalidOperationException">New middleware components can't be added after the pipeline has been built. The pipeline is built on the first call to InvokeAsync.</exception>
     public RequestHandler<TRequest, TResponse> Use(Func<RequestContext<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>, Task> middleware) =>
         Use(next => context => middleware(context, next));
@@ -107,7 +105,7 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// </summary>
     /// <typeparam name="TMiddleware">A class with an InvokeAsync method whose first parameter is <see cref="RequestContext{TRequest, TResponse}"/>.</typeparam>
     /// <param name="parameters">Constructor arguments for the middleware implementation.</param>
-    /// <returns><see cref="RequestHandler{TRequest, TResponse}"/></returns>
+    /// <returns>This <see cref="RequestHandler{TRequest, TResponse}"/> for chaining.</returns>
     /// <exception cref="InvalidOperationException">New middleware components can't be added after the pipeline has been built. The pipeline is built on the first call to InvokeAsync.</exception>
     /// <remarks>
     /// <para>
@@ -140,7 +138,7 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// Adds a class-based middleware to the request handler's pipeline.
     /// </summary>
     /// <typeparam name="TMiddleware">A class with an InvokeAsync method whose first parameter is <see cref="RequestContext{TRequest, TResponse}"/>.</typeparam>
-    /// <returns><see cref="RequestHandler{TRequest, TResponse}"/></returns>
+    /// <returns>This <see cref="RequestHandler{TRequest, TResponse}"/> for chaining.</returns>
     /// <exception cref="InvalidOperationException">New middleware components can't be added after the pipeline has been built. The pipeline is built on the first call to InvokeAsync.</exception>
     /// <remarks>
     /// <para>
@@ -240,7 +238,7 @@ public sealed class RequestHandler<TRequest, TResponse>
             RequestMiddleware<TRequest, TResponse> next,
             object[]? parameters)
         {
-            method = type.GetMethod(InvokeMethodName, BindingFlags.Instance | BindingFlags.Public)
+            var method = type.GetMethod(InvokeMethodName, BindingFlags.Instance | BindingFlags.Public)
                 ?? throw new InvalidOperationException($"{InvokeMethodName} method not found on class {type.FullName}.");
 
             if (!typeof(Task).IsAssignableFrom(method.ReturnType))
@@ -248,59 +246,65 @@ public sealed class RequestHandler<TRequest, TResponse>
                 throw new InvalidOperationException($"{InvokeMethodName} must return {nameof(Task)}");
             }
 
-            var allParamTypes = method
-                .GetParameters()
-                .Select(p => p.ParameterType);
+            var methodParams = method.GetParameters();
 
-            if (!allParamTypes.Any() || allParamTypes.FirstOrDefault() != ContextType)
+            if (methodParams.Length == 0 || methodParams[0].ParameterType != ContextType)
             {
                 throw new InvalidOperationException($"method {method.Name} must have {ContextType.Name} as its first parameter");
             }
 
-            injectedTypes = [.. allParamTypes.Where(t => t != typeof(RequestContext<TRequest, TResponse>))];
-
-            middleware = (TMiddleware)ActivatorUtilities.CreateInstance(
+            var middleware = (TMiddleware)ActivatorUtilities.CreateInstance(
                 services,
                 type,
                 parameters is null || parameters.Length == 0 ? [next] : [.. parameters.Prepend(next)])
                 ?? throw new InvalidOperationException($"can't construct type {type.FullName}");
 
-            handler = injectedTypes.Length == 0
-                ? (Func<RequestContext<TRequest, TResponse>, Task>)Delegate
-                    .CreateDelegate(typeof(Func<RequestContext<TRequest, TResponse>, Task>), middleware, method)
-                : null;
+            handler = Compile(middleware, method, methodParams);
         }
 
-        private readonly TMiddleware middleware;
-        private readonly MethodInfo method;
-        private readonly Type[] injectedTypes;
-        private readonly Func<RequestContext<TRequest, TResponse>, Task>? handler;
+        private readonly RequestMiddleware<TRequest, TResponse> handler;
 
-        public RequestMiddleware<TRequest, TResponse> CreateMiddleware() =>
-            handler is not null
-                ? CreateDirectMiddleware()
-                : CreateInjectedMiddleware();
+        public RequestMiddleware<TRequest, TResponse> CreateMiddleware() => handler;
 
-        private RequestMiddleware<TRequest, TResponse> CreateDirectMiddleware() => context => handler!.Invoke(context);
+        private static RequestMiddleware<TRequest, TResponse> Compile(
+            TMiddleware middleware,
+            MethodInfo method,
+            ParameterInfo[] methodParams)
+        {
+            var contextParam = Expression.Parameter(ContextType, "context");
+            var servicesProp = Expression.Property(contextParam, nameof(RequestContext<TRequest, TResponse>.Services));
 
-        private RequestMiddleware<TRequest, TResponse> CreateInjectedMiddleware() =>
-            context =>
+            var callArgs = new Expression[methodParams.Length];
+            callArgs[0] = contextParam;
+            for (var i = 1; i < methodParams.Length; ++i)
             {
-                var args = new object[injectedTypes.Length + 1];
-                args[0] = context;
-                for (var i = 1; i < args.Length; ++i)
-                {
-                    args[i] = context.Services.GetRequiredService(injectedTypes[i - 1]);
-                }
+                callArgs[i] = Expression.Call(
+                    typeof(ServiceProviderServiceExtensions),
+                    nameof(ServiceProviderServiceExtensions.GetRequiredService),
+                    [methodParams[i].ParameterType],
+                    servicesProp);
+            }
 
-                return (Task)(method.Invoke(middleware, args)
-                    ?? throw new InvalidOperationException($"{method.DeclaringType?.FullName}.{method.Name} returned null."));
-            };
+            Expression call = Expression.Call(Expression.Constant(middleware), method, callArgs);
+            if (call.Type != typeof(Task))
+            {
+                call = Expression.Convert(call, typeof(Task));
+            }
+
+            // preserve the "returned null" diagnostic from the previous reflection-based dispatch
+            var nullMessage = $"{method.DeclaringType?.FullName}.{method.Name} returned null.";
+            var throwOnNull = Expression.Throw(
+                Expression.New(
+                    typeof(InvalidOperationException).GetConstructor([typeof(string)])!,
+                    Expression.Constant(nullMessage)),
+                typeof(Task));
+            var body = Expression.Coalesce(call, throwOnNull);
+
+            return Expression.Lambda<RequestMiddleware<TRequest, TResponse>>(body, contextParam).Compile();
+        }
     }
 
     /// <inheritdoc/>
-    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP007:Don't dispose injected",
-        Justification = "ownership of ConfigurationManager transfers from RequestHandlerBuilder at Build() time")]
     public void Dispose()
     {
         if (disposed)
