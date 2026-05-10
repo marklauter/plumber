@@ -1,6 +1,6 @@
 namespace Sample.Cli;
 
-public sealed record TextReport(
+internal sealed record TextReport(
     string Original,
     string Normalized,
     IReadOnlyList<string> Tokens,

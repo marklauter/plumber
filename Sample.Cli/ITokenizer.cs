@@ -1,6 +1,6 @@
 namespace Sample.Cli;
 
-public interface ITokenizer
+internal interface ITokenizer
 {
     string[] Tokenize(string input);
 }

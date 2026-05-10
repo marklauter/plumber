@@ -7,10 +7,17 @@
 		<Nullable>enable</Nullable>
 		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-		<WarningLevel>9999</WarningLevel>
+		<AnalysisMode>All</AnalysisMode>
+		<AnalysisLevel>latest-all</AnalysisLevel>
 		<IncludeSymbols>true</IncludeSymbols>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<!-- CA1308: ToUpperInvariant over ToLowerInvariant is a Turkic-locale normalization rule; this codebase does not use the result for security/identity comparisons -->
+		<!-- CA2007: ConfigureAwait is library-only advice; the Plumber library already complies, sample apps and tests run on contexts where it does not apply -->
+		<NoWarn>$(NoWarn);CA1308;CA2007</NoWarn>
 	</PropertyGroup>
 
 </Project>

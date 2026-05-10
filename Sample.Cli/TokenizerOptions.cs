@@ -1,6 +1,6 @@
 namespace Sample.Cli;
 
-public sealed record TokenizerOptions(
+internal sealed record TokenizerOptions(
     string Separators,
     bool RemoveEmptyEntries,
     bool TrimEntries)

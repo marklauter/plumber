@@ -551,9 +551,9 @@ public sealed class PlumberTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => handler.InvokeAsync("request", TestContext.Current.CancellationToken));
 
-        Assert.Contains(nameof(NullTaskMiddleware), ex.Message);
-        Assert.Contains("InvokeAsync", ex.Message);
-        Assert.Contains("returned null", ex.Message);
+        Assert.Contains(nameof(NullTaskMiddleware), ex.Message, StringComparison.Ordinal);
+        Assert.Contains("InvokeAsync", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("returned null", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -956,6 +956,8 @@ public sealed class PlumberTests
     /// be used by a single test: xUnit serializes tests within a class, but separate test
     /// classes run in parallel.
     /// </summary>
+    [SuppressMessage("Performance", "CA1810:Initialize reference type static fields inline",
+        Justification = "explicit static ctor exists to make counter-reset semantics visible across test cases")]
     private sealed class BuildCounterMiddleware(RequestMiddleware<string, string> next)
     {
         public static int Constructions;
@@ -1044,6 +1046,7 @@ public sealed class InjectedServiceProviderTests
 {
     [Fact]
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "handler is bound to 'using var'; analyzer is confused by the chained .Use(...) call")]
     public async Task CreateWithInjectedProviderResolvesServicesAsync()
     {
         using var provider = new ServiceCollection()
@@ -1065,6 +1068,7 @@ public sealed class InjectedServiceProviderTests
 
     [Fact]
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP017:Prefer using", Justification = "Test deliberately calls Dispose to assert ownership semantics on the externally-owned provider.")]
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "tracker is intentionally not disposed; the test asserts that handler.Dispose() leaves the externally-owned tracker alive")]
     public void DisposingHandlerDoesNotDisposeInjectedProvider()
     {
         var tracker = new DisposalTracker();
@@ -1097,6 +1101,7 @@ public sealed class InjectedServiceProviderTests
 
     [Fact]
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "handler is bound to 'using var'; analyzer is confused by the chained .Use(...) call")]
     public async Task CreateFallsBackToSystemTimeProviderWhenNotRegisteredAsync()
     {
         using var provider = new ServiceCollection().BuildServiceProvider();

@@ -6,6 +6,8 @@
 		<CollectCoverage>true</CollectCoverage>
 		<CoverletOutputFormat>cobertura</CoverletOutputFormat>
 		<Include>[Sample.Cli]*,[Plumber.Testing]*</Include>
+		<!-- CA1515: Make public types internal — xUnit requires public -->
+		<NoWarn>$(NoWarn);CA1515</NoWarn>
 	</PropertyGroup>
 
 	<ItemGroup>

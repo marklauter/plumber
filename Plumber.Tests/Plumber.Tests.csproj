@@ -6,6 +6,9 @@
 		<CollectCoverage>true</CollectCoverage>
 		<CoverletOutputFormat>cobertura</CoverletOutputFormat>
 		<Include>[Plumber]*</Include>
+		<!-- CA1515: Make public types internal — test fixtures and middleware are public so xUnit can discover them and reflective activation can find them across assemblies -->
+		<!-- CA1812: Internal class never instantiated — middleware classes are activated reflectively via ActivatorUtilities, the analyzer cannot see construction -->
+		<NoWarn>$(NoWarn);CA1515;CA1812</NoWarn>
 	</PropertyGroup>
 
 	<ItemGroup>

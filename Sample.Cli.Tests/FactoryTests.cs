@@ -83,7 +83,7 @@ public sealed class FactoryTests
         var ex = Assert.Throws<InvalidOperationException>(() =>
             factory.WithServices(_ => { }));
 
-        Assert.Contains("after the handler has been created", ex.Message);
+        Assert.Contains("after the handler has been created", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
