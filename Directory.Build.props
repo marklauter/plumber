@@ -16,7 +16,7 @@
 
 	<PropertyGroup>
 		<!-- CA1308: ToUpperInvariant over ToLowerInvariant is a Turkic-locale normalization rule; this codebase does not use the result for security/identity comparisons -->
-		<!-- CA2007: ConfigureAwait is library-only advice; the Plumber library already complies, sample apps and tests run on contexts where it does not apply -->
+		<!-- CA2007: ConfigureAwait is windows-only advice; Plumber is a library -->
 		<NoWarn>$(NoWarn);CA1308;CA2007</NoWarn>
 	</PropertyGroup>
 
