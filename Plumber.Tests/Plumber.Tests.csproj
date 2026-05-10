@@ -1,10 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<IsPackable>false</IsPackable>
-		<IsTestProject>true</IsTestProject>
-		<CollectCoverage>true</CollectCoverage>
-		<CoverletOutputFormat>cobertura</CoverletOutputFormat>
 		<Include>[Plumber]*</Include>
 		<!-- CA1515: Make public types internal — test fixtures and middleware are public so xUnit can discover them and reflective activation can find them across assemblies -->
 		<!-- CA1812: Internal class never instantiated — middleware classes are activated reflectively via ActivatorUtilities, the analyzer cannot see construction -->
@@ -12,25 +8,11 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="coverlet.msbuild">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
 		<PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
-		<PackageReference Include="Microsoft.NET.Test.Sdk" />
-		<PackageReference Include="xunit.v3" />
-		<PackageReference Include="xunit.runner.visualstudio">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
 	</ItemGroup>
 
 	<ItemGroup>
 		<ProjectReference Include="..\Plumber\Plumber.csproj" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<Using Include="Xunit" />
 	</ItemGroup>
 
 </Project>

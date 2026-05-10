@@ -9,5 +9,6 @@ internal sealed class WrongFirstParamMiddleware(RequestMiddleware<string, string
     private readonly RequestMiddleware<string, string> next = next;
 
     [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "intentional instance method for negative middleware shape test")]
+    [SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "parameter exists to model the wrong first-param shape under test")]
     public Task InvokeAsync(string notAContext) => Task.CompletedTask;
 }
