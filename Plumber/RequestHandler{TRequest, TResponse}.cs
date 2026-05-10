@@ -279,8 +279,7 @@ public sealed class RequestHandler<TRequest, TResponse>
             var middleware = (TMiddleware)ActivatorUtilities.CreateInstance(
                 services,
                 type,
-                parameters is null || parameters.Length == 0 ? [next] : [.. parameters.Prepend(next)])
-                ?? throw new InvalidOperationException($"can't construct type {type.FullName}");
+                parameters is null || parameters.Length == 0 ? [next] : [.. parameters.Prepend(next)]);
 
             handler = Compile(middleware, method, methodParams);
         }
