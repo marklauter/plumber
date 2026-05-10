@@ -397,9 +397,10 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 /coveragereport
+/coverage/
 
-# Claude Code local settings
-.claude/settings.local.json
+# Claude Code
+.claude/
 
 # local scratch
 .tmp/
