@@ -35,3 +35,13 @@ jobs:
 
     - name: Test
       run: dotnet test --no-build
+
+    - name: Upload coverage report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-cobertura
+        path: |
+          Plumber.Tests/coverage.cobertura.xml
+          Sample.Cli.Tests/coverage.cobertura.xml
+        if-no-files-found: error
