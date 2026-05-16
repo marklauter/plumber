@@ -1,0 +1,14 @@
+# Normalize line endings on commit; check out as LF on every platform.
+# Overrides core.autocrlf so Windows clones do not silently re-introduce CRLF.
+* text=auto eol=lf
+
+# Explicit binary types so git never tries to normalize them.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.snk binary
+*.dll binary
+*.exe binary
