@@ -3,10 +3,10 @@ name: .NET Tests
 on:
   push:
     branches: [ "main" ]
-    paths: [ "Plumber/**", "Plumber.Testing/**", "Plumber.Tests/**", "Sample.Cli/**", "Sample.Cli.Tests/**", "Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props" ]
+    paths: [ "src/**", "tests/**", "sample/**", "Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props" ]
   pull_request:
     branches: [ "main" ]
-    paths: [ "Plumber/**", "Plumber.Testing/**", "Plumber.Tests/**", "Sample.Cli/**", "Sample.Cli.Tests/**", "Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props" ]
+    paths: [ "src/**", "tests/**", "sample/**", "Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props" ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -71,6 +71,6 @@ jobs:
       with:
         name: coverage-cobertura
         path: |
-          Plumber.Tests/coverage.cobertura.xml
-          Sample.Cli.Tests/coverage.cobertura.xml
+          tests/Plumber.Tests/coverage.cobertura.xml
+          sample/Sample.Cli.Tests/coverage.cobertura.xml
         if-no-files-found: error

@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.9.34714.143
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Plumber.Tests", "Plumber.Tests\Plumber.Tests.csproj", "{6DC35614-880B-4828-8F6E-C0B2A0256AB1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Plumber.Tests", "tests\Plumber.Tests\Plumber.Tests.csproj", "{6DC35614-880B-4828-8F6E-C0B2A0256AB1}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Plumber", "Plumber\Plumber.csproj", "{8D534A4F-2145-490B-869F-0F1FFE04DC71}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Plumber", "src\Plumber\Plumber.csproj", "{8D534A4F-2145-490B-869F-0F1FFE04DC71}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{90AAF485-2231-412E-B176-536093F4C8AE}"
 	ProjectSection(SolutionItems) = preProject
@@ -23,11 +23,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "github-workflows", "github-
 		.github\workflows\dotnet.tests.yml = .github\workflows\dotnet.tests.yml
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.Cli", "Sample.Cli\Sample.Cli.csproj", "{27F57757-B426-4659-B71C-5B8A403FCBAA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.Cli", "sample\Sample.Cli\Sample.Cli.csproj", "{27F57757-B426-4659-B71C-5B8A403FCBAA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.Cli.Tests", "Sample.Cli.Tests\Sample.Cli.Tests.csproj", "{1D4B46F9-9EAF-42A2-A635-4357D7BE2612}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.Cli.Tests", "sample\Sample.Cli.Tests\Sample.Cli.Tests.csproj", "{1D4B46F9-9EAF-42A2-A635-4357D7BE2612}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Plumber.Testing", "Plumber.Testing\Plumber.Testing.csproj", "{6C0680B2-891B-4AB4-969B-18BCA90EA692}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Plumber.Testing", "tests\Plumber.Testing\Plumber.Testing.csproj", "{6C0680B2-891B-4AB4-969B-18BCA90EA692}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

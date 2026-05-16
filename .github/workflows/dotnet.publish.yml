@@ -64,24 +64,24 @@ jobs:
         echo "PACKAGE_VERSION=$version" >> "$GITHUB_ENV"
 
     - name: Restore
-      working-directory: Plumber
+      working-directory: src/Plumber
       run: dotnet restore
 
     - name: Pack
-      working-directory: Plumber
+      working-directory: src/Plumber
       run: dotnet pack -c Release --no-restore -o nuget -p:PackageVersion=${{ env.PACKAGE_VERSION }} -p:Version=${{ env.PACKAGE_VERSION }}
 
     - name: Upload package artifacts
       uses: actions/upload-artifact@v4
       with:
         name: nuget-packages
-        path: Plumber/nuget/*
+        path: src/Plumber/nuget/*
         retention-days: 30
 
     - name: Publish to nuget.pkg.github.com
-      working-directory: Plumber
+      working-directory: src/Plumber
       run: dotnet nuget push nuget/*.nupkg --skip-duplicate -k ${{ secrets.GITHUB_TOKEN }} -s https://nuget.pkg.github.com/marklauter/index.json
 
     - name: Publish to api.nuget.org
-      working-directory: Plumber
+      working-directory: src/Plumber
       run: dotnet nuget push nuget/*.nupkg --skip-duplicate -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
