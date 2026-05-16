@@ -23,9 +23,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "github-workflows", "github-
 		.github\workflows\dotnet.tests.yml = .github\workflows\dotnet.tests.yml
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.Cli", "sample\Sample.Cli\Sample.Cli.csproj", "{27F57757-B426-4659-B71C-5B8A403FCBAA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.Cli", "samples\Sample.Cli\Sample.Cli.csproj", "{27F57757-B426-4659-B71C-5B8A403FCBAA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.Cli.Tests", "sample\Sample.Cli.Tests\Sample.Cli.Tests.csproj", "{1D4B46F9-9EAF-42A2-A635-4357D7BE2612}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.Cli.Tests", "samples\Sample.Cli.Tests\Sample.Cli.Tests.csproj", "{1D4B46F9-9EAF-42A2-A635-4357D7BE2612}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Plumber.Testing", "tests\Plumber.Testing\Plumber.Testing.csproj", "{6C0680B2-891B-4AB4-969B-18BCA90EA692}"
 EndProject

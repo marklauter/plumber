@@ -470,7 +470,7 @@ Customization hooks:
 `CreateHandler()` is idempotent — call it as many times as you like; the same handler comes back. Once it's been called, builder hooks are frozen; trying to add more throws.
 
 ## Sample app
-[`Sample.Cli`](Sample.Cli) is a complete, working version of the same shape. It's a small CLI that reads stdin (or argv), runs it through validation → normalization → tokenization → reporting, and prints the result. The earlier README snippets are simplified for teaching — the sample's middleware add logging and use shared `DataKeys` constants for the `context.Data` keys. It demonstrates:
+[`Sample.Cli`](samples/Sample.Cli) is a complete, working version of the same shape. It's a small CLI that reads stdin (or argv), runs it through validation → normalization → tokenization → reporting, and prints the result. The earlier README snippets are simplified for teaching — the sample's middleware add logging and use shared `DataKeys` constants for the `context.Data` keys. It demonstrates:
 
 - The `CreateBuilder` + `Configure` split
 - Configuration via `ConfigureConfiguration` and bound configuration POCOs
@@ -479,7 +479,7 @@ Customization hooks:
 - Structured logging via `ConfigureLogging`
 - A timing wrapper that uses `record with` to enrich the response
 
-[`Sample.Cli.Tests`](Sample.Cli.Tests) shows both direct testing of the built pipeline and the `PlumberApplicationFactory` pattern.
+[`Sample.Cli.Tests`](samples/Sample.Cli.Tests) shows both direct testing of the built pipeline and the `PlumberApplicationFactory` pattern.
 
 ## Advanced
 
