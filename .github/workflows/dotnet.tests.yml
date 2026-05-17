@@ -3,10 +3,10 @@ name: .NET Tests
 on:
   push:
     branches: [ "main" ]
-    paths: [ "src/**", "tests/**", "samples/**", "Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props" ]
+    paths: [ "src/**", "tests/**", "samples/**", "Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props", ".editorconfig", ".gitattributes", ".github/workflows/dotnet.tests.yml" ]
   pull_request:
     branches: [ "main" ]
-    paths: [ "src/**", "tests/**", "samples/**", "Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props" ]
+    paths: [ "src/**", "tests/**", "samples/**", "Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props", ".editorconfig", ".gitattributes", ".github/workflows/dotnet.tests.yml" ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
