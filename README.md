@@ -3,7 +3,7 @@
 [![NuGet](https://img.shields.io/nuget/v/MSL.Plumber.Pipeline?logo=nuget)](https://www.nuget.org/packages/MSL.Plumber.Pipeline/)
 [![Nuget](https://img.shields.io/badge/.NET-10.0-blue)](https://dotnet.microsoft.com/en-us/download/dotnet/10.0/)
 
-![Plumber](https://raw.githubusercontent.com/marklauter/plumber/main/images/plumber.png "Plumber")
+![Plumber](https://raw.githubusercontent.com/marklauter/plumber/main/images/plumber.comic.small "Plumber")
 ![MSL Armory](https://raw.githubusercontent.com/marklauter/plumber/main/images/msl.armory.small.png "MSL Armory")
 
 # Plumber
