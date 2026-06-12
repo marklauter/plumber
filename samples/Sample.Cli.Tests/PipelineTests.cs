@@ -43,6 +43,20 @@ public sealed class PipelineTests
     }
 
     [Fact]
+    public void PipelineRegistersMiddlewareInOrder()
+    {
+        using var handler = Pipeline.Build([]);
+
+        Assert.Collection(
+            handler.Middleware,
+            m => Assert.Null(m.MiddlewareType), // the timing delegate
+            m => Assert.Equal(typeof(ValidationMiddleware), m.MiddlewareType),
+            m => Assert.Equal(typeof(NormalizeMiddleware), m.MiddlewareType),
+            m => Assert.Equal(typeof(TokenizeMiddleware), m.MiddlewareType),
+            m => Assert.Equal(typeof(ReportMiddleware), m.MiddlewareType));
+    }
+
+    [Fact]
     public async Task ShortCircuitStillRecordsElapsedAsync()
     {
         using var handler = Pipeline.Build([]);

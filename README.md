@@ -40,6 +40,7 @@ Plumber gives console apps, Lambdas, queue consumers, and other host-free .NET p
     - [Timeouts](#timeouts)
     - [Error handling](#error-handling)
   - [Testing your pipeline (preview)](#testing-your-pipeline-preview)
+    - [Asserting pipeline composition](#asserting-pipeline-composition)
   - [Sample app](#sample-app)
   - [Advanced](#advanced)
     - [Hosting inside an existing DI container](#hosting-inside-an-existing-di-container)
@@ -471,6 +472,28 @@ Customization hooks:
 | `WithInMemorySettings(IEnumerable<KeyValuePair<string, string?>>)` | Seed config keys |
 
 `CreateHandler()` is idempotent — call it as many times as you like; the same handler comes back. Once it's been called, builder hooks are frozen; trying to add more throws.
+
+### Asserting pipeline composition
+
+`RequestHandler<TRequest, TResponse>.Middleware` exposes one `MiddlewareDescriptor` per registration, in registration order — which is also inbound execution order. Use it to assert that your pipeline is wired in the order you expect, without invoking anything:
+
+```csharp
+[Fact]
+public void PipelineRegistersMiddlewareInOrder()
+{
+    using var factory = new PlumberApplicationFactory<string, TextReport>(
+        Pipeline.CreateBuilder,
+        Pipeline.Configure);
+
+    Assert.Collection(
+        factory.CreateHandler().Middleware,
+        m => Assert.Equal(typeof(ValidationMiddleware), m.MiddlewareType),
+        m => Assert.Equal(typeof(NormalizeMiddleware), m.MiddlewareType),
+        m => Assert.Equal(typeof(TokenizeMiddleware), m.MiddlewareType));
+}
+```
+
+Class-based registrations (`Use<T>()`) carry the middleware type in `MiddlewareType`; delegate-based registrations have a `null` type and the delegate's method name as `DisplayName`. Lambdas yield compiler-generated display names — register a method group when a stable name matters. The descriptors are metadata only: the component delegates and the compiled pipeline stay private.
 
 ## Sample app
 [`Sample.Cli`](samples/Sample.Cli) is a complete, working version of the same shape. It's a small CLI that reads stdin (or argv), runs it through validation → normalization → tokenization → reporting, and prints the result. The earlier README snippets are simplified for teaching — the sample's middleware add logging and use shared `DataKeys` constants for the `context.Data` keys. It demonstrates:

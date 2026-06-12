@@ -15,6 +15,7 @@ public sealed class RequestHandler<TRequest, TResponse>
     where TRequest : notnull
 {
     private readonly List<Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>>> components = [];
+    private readonly List<MiddlewareDescriptor> descriptors = [];
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP008:Don't assign member with injected and created disposables", Justification = "Ownership is tracked via ownsProvider; only owned providers are disposed in Dispose().")]
     private readonly IServiceProvider serviceProvider;
     private readonly bool ownsProvider;
@@ -63,6 +64,20 @@ public sealed class RequestHandler<TRequest, TResponse>
     public TimeSpan Timeout { get; }
 
     /// <summary>
+    /// The pipeline's middleware registrations, in registration order.
+    /// </summary>
+    /// <remarks>
+    /// Registration order is execution order on the way in: <c>Middleware[0]</c> is the outermost middleware
+    /// and sees the request first. Class-based registrations (<see cref="Use{TMiddleware}()"/>) carry the
+    /// middleware type in <see cref="MiddlewareDescriptor.MiddlewareType"/>; delegate-based registrations have a
+    /// <see langword="null"/> type and the delegate's method name as <see cref="MiddlewareDescriptor.DisplayName"/>.
+    /// Intended for asserting on pipeline composition in tests — it exposes registration metadata only,
+    /// never the component delegates or the compiled pipeline. The list remains readable after the pipeline
+    /// is built on the first <see cref="InvokeAsync(TRequest)"/>.
+    /// </remarks>
+    public IReadOnlyList<MiddlewareDescriptor> Middleware => descriptors.AsReadOnly();
+
+    /// <summary>
     /// Invokes the request handler's pipeline.
     /// </summary>
     /// <param name="request">The request value flowed through the pipeline as <see cref="RequestContext{TRequest, TResponse}.Request"/>.</param>
@@ -102,16 +117,12 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// </summary>
     /// <param name="middleware">A delegate that receives the next middleware in the chain and returns a wrapped <see cref="RequestMiddleware{TRequest, TResponse}"/>.</param>
     /// <returns>This <see cref="RequestHandler{TRequest, TResponse}"/> for chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="middleware"/> is <see langword="null"/>.</exception>
     /// <exception cref="InvalidOperationException">New middleware components can't be added after the pipeline has been built. The pipeline is built on the first call to InvokeAsync.</exception>
     public RequestHandler<TRequest, TResponse> Use(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware)
     {
-        if (handler.IsValueCreated)
-        {
-            throw new InvalidOperationException("middleware components cannot be added after the pipeline has been built.");
-        }
-
-        ThrowIfDisposed().components.Add(middleware);
-        return this;
+        ArgumentNullException.ThrowIfNull(middleware);
+        return Use(middleware, new MiddlewareDescriptor(null, middleware.Method.Name));
     }
 
     /// <summary>
@@ -119,9 +130,13 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// </summary>
     /// <param name="middleware">An async delegate receiving the <see cref="RequestContext{TRequest, TResponse}"/> and the next middleware delegate; returns a <see cref="Task"/> that completes when this middleware (and any downstream middleware it awaits) finishes.</param>
     /// <returns>This <see cref="RequestHandler{TRequest, TResponse}"/> for chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="middleware"/> is <see langword="null"/>.</exception>
     /// <exception cref="InvalidOperationException">New middleware components can't be added after the pipeline has been built. The pipeline is built on the first call to InvokeAsync.</exception>
-    public RequestHandler<TRequest, TResponse> Use(Func<RequestContext<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>, Task> middleware) =>
-        Use(next => context => middleware(context, next));
+    public RequestHandler<TRequest, TResponse> Use(Func<RequestContext<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>, Task> middleware)
+    {
+        ArgumentNullException.ThrowIfNull(middleware);
+        return Use(next => context => middleware(context, next), new MiddlewareDescriptor(null, middleware.Method.Name));
+    }
 
     /// <summary>
     /// Adds a class-based middleware to the request handler's pipeline with constructor parameters.
@@ -153,9 +168,10 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// </remarks>
     public RequestHandler<TRequest, TResponse> Use<TMiddleware>(params object[] parameters)
         where TMiddleware : class =>
-        Use(next =>
-            new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), serviceProvider, next, parameters)
-                .CreateMiddleware());
+        Use(
+            next => new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), serviceProvider, next, parameters)
+                .CreateMiddleware(),
+            new MiddlewareDescriptor(typeof(TMiddleware), typeof(TMiddleware).Name));
 
     /// <summary>
     /// Adds a class-based middleware to the request handler's pipeline.
@@ -183,9 +199,24 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// </remarks>
     public RequestHandler<TRequest, TResponse> Use<TMiddleware>()
         where TMiddleware : class =>
-        Use(next =>
-            new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), serviceProvider, next, null)
-                .CreateMiddleware());
+        Use(
+            next => new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), serviceProvider, next, null)
+                .CreateMiddleware(),
+            new MiddlewareDescriptor(typeof(TMiddleware), typeof(TMiddleware).Name));
+
+    private RequestHandler<TRequest, TResponse> Use(
+        Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware,
+        MiddlewareDescriptor descriptor)
+    {
+        if (handler.IsValueCreated)
+        {
+            throw new InvalidOperationException("middleware components cannot be added after the pipeline has been built.");
+        }
+
+        ThrowIfDisposed().components.Add(middleware);
+        descriptors.Add(descriptor);
+        return this;
+    }
 
     private async Task<TResponse?> InvokeInternalAsync(TRequest request, TimeSpan timeout)
     {
