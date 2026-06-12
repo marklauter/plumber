@@ -475,7 +475,7 @@ Customization hooks:
 
 ### Asserting pipeline composition
 
-`RequestHandler<TRequest, TResponse>.Middleware` exposes one `MiddlewareDescriptor` per registration, in registration order — which is also inbound execution order. Use it to assert that your pipeline is wired in the order you expect, without invoking anything:
+`RequestHandler<TRequest, TResponse>.Middleware` exposes one `MiddlewareDescriptor` per registration, in registration order — which is also inbound execution order. Use it to assert that your pipeline is wired in the order you expect, from registration metadata alone:
 
 ```csharp
 [Fact]
@@ -493,7 +493,7 @@ public void PipelineRegistersMiddlewareInOrder()
 }
 ```
 
-Class-based registrations (`Use<T>()`) carry the middleware type in `MiddlewareType`. Delegate-based registrations have a `null` type; their `DisplayName` is the method name for method groups and `MiddlewareDescriptor.DelegateDisplayName` (`"<delegate>"`) for lambdas, so a lambda slot asserts cleanly:
+Class-based registrations (`Use<T>()`) carry the middleware type in `MiddlewareType`. Delegate-based registrations have a `null` type; their `DisplayName` is the method name for method groups and `MiddlewareDescriptor.DelegateDisplayName` (`"<delegate>"`) for lambdas, so a lambda slot asserts by name:
 
 ```csharp
 m => Assert.Equal(MiddlewareDescriptor.DelegateDisplayName, m.DisplayName)
