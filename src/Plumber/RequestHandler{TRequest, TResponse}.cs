@@ -70,7 +70,8 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// Registration order is execution order on the way in: <c>Middleware[0]</c> is the outermost middleware
     /// and sees the request first. Class-based registrations (<see cref="Use{TMiddleware}()"/>) carry the
     /// middleware type in <see cref="MiddlewareDescriptor.MiddlewareType"/>; delegate-based registrations have a
-    /// <see langword="null"/> type and the delegate's method name as <see cref="MiddlewareDescriptor.DisplayName"/>.
+    /// <see langword="null"/> type and a <see cref="MiddlewareDescriptor.DisplayName"/> of the method name
+    /// (method groups) or <see cref="MiddlewareDescriptor.DelegateDisplayName"/> (lambdas).
     /// Intended for asserting on pipeline composition in tests — it exposes registration metadata only,
     /// never the component delegates or the compiled pipeline. The list remains readable after the pipeline
     /// is built on the first <see cref="InvokeAsync(TRequest)"/>.
@@ -122,7 +123,7 @@ public sealed class RequestHandler<TRequest, TResponse>
     public RequestHandler<TRequest, TResponse> Use(Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware)
     {
         ArgumentNullException.ThrowIfNull(middleware);
-        return Use(middleware, new MiddlewareDescriptor(null, middleware.Method.Name));
+        return Use(middleware, new MiddlewareDescriptor(null, DelegateDisplayName(middleware)));
     }
 
     /// <summary>
@@ -135,7 +136,7 @@ public sealed class RequestHandler<TRequest, TResponse>
     public RequestHandler<TRequest, TResponse> Use(Func<RequestContext<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>, Task> middleware)
     {
         ArgumentNullException.ThrowIfNull(middleware);
-        return Use(next => context => middleware(context, next), new MiddlewareDescriptor(null, middleware.Method.Name));
+        return Use(next => context => middleware(context, next), new MiddlewareDescriptor(null, DelegateDisplayName(middleware)));
     }
 
     /// <summary>
@@ -203,6 +204,12 @@ public sealed class RequestHandler<TRequest, TResponse>
             next => new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), serviceProvider, next, null)
                 .CreateMiddleware(),
             new MiddlewareDescriptor(typeof(TMiddleware), typeof(TMiddleware).Name));
+
+    // '<' cannot appear in a C# identifier, so its presence marks a compiler-generated lambda method
+    private static string DelegateDisplayName(Delegate middleware) =>
+        middleware.Method.Name.Contains('<', StringComparison.Ordinal)
+            ? MiddlewareDescriptor.DelegateDisplayName
+            : middleware.Method.Name;
 
     private RequestHandler<TRequest, TResponse> Use(
         Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>> middleware,

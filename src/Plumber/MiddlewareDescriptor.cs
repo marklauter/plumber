@@ -11,7 +11,14 @@ namespace Plumber;
 /// </param>
 /// <param name="DisplayName">
 /// A human-readable name for the registration: the middleware type name for class-based registrations,
-/// the delegate's method name for delegate-based registrations. Lambdas yield compiler-generated names;
-/// register a method group when a stable name matters.
+/// the method name for method-group registrations, and <see cref="DelegateDisplayName"/> for lambdas
+/// (whose compiler-generated method names carry no signal).
 /// </param>
-public sealed record MiddlewareDescriptor(Type? MiddlewareType, string DisplayName);
+public sealed record MiddlewareDescriptor(Type? MiddlewareType, string DisplayName)
+{
+    /// <summary>
+    /// The <see cref="DisplayName"/> recorded for lambda registrations. Assert against this constant
+    /// to match a delegate slot in the pipeline.
+    /// </summary>
+    public const string DelegateDisplayName = "<delegate>";
+}

@@ -493,7 +493,13 @@ public void PipelineRegistersMiddlewareInOrder()
 }
 ```
 
-Class-based registrations (`Use<T>()`) carry the middleware type in `MiddlewareType`; delegate-based registrations have a `null` type and the delegate's method name as `DisplayName`. Lambdas yield compiler-generated display names — register a method group when a stable name matters. The descriptors are metadata only: the component delegates and the compiled pipeline stay private.
+Class-based registrations (`Use<T>()`) carry the middleware type in `MiddlewareType`. Delegate-based registrations have a `null` type; their `DisplayName` is the method name for method groups and `MiddlewareDescriptor.DelegateDisplayName` (`"<delegate>"`) for lambdas, so a lambda slot asserts cleanly:
+
+```csharp
+m => Assert.Equal(MiddlewareDescriptor.DelegateDisplayName, m.DisplayName)
+```
+
+The descriptors are metadata only: the component delegates and the compiled pipeline stay private.
 
 ## Sample app
 [`Sample.Cli`](samples/Sample.Cli) is a complete, working version of the same shape. It's a small CLI that reads stdin (or argv), runs it through validation → normalization → tokenization → reporting, and prints the result. The earlier README snippets are simplified for teaching — the sample's middleware add logging and use shared `DataKeys` constants for the `context.Data` keys. It demonstrates:

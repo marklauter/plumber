@@ -1,3 +1,5 @@
+using Plumber;
+
 namespace Sample.Cli.Tests;
 
 public sealed class PipelineTests
@@ -49,7 +51,7 @@ public sealed class PipelineTests
 
         Assert.Collection(
             handler.Middleware,
-            m => Assert.Null(m.MiddlewareType), // the timing delegate
+            m => Assert.Equal(MiddlewareDescriptor.DelegateDisplayName, m.DisplayName), // the timing delegate
             m => Assert.Equal(typeof(ValidationMiddleware), m.MiddlewareType),
             m => Assert.Equal(typeof(NormalizeMiddleware), m.MiddlewareType),
             m => Assert.Equal(typeof(TokenizeMiddleware), m.MiddlewareType),

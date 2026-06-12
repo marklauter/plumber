@@ -47,7 +47,7 @@ public sealed class MiddlewareIntrospectionTests
 
         var descriptor = Assert.Single(handler.Middleware);
         Assert.Null(descriptor.MiddlewareType);
-        Assert.False(string.IsNullOrEmpty(descriptor.DisplayName));
+        Assert.Equal(MiddlewareDescriptor.DelegateDisplayName, descriptor.DisplayName);
     }
 
     [Fact]
@@ -60,7 +60,7 @@ public sealed class MiddlewareIntrospectionTests
 
         var descriptor = Assert.Single(handler.Middleware);
         Assert.Null(descriptor.MiddlewareType);
-        Assert.False(string.IsNullOrEmpty(descriptor.DisplayName));
+        Assert.Equal(MiddlewareDescriptor.DelegateDisplayName, descriptor.DisplayName);
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public sealed class MiddlewareIntrospectionTests
 
         Assert.Collection(
             handler.Middleware,
-            descriptor => Assert.Null(descriptor.MiddlewareType),
+            descriptor => Assert.Equal(MiddlewareDescriptor.DelegateDisplayName, descriptor.DisplayName),
             descriptor => Assert.Equal(typeof(ToLowerMiddleware), descriptor.MiddlewareType),
             descriptor => Assert.Equal(typeof(ToLowerMiddlewareWithParameter), descriptor.MiddlewareType));
     }
