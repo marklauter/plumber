@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<!-- Shared arch-test base class: test-only infrastructure, not a shipped package and not a runnable
+		     test project (name does not end in .Tests, so it gets no test SDK and no coverage gate). -->
+		<IsPackable>false</IsPackable>
+		<!-- CA1515: Make public types internal — the base class is public so derived tests in other assemblies can inherit it -->
+		<!-- CS1591: Missing XML comment — test-infra library; [Fact] names are self-documenting, matching the no-doc convention of the arch tests themselves -->
+		<NoWarn>$(NoWarn);CA1515;CS1591</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="TngTech.ArchUnitNET" />
+		<!-- Granular xunit.v3 libs (not the executable metapackage): supply [Fact] and Assert for the shared base; derived classes run in the test projects. -->
+		<PackageReference Include="xunit.v3.extensibility.core" />
+		<PackageReference Include="xunit.v3.assert" />
+	</ItemGroup>
+
+</Project>

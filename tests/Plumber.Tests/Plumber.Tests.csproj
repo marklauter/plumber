@@ -13,6 +13,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\Architecture.Testing\Architecture.Testing.csproj" />
 		<ProjectReference Include="..\..\src\Plumber\Plumber.csproj" />
 	</ItemGroup>
 

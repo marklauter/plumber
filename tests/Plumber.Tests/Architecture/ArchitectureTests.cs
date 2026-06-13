@@ -1,65 +1,16 @@
-using ArchUnitNET.Fluent;
-using ArchUnitNET.Fluent.Extensions;
-using ArchUnitNET.Loader;
+using System.Reflection;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
-using ArchitectureModel = ArchUnitNET.Domain.Architecture;
 
 namespace Plumber.Tests.Architecture;
 
-// Encodes the design invariants from docs/agents/architecture.md and
-// docs/agents/csharp-guidance.md so drift trips the build, not code review.
-public sealed class ArchitectureTests
+// Plumber's architecture rules: the shared invariants from
+// global::Architecture.Testing.ArchitectureTestsBase plus the runtime-library
+// contracts that apply only to Plumber's production surface.
+public sealed class ArchitectureTests : global::Architecture.Testing.ArchitectureTestsBase
 {
-    private static readonly ArchitectureModel Plumber = new ArchLoader()
-        .LoadAssemblies(typeof(RequestHandler).Assembly)
-        .Build();
+    protected override Assembly TargetAssembly => typeof(RequestHandler).Assembly;
 
-    [Fact]
-    public void AllTypesResideInPlumberNamespace() =>
-        Verify(Types()
-            .That()
-            .DoNotHaveNameContaining("<") // exclude compiler-generated closures / async state machines
-            .Should()
-            .ResideInNamespace("Plumber")
-            .Because("Plumber is intentionally a single, flat namespace; new sub-namespaces are a design change, not a drive-by."));
-
-    [Fact]
-    public void ConcreteClassesAreSealed() =>
-        Verify(Classes()
-            .That()
-            .AreNotAbstract() // C# 'static' compiles to 'abstract sealed' — this also excludes static factories
-            .And()
-            .DoNotHaveNameContaining("<")
-            .Should()
-            .BeSealed()
-            .Because("csharp-guidance.md: seal records and classes by default (enables devirtualization)."));
-
-    [Fact]
-    public void PlumberDoesNotDependOnAspNetCore() =>
-        Verify(Types()
-            .Should()
-            .NotDependOnAnyTypesThat()
-            .ResideInNamespaceMatching(@"^Microsoft\.AspNetCore.*")
-            .Because("Plumber is a host-free pipeline framework; pulling in ASP.NET Core would defeat its purpose."));
-
-    [Fact]
-    public void PlumberDoesNotDependOnHosting() =>
-        Verify(Types()
-            .Should()
-            .NotDependOnAnyTypesThat()
-            .ResideInNamespaceMatching(@"^Microsoft\.Extensions\.Hosting.*")
-            .Because("Plumber targets host-free .NET (console apps, AWS Lambdas, queue consumers); the consumer owns the host, not Plumber."));
-
-    [Fact]
-    public void InstanceFieldsAreNotPublic() =>
-        Verify(FieldMembers()
-            .That()
-            .AreNotStatic() // const / static readonly may be public; instance state must not be.
-            .And()
-            .DoNotHaveNameContaining("<") // exclude compiler-generated backing fields
-            .Should()
-            .NotBePublic()
-            .Because("csharp-guidance.md: immutable-by-default; no public mutable instance state."));
+    protected override string RootNamespace => "Plumber";
 
     [Fact]
     public void PlumberDoesNotDependOnConsole() =>
@@ -110,12 +61,4 @@ public sealed class ArchitectureTests
             .AndShould()
             .BeSealed()
             .Because("RequestHandler and RequestHandlerBuilder exist solely to expose Create<>(...) factories; making them instantiable would imply state they don't have."));
-
-    private static void Verify(IArchRule rule)
-    {
-        if (!rule.HasNoViolations(Plumber))
-        {
-            Assert.Fail(rule.Evaluate(Plumber).ToErrorMessage());
-        }
-    }
 }
