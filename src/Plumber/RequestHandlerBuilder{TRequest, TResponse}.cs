@@ -15,7 +15,7 @@ namespace Plumber;
 public sealed class RequestHandlerBuilder<TRequest, TResponse>
     where TRequest : notnull
 {
-    private const string DevEnv = "Development";
+    private const string ProductionEnv = "Production";
     private readonly string[] args;
     private readonly IConfigurationBuilder configurationBuilder = new ConfigurationBuilder()
         .SetBasePath(Directory.GetCurrentDirectory());
@@ -199,6 +199,7 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
 
     /// <summary>
     /// Adds the standard set of default configuration sources: <c>appsettings.json</c>, <c>appsettings.{ENV}.json</c>, <c>DOTNET_</c>-prefixed environment variables, and all environment variables.
+    /// <c>{ENV}</c> is read from the <c>DOTNET_ENVIRONMENT</c> environment variable and defaults to <c>Production</c> when unset, matching the .NET host convention.
     /// Command-line args are appended automatically by <see cref="Build(TimeSpan)"/> so they always take precedence.
     /// User secrets are not included — call <see cref="AddUserSecrets{T}()"/> explicitly with a type from your assembly.
     /// </summary>
@@ -206,7 +207,7 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
     [ExcludeFromCodeCoverage(Justification = "composite over already-covered AddJsonFile/AddEnvironmentVariables; DOTNET_ENVIRONMENT branch needs global env-var manipulation that risks test isolation")]
     public RequestHandlerBuilder<TRequest, TResponse> AddDefaultConfigurationSources()
     {
-        var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? DevEnv;
+        var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? ProductionEnv;
         _ = configurationBuilder
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
             .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true)
