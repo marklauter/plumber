@@ -14,7 +14,7 @@
 
 Plumber gives console apps, Lambdas, queue consumers, and other host-free .NET projects the same middleware-pipeline shape that ASP.NET Core gives web apps. You define a request type, a response type, and a chain of middleware components. Plumber wires up DI, configuration, logging, scoping, timeouts, and cancellation; you focus on the steps in your pipeline.
 
-> Upgrading from v3.x? Two behavior changes in v4: `AddDefaultConfigurationSources()` defaults the environment to `Production`, and disposal is async-aware (`IAsyncDisposable` on the handler and test factory). See [Migration v3.x → v4.x](#migration-v3x--v4x).
+> Upgrading from v3.x? Three changes in v4: `AddDefaultConfigurationSources()` defaults the environment to `Production`, disposal is async-aware (`IAsyncDisposable` on the handler and test factory), and `reloadOnChange` is removed (rebuild and swap the handler instead). See [Migration v3.x → v4.x](#migration-v3x--v4x).
 >
 > Upgrading from v2.x? Many APIs changed in v3 — interfaces removed, configuration no longer auto-loaded, builder reshaped. See [Migration v2.x → v3.x](#migration-v2x--v3x) at the bottom. v3 is also a modernization and bug-fix pass: faster middleware dispatch (expression-tree-compiled), monotonic `Elapsed`, distinguishable timeout exceptions, and a host-mode factory for reusing an existing DI container.
 
@@ -48,10 +48,12 @@ Plumber gives console apps, Lambdas, queue consumers, and other host-free .NET p
     - [Hosting inside an existing DI container](#hosting-inside-an-existing-di-container)
     - [Multiple `Build()` calls](#multiple-build-calls)
     - [Custom `TimeProvider` for tests](#custom-timeprovider-for-tests)
+    - [Reloading configuration without a restart](#reloading-configuration-without-a-restart)
   - [FAQ](#faq)
   - [Migration v3.x → v4.x](#migration-v3x--v4x)
     - [1. `AddDefaultConfigurationSources` defaults to `Production`](#1-adddefaultconfigurationsources-defaults-to-production)
     - [2. Disposal is async-aware](#2-disposal-is-async-aware)
+    - [3. `reloadOnChange` support removed](#3-reloadonchange-support-removed)
   - [Migration v2.x → v3.x](#migration-v2x--v3x)
     - [1. Interfaces removed](#1-interfaces-removed)
     - [2. `Void` → `Unit`](#2-void--unit)
@@ -173,12 +175,14 @@ v3 configuration is opt-in: only command-line args load automatically, appended 
 ```csharp
 RequestHandlerBuilder.Create<TReq, TRes>(args)
     .AddJsonFile("appsettings.json", optional: true)
-    .AddJsonFile($"appsettings.{env}.json", optional: true, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{env}.json", optional: true)
     .AddEnvironmentVariables("MYAPP_")
     .AddInMemoryCollection([
         new("Feature:Enabled", "true"),
     ]);
 ```
+
+Plumber doesn't watch files for changes. Config is read once, at `Build()`. To pick up changed config in a long-running process, rebuild the handler from the recipe and swap it — see [Reloading configuration without a restart](#reloading-configuration-without-a-restart).
 
 A callback exposes the full `IConfigurationBuilder` surface for everything else:
 ```csharp
@@ -561,6 +565,20 @@ builder.ConfigureServices((services, _) =>
 ```
 `FakeTimeProvider` lives in `Microsoft.Extensions.TimeProvider.Testing`.
 
+### Reloading configuration without a restart
+Plumber reads configuration once, at `Build()`, and builds the pipeline, the service provider, and bound options from it. It does **not** watch files for changes — a config edit takes effect on the next build, not in the running handler. That's a deliberate fit for how host-free workloads deploy (Lambda, containers, CLIs): config changes ship as a new deployment.
+
+When a long-running process genuinely needs to pick up changed config without a restart, the owner rebuilds a fresh handler from the recipe and swaps it — a fresh `Build()` re-reads config from disk:
+```csharp
+var handler = Pipeline.Build(args);
+
+// on your own change signal (file watcher, SIGHUP, k8s ConfigMap, admin endpoint, poll):
+var next = Pipeline.Build(args);          // re-reads config
+var old = Interlocked.Exchange(ref handler, next);
+old.Dispose();                            // swap at a quiescent point; don't dispose mid-request
+```
+You own the trigger and the swap, sized to your concurrency model. The wiki [Configuration reload recipe](https://github.com/marklauter/plumber/wiki/Recipe-Configuration-Reload) walks through a complete example.
+
 ## FAQ
 
 #### How does Plumber compare to ASP.NET Core middleware?
@@ -605,6 +623,20 @@ using var handler = builder.Build();
 await using var handler = builder.Build();
 ```
 `using` remains valid when every registered disposable implements `IDisposable`.
+
+### 3. `reloadOnChange` support removed
+
+Plumber no longer watches configuration files. The `reloadOnChange` parameter is gone from `AddJsonFile` (the three-arg overload), `AddUserSecrets`, and `AddDefaultConfigurationSources`. In-place file-watching reloaded `IConfiguration` but left the pipeline, provider, and bound options built-once (a split-brain), and it doesn't fit how host-free workloads deploy.
+
+```csharp
+// v3
+.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+```
+```csharp
+// v4 — drop the argument
+.AddJsonFile("appsettings.json", optional: true)
+```
+To pick up changed config in a long-running process, rebuild and swap the handler — see [Reloading configuration without a restart](#reloading-configuration-without-a-restart).
 
 ## Migration v2.x → v3.x
 
@@ -715,7 +747,7 @@ catch (OperationCanceledException) { /* caller cancellation */ }
 ```
 
 ### 7. Handler is `IDisposable`
-Always wrap the handler in `using`. The handler owns the service provider it built — leaking it leaks the provider, any file watchers the configuration registered (for example `AddJsonFile(..., reloadOnChange: true)`), and any `IDisposable` services.
+Always wrap the handler in `using`. The handler owns the service provider it built — leaking it leaks the provider, the `IConfiguration` root, and any `IDisposable` services.
 ```csharp
 // v2
 var handler = builder.Build();

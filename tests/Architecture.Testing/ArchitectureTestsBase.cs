@@ -1,8 +1,8 @@
-using System.Collections.Concurrent;
-using System.Reflection;
 using ArchUnitNET.Fluent;
 using ArchUnitNET.Fluent.Extensions;
 using ArchUnitNET.Loader;
+using System.Collections.Concurrent;
+using System.Reflection;
 using Xunit;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 using ArchitectureModel = ArchUnitNET.Domain.Architecture;
