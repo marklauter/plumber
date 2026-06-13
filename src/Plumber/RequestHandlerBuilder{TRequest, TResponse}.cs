@@ -87,19 +87,6 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
     }
 
     /// <summary>
-    /// Adds a JSON configuration file with reload-on-change support. See <see cref="JsonConfigurationExtensions.AddJsonFile(IConfigurationBuilder, string, bool, bool)"/>.
-    /// </summary>
-    /// <param name="path">Path relative to the base path stored in <see cref="IConfigurationBuilder.Properties"/>.</param>
-    /// <param name="optional">If <c>true</c>, the file is optional; otherwise the file must exist.</param>
-    /// <param name="reloadOnChange">If <c>true</c>, the file is watched and configuration is reloaded when it changes.</param>
-    /// <returns>The builder for chaining.</returns>
-    public RequestHandlerBuilder<TRequest, TResponse> AddJsonFile(string path, bool optional, bool reloadOnChange)
-    {
-        _ = configurationBuilder.AddJsonFile(path, optional, reloadOnChange);
-        return this;
-    }
-
-    /// <summary>
     /// Adds an in-memory key/value source to the configuration. See <see cref="MemoryConfigurationBuilderExtensions.AddInMemoryCollection(IConfigurationBuilder, IEnumerable{KeyValuePair{string, string}})"/>.
     /// </summary>
     /// <param name="initialData">Key/value pairs to seed the in-memory source. Pass <c>null</c> for an empty source.</param>
@@ -183,21 +170,6 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
     }
 
     /// <summary>
-    /// Adds user secrets with reload-on-change support. See <see cref="UserSecretsConfigurationExtensions.AddUserSecrets{T}(IConfigurationBuilder, bool, bool)"/>.
-    /// </summary>
-    /// <typeparam name="T">A type from the consumer's assembly. The assembly must declare <c>UserSecretsId</c> in its csproj.</typeparam>
-    /// <param name="optional">If <c>true</c>, missing secrets storage is allowed; otherwise an exception is thrown.</param>
-    /// <param name="reloadOnChange">If <c>true</c>, the secrets file is watched and configuration is reloaded when it changes.</param>
-    /// <returns>The builder for chaining.</returns>
-    [ExcludeFromCodeCoverage(Justification = "thin pass-through to IConfigurationBuilder.AddUserSecrets; testing requires a UserSecretsId on the test assembly")]
-    public RequestHandlerBuilder<TRequest, TResponse> AddUserSecrets<T>(bool optional, bool reloadOnChange)
-        where T : class
-    {
-        _ = configurationBuilder.AddUserSecrets<T>(optional, reloadOnChange);
-        return this;
-    }
-
-    /// <summary>
     /// Adds the standard set of default configuration sources: <c>appsettings.json</c>, <c>appsettings.{ENV}.json</c>, <c>DOTNET_</c>-prefixed environment variables, and all environment variables.
     /// <c>{ENV}</c> is read from the <c>DOTNET_ENVIRONMENT</c> environment variable and defaults to <c>Production</c> when unset, matching the .NET host convention.
     /// Command-line args are appended automatically by <see cref="Build(TimeSpan)"/> so they always take precedence.
@@ -205,12 +177,12 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
     /// </summary>
     /// <returns>The builder for chaining.</returns>
     [ExcludeFromCodeCoverage(Justification = "composite over already-covered AddJsonFile/AddEnvironmentVariables; DOTNET_ENVIRONMENT branch needs global env-var manipulation that risks test isolation")]
-    public RequestHandlerBuilder<TRequest, TResponse> AddDefaultConfigurationSources(bool reloadOnChange = false)
+    public RequestHandlerBuilder<TRequest, TResponse> AddDefaultConfigurationSources()
     {
         var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? ProductionEnv;
         _ = configurationBuilder
-            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: reloadOnChange)
-            .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: reloadOnChange)
+            .AddJsonFile("appsettings.json", optional: true)
+            .AddJsonFile($"appsettings.{environment}.json", optional: true)
             .AddEnvironmentVariables("DOTNET_")
             .AddEnvironmentVariables();
 

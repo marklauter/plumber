@@ -107,7 +107,6 @@ public sealed class RequestHandlerBuilderTests
         using var handler = RequestHandlerBuilder.Create<string, string>()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("nonexistent.json", optional: true)
-            .AddJsonFile("nonexistent.reload.json", optional: true, reloadOnChange: false)
             .AddEnvironmentVariables()
             .AddEnvironmentVariables("PLUMBER_TEST_NOPREFIX_")
             .AddInMemoryCollection([KeyValuePair.Create<string, string?>("Foo", "Bar")])
