@@ -26,7 +26,7 @@
 		<CollectCoverage>true</CollectCoverage>
 		<CoverletOutputFormat>cobertura</CoverletOutputFormat>
 		<!-- Solution-wide coverage ratchet. Raise as coverage grows; never lower. Per-project overrides allowed when a module is intentionally below the bar. -->
-		<Threshold>95,90,95</Threshold>
+		<Threshold>95,91,95</Threshold>
 		<ThresholdType>line,branch,method</ThresholdType>
 		<ThresholdStat>minimum</ThresholdStat>
 		<!-- Exception types are plumbing; exclude from coverage to avoid noise. -->
