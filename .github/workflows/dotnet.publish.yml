@@ -67,10 +67,10 @@ jobs:
       run: dotnet restore
 
     - name: Pack Plumber
-      run: dotnet pack src/Plumber -c Release --no-restore -o nuget -p:PackageVersion=${{ env.PACKAGE_VERSION }} -p:Version=${{ env.PACKAGE_VERSION }}
+      run: dotnet pack src/Plumber -c Release --no-restore -o nuget -p:PackageVersion=$PACKAGE_VERSION -p:Version=$PACKAGE_VERSION
 
     - name: Pack Plumber.Testing
-      run: dotnet pack src/Plumber.Testing -c Release --no-restore -o nuget -p:PackageVersion=${{ env.PACKAGE_VERSION }} -p:Version=${{ env.PACKAGE_VERSION }}
+      run: dotnet pack src/Plumber.Testing -c Release --no-restore -o nuget -p:PackageVersion=$PACKAGE_VERSION -p:Version=$PACKAGE_VERSION
 
     - name: Upload package artifacts
       uses: actions/upload-artifact@v6

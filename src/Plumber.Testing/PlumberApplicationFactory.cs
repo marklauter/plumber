@@ -20,7 +20,7 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     private readonly Func<string[], RequestHandlerBuilder<TRequest, TResponse>> createBuilder;
     private readonly Func<RequestHandler<TRequest, TResponse>, RequestHandler<TRequest, TResponse>> configurePipeline;
     private readonly List<Action<RequestHandlerBuilder<TRequest, TResponse>>> builderHooks = [];
-    private RequestHandler<TRequest, TResponse>? handler;
+    private readonly Lazy<RequestHandler<TRequest, TResponse>> handler;
     private bool disposed;
 
     /// <summary>
@@ -40,6 +40,7 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
         this.createBuilder = createBuilder;
         this.configurePipeline = configurePipeline;
         this.args = args ?? [];
+        handler = new Lazy<RequestHandler<TRequest, TResponse>>(BuildHandler);
     }
 
     /// <summary>
@@ -54,7 +55,7 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
         ArgumentNullException.ThrowIfNull(configure);
         ObjectDisposedException.ThrowIf(disposed, this);
 
-        if (handler is not null)
+        if (handler.IsValueCreated)
         {
             throw new InvalidOperationException(
                 "cannot configure builder after the handler has been created.");
@@ -125,20 +126,27 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     /// Build (or return the cached) handler. Subsequent calls return the same instance.
     /// </summary>
     /// <returns>The built <see cref="RequestHandler{TRequest, TResponse}"/>; the same instance on every call until the factory is disposed.</returns>
-    /// <remarks>WAF analog: <c>CreateClient</c>.</remarks>
-    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
-        Justification = "the RequestHandler returned by configurePipeline is the same instance assigned to the handler field")]
-    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP001:Dispose created",
-        Justification = "ownership of 'built' transfers to the handler field on success; the catch disposes it on failure")]
+    /// <remarks>
+    /// The handler is built exactly once across concurrent callers (<see cref="Lazy{T}"/> with
+    /// <see cref="System.Threading.LazyThreadSafetyMode.ExecutionAndPublication"/>). A build that throws
+    /// caches the failure: every subsequent call re-throws the same exception rather than rebuilding.
+    /// WAF analog: <c>CreateClient</c>.
+    /// </remarks>
     public RequestHandler<TRequest, TResponse> CreateHandler()
     {
         ObjectDisposedException.ThrowIf(disposed, this);
+        return handler.Value;
+    }
 
-        if (handler is not null)
-        {
-            return handler;
-        }
-
+    // The Lazy value factory: runs every builder hook, builds the handler, applies the pipeline
+    // configuration. configurePipeline must return the same handler it was given — a foreign instance
+    // would leave 'built' unowned and leaked, so we fail loud rather than silently accept it.
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP005:Return type should indicate that the value should be disposed",
+        Justification = "the returned handler is owned by the Lazy and disposed by the factory's Dispose/DisposeAsync")]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP001:Dispose created",
+        Justification = "ownership of 'built' transfers to the caller (the Lazy) on success; the catch disposes it on every failure path, including the identity check")]
+    private RequestHandler<TRequest, TResponse> BuildHandler()
+    {
         var builder = createBuilder(args);
         foreach (var hook in builderHooks)
         {
@@ -148,15 +156,16 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
         var built = builder.Build();
         try
         {
-            handler = configurePipeline(built);
+            return ReferenceEquals(configurePipeline(built), built)
+                ? built
+                : throw new InvalidOperationException(
+                    "configurePipeline must return the handler instance it was given; returning a different handler would leak the original.");
         }
         catch
         {
             built.Dispose();
             throw;
         }
-
-        return handler;
     }
 
     /// <summary>
@@ -193,7 +202,11 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
             return;
         }
 
-        handler?.Dispose();
+        if (handler.IsValueCreated)
+        {
+            handler.Value.Dispose();
+        }
+
         disposed = true;
     }
 
@@ -209,9 +222,9 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
             return;
         }
 
-        if (handler is not null)
+        if (handler.IsValueCreated)
         {
-            await handler.DisposeAsync();
+            await handler.Value.DisposeAsync();
         }
 
         disposed = true;

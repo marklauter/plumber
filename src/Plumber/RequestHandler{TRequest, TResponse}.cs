@@ -33,7 +33,19 @@ public sealed class RequestHandler<TRequest, TResponse>
     {
         Services = serviceCollection.BuildServiceProvider();
         ownsProvider = true;
-        timeProvider = Services.GetRequiredService<TimeProvider>();
+        try
+        {
+            timeProvider = Services.GetRequiredService<TimeProvider>();
+        }
+        catch
+        {
+            // We own the provider, but no instance escapes the ctor to call Dispose, so tear it down here.
+            // Sync Dispose is correct: an async-only singleton could only exist if the throwing resolution
+            // had already created one, which is pathological.
+            (Services as IDisposable)?.Dispose();
+            throw;
+        }
+
         handler = new Lazy<RequestMiddleware<TRequest, TResponse>>(BuildPipeline);
         Timeout = timeout;
     }
@@ -91,12 +103,16 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// Each invocation creates a new DI scope; <see cref="RequestContext{TRequest, TResponse}.Services"/> is the per-request scoped provider and is disposed when the pipeline returns.
     /// Consumers of <c>RequestContext.Services</c> do not need to call <c>CreateScope()</c>.
     /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="request"/> is <see langword="null"/>.</exception>
     /// <exception cref="TimeoutException">Thrown when <see cref="Timeout"/> elapses before the pipeline completes.</exception>
-    public Task<TResponse?> InvokeAsync(TRequest request) =>
-        ThrowIfDisposed()
-        .Timeout == System.Threading.Timeout.InfiniteTimeSpan
-            ? InvokeInternalAsync(request, CancellationToken.None)
-            : InvokeInternalAsync(request, Timeout);
+    public Task<TResponse?> InvokeAsync(TRequest request)
+    {
+        ThrowIfRequestNull(request);
+        return ThrowIfDisposed()
+            .Timeout == System.Threading.Timeout.InfiniteTimeSpan
+                ? InvokeInternalAsync(request, CancellationToken.None)
+                : InvokeInternalAsync(request, Timeout);
+    }
 
     /// <summary>
     /// Invokes the request handler's pipeline.
@@ -109,13 +125,30 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// Consumers of <c>RequestContext.Services</c> do not need to call <c>CreateScope()</c>.
     /// When both <paramref name="cancellationToken"/> and the internal timeout fire, caller cancellation wins (an <see cref="OperationCanceledException"/> propagates rather than a <see cref="TimeoutException"/>).
     /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="request"/> is <see langword="null"/>.</exception>
     /// <exception cref="TimeoutException">Thrown when <see cref="Timeout"/> elapses before the pipeline completes and <paramref name="cancellationToken"/> was not cancelled.</exception>
     /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is cancelled.</exception>
-    public Task<TResponse?> InvokeAsync(TRequest request, CancellationToken cancellationToken) =>
-        ThrowIfDisposed()
-        .Timeout == System.Threading.Timeout.InfiniteTimeSpan
-            ? InvokeInternalAsync(request, cancellationToken)
-            : InvokeInternalAsync(request, Timeout, cancellationToken);
+    public Task<TResponse?> InvokeAsync(TRequest request, CancellationToken cancellationToken)
+    {
+        ThrowIfRequestNull(request);
+        return ThrowIfDisposed()
+            .Timeout == System.Threading.Timeout.InfiniteTimeSpan
+                ? InvokeInternalAsync(request, cancellationToken)
+                : InvokeInternalAsync(request, Timeout, cancellationToken);
+    }
+
+    // ArgumentNullException.ThrowIfNull(object?) boxes a value-type TRequest on every invocation.
+    // 'is null' is compile-time false for value types (the JIT elides the branch) and a real null
+    // check for reference types, so the guard costs nothing on the value-type hot path.
+    private static void ThrowIfRequestNull(TRequest request)
+    {
+#pragma warning disable CA1510 // ThrowIfNull boxes value-type TRequest; the 'is null' form avoids it
+        if (request is null)
+        {
+            throw new ArgumentNullException(nameof(request));
+        }
+#pragma warning restore CA1510
+    }
 
     /// <summary>
     /// Adds a middleware to the request handler's pipeline.
