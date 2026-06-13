@@ -2,9 +2,11 @@
 
 	<PropertyGroup>
 		<Include>[Plumber.Serilog.Extensions]*</Include>
-		<!-- Temporary 0-floor: the import ships a single happy-path test. Raise toward the
-		     solution ratchet (95,91,95) once the coverage backfill lands. -->
-		<Threshold>0,0,0</Threshold>
+		<!-- Floored at the achieved minimum. The one residual gap below the solution ratchet (95,91,95) is
+		     RequestLoggerMiddleware's collector.TryComplete(...) == false path (and the ZeroProperties fallback
+		     + static .cctor it reads): Serilog only returns false when the diagnostic collection is disposed or
+		     lost mid-request, which isn't reproducible deterministically without contorting the middleware. -->
+		<Threshold>95,85,92</Threshold>
 		<!-- CA1515: Make public types internal — xUnit requires public test classes -->
 		<!-- CA1812: Internal class never instantiated — ToLowerMiddleware is activated reflectively via Use<TMiddleware> -->
 		<NoWarn>$(NoWarn);CA1515;CA1812</NoWarn>

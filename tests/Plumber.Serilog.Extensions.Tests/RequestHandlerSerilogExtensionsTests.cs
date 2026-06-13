@@ -85,4 +85,101 @@ public sealed class RequestHandlerSerilogExtensionsTests
         Assert.NotEmpty(sink.Events);
         Assert.True(sink.Events.First().Properties.ContainsKey("RequestId"));
     }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
+        Justification = "fluent UseSerilogRequestLogging/Use return the same handler instance; the using var owns disposal")]
+    public async Task DownstreamExceptionPropagatesAndLogsAtErrorAsync()
+    {
+        var sink = new TestSink();
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .ConfigureServices((services, _) => services
+                .AddSerilogRequestLogging<string, string>(logger => logger.MinimumLevel.Debug().WriteTo.Sink(sink)))
+            .Build();
+
+        var boom = new InvalidOperationException("boom");
+        _ = handler
+            .UseSerilogRequestLogging()
+            .Use((_, _) => throw boom);
+
+        // ThrowOnException defaults to true, so the original exception surfaces to the caller unchanged.
+        var thrown = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => handler.InvokeAsync("Hello", TestContext.Current.CancellationToken));
+
+        Assert.Same(boom, thrown);
+        var e = sink.Events.First();
+        Assert.Equal(LogEventLevel.Error, e.Level);
+        Assert.Same(boom, e.Exception);
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
+        Justification = "fluent UseSerilogRequestLogging/Use return the same handler instance; the using var owns disposal")]
+    public async Task ThrowOnExceptionFalseSwallowsAndLogsAtErrorAsync()
+    {
+        var sink = new TestSink();
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .ConfigureServices((services, _) => services
+                .AddSerilogRequestLogging<string, string>(logger => logger.MinimumLevel.Debug().WriteTo.Sink(sink)))
+            .Build();
+
+        var boom = new InvalidOperationException("boom");
+        _ = handler
+            .UseSerilogRequestLogging(options => options.ThrowOnException = false)
+            .Use((_, _) => throw boom);
+
+        // ThrowOnException is false: the exception is swallowed, so no response is ever assigned.
+        var response = await handler.InvokeAsync("Hello", TestContext.Current.CancellationToken);
+
+        Assert.Null(response);
+        var e = sink.Events.First();
+        Assert.Equal(LogEventLevel.Error, e.Level);
+        Assert.Same(boom, e.Exception);
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
+        Justification = "fluent UseSerilogRequestLogging/Use return the same handler instance; the using var owns disposal")]
+    public async Task LevelBelowLoggerMinimumWritesNoEventAsync()
+    {
+        var sink = new TestSink();
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .ConfigureServices((services, _) => services
+                .AddSerilogRequestLogging<string, string>(logger => logger.MinimumLevel.Error().WriteTo.Sink(sink)))
+            .Build();
+
+        // Options default LogLevel is Information; the logger's minimum is Error, so the completion event is suppressed.
+        _ = handler
+            .UseSerilogRequestLogging()
+            .Use<ToLowerMiddleware>();
+
+        var response = await handler.InvokeAsync("Hello", TestContext.Current.CancellationToken);
+
+        Assert.Equal("hello", response);
+        Assert.Empty(sink.Events);
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
+        Justification = "fluent UseSerilogRequestLogging/Use return the same handler instance; the using var owns disposal")]
+    public async Task AddSerilogRequestLoggingConfiguresOptionsThroughDiAsync()
+    {
+        var sink = new TestSink();
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .ConfigureServices((services, _) => services
+                .AddSerilogRequestLogging<string, string>(
+                    logger => logger.MinimumLevel.Debug().WriteTo.Sink(sink),
+                    options => options.MessageTemplate = "DONE {RequestId}"))
+            .Build();
+
+        // The parameterless overload must pick up the options configured via AddSerilogRequestLogging through IOptions.
+        _ = handler
+            .UseSerilogRequestLogging()
+            .Use<ToLowerMiddleware>();
+
+        _ = await handler.InvokeAsync("Hello", TestContext.Current.CancellationToken);
+
+        var e = sink.Events.First();
+        Assert.Equal("DONE {RequestId}", e.MessageTemplate.Text);
+    }
 }
