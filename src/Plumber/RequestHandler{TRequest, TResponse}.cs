@@ -17,8 +17,11 @@ public sealed class RequestHandler<TRequest, TResponse>
 {
     private readonly List<Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>>> components = [];
     private readonly List<MiddlewareDescriptor> descriptors = [];
+    // internal (not private) so Plumber.Testing (InternalsVisibleTo) can surface the root provider
+    // for test assertions; production consumers resolve services through RequestContext.Services,
+    // which is scoped per request
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP008:Don't assign member with injected and created disposables", Justification = "Ownership is tracked via ownsProvider; only owned providers are disposed in Dispose().")]
-    private readonly IServiceProvider serviceProvider;
+    internal IServiceProvider Services { get; }
     private readonly bool ownsProvider;
     private readonly TimeProvider timeProvider;
     private readonly Lazy<RequestMiddleware<TRequest, TResponse>> handler;
@@ -28,9 +31,9 @@ public sealed class RequestHandler<TRequest, TResponse>
         ServiceCollection serviceCollection,
         TimeSpan timeout)
     {
-        serviceProvider = serviceCollection.BuildServiceProvider();
+        Services = serviceCollection.BuildServiceProvider();
         ownsProvider = true;
-        timeProvider = serviceProvider.GetRequiredService<TimeProvider>();
+        timeProvider = Services.GetRequiredService<TimeProvider>();
         handler = new Lazy<RequestMiddleware<TRequest, TResponse>>(BuildPipeline);
         Timeout = timeout;
     }
@@ -46,7 +49,7 @@ public sealed class RequestHandler<TRequest, TResponse>
                 $"The injected {nameof(IServiceProvider)} must support {nameof(IServiceScopeFactory)} (typically obtained from {nameof(ServiceCollection)}.{nameof(ServiceCollectionContainerBuilderExtensions.BuildServiceProvider)} or a host-built provider).");
         }
 
-        serviceProvider = services;
+        Services = services;
         ownsProvider = false;
         timeProvider = services.GetService<TimeProvider>() ?? TimeProvider.System;
         handler = new Lazy<RequestMiddleware<TRequest, TResponse>>(BuildPipeline);
@@ -171,7 +174,7 @@ public sealed class RequestHandler<TRequest, TResponse>
     public RequestHandler<TRequest, TResponse> Use<TMiddleware>(params object[] parameters)
         where TMiddleware : class =>
         Use(
-            next => new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), serviceProvider, next, parameters)
+            next => new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), Services, next, parameters)
                 .CreateMiddleware(),
             new MiddlewareDescriptor(typeof(TMiddleware), typeof(TMiddleware).Name));
 
@@ -202,7 +205,7 @@ public sealed class RequestHandler<TRequest, TResponse>
     public RequestHandler<TRequest, TResponse> Use<TMiddleware>()
         where TMiddleware : class =>
         Use(
-            next => new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), serviceProvider, next, null)
+            next => new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), Services, next, null)
                 .CreateMiddleware(),
             new MiddlewareDescriptor(typeof(TMiddleware), typeof(TMiddleware).Name));
 
@@ -258,7 +261,7 @@ public sealed class RequestHandler<TRequest, TResponse>
 
     private async Task<TResponse?> InvokeInternalAsync(TRequest request, CancellationToken cancellationToken)
     {
-        await using var serviceScope = serviceProvider.CreateAsyncScope();
+        await using var serviceScope = Services.CreateAsyncScope();
         var context = new RequestContext<TRequest, TResponse>(
             request,
             Ulid.NewUlid(),
@@ -379,7 +382,7 @@ public sealed class RequestHandler<TRequest, TResponse>
 
         if (ownsProvider)
         {
-            (serviceProvider as IDisposable)?.Dispose();
+            (Services as IDisposable)?.Dispose();
         }
 
         disposed = true;
@@ -400,7 +403,7 @@ public sealed class RequestHandler<TRequest, TResponse>
         if (ownsProvider)
         {
             // the owned provider always comes from ServiceCollection.BuildServiceProvider, which is IAsyncDisposable
-            await ((IAsyncDisposable)serviceProvider).DisposeAsync();
+            await ((IAsyncDisposable)Services).DisposeAsync();
         }
 
         disposed = true;

@@ -160,6 +160,19 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     }
 
     /// <summary>
+    /// The root <see cref="IServiceProvider"/> of the built pipeline. Accessing it builds the handler,
+    /// freezing the builder hooks, exactly as <see cref="CreateHandler"/> does.
+    /// </summary>
+    /// <remarks>
+    /// Resolve singletons directly; create a scope via
+    /// <see cref="ServiceProviderServiceExtensions.CreateScope(IServiceProvider)"/> to resolve scoped
+    /// services (for example, a <c>DbContext</c>) for post-invocation assertions — resolving scoped
+    /// services from the root provider produces captive dependencies.
+    /// WAF analog: <c>Services</c>.
+    /// </remarks>
+    public IServiceProvider Services => CreateHandler().Services;
+
+    /// <summary>
     /// Convenience: invoke the pipeline with a single request.
     /// </summary>
     /// <param name="request">The request value flowed through the pipeline.</param>

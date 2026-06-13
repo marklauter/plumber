@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Include>[Plumber.Testing]*</Include>
+		<!-- CA1515: Make public types internal — xUnit requires public -->
+		<!-- CA1812: Internal class never instantiated — probe classes are activated by the DI container, the analyzer cannot see construction -->
+		<NoWarn>$(NoWarn);CA1515;CA1812</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Plumber.Testing\Plumber.Testing.csproj" />
+	</ItemGroup>
+
+</Project>

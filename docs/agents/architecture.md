@@ -15,3 +15,5 @@ created: 2026-05-10
 - Cross-middleware state goes through `RequestContext.Data`. `Unit` is the response type for event-style pipelines.
 - `RequestContext` is single-threaded per request — the pipeline invokes middleware sequentially, and the context (including `Data` and `Response`) is deliberately unsynchronized, matching `HttpContext` semantics. Middleware that fans out parallel work must not touch the context concurrently. Don't "fix" the lazy `data ??= []` init.
 - Class middleware: `RequestMiddleware<TReq, TRes> next` must be the first ctor parameter; `RequestContext` must be the first `InvokeAsync` parameter (additional parameters resolve from the scoped service provider).
+- `RequestHandler.Services` (the root provider) is `internal`, surfaced publicly only through `PlumberApplicationFactory.Services` via `InternalsVisibleTo("Plumber.Testing")` — the two assemblies version together. Production code never sees the root provider; middleware use the per-request `RequestContext.Services`.
+- `Plumber.Testing` coverage is owned by `Plumber.Testing.Tests` at the solution ratchet; `Sample.Cli.Tests` covers `Sample.Cli` only, under its lowered demo threshold.
