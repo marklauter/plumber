@@ -14,6 +14,8 @@
 
 Plumber gives console apps, Lambdas, queue consumers, and other host-free .NET projects the same middleware-pipeline shape that ASP.NET Core gives web apps. You define a request type, a response type, and a chain of middleware components. Plumber wires up DI, configuration, logging, scoping, timeouts, and cancellation; you focus on the steps in your pipeline.
 
+> Upgrading from v3.x? Two behavior changes in v4: `AddDefaultConfigurationSources()` defaults the environment to `Production`, and disposal is async-aware (`IAsyncDisposable` on the handler and test factory). See [Migration v3.x → v4.x](#migration-v3x--v4x).
+>
 > Upgrading from v2.x? Many APIs changed in v3 — interfaces removed, configuration no longer auto-loaded, builder reshaped. See [Migration v2.x → v3.x](#migration-v2x--v3x) at the bottom. v3 is also a modernization and bug-fix pass: faster middleware dispatch (expression-tree-compiled), monotonic `Elapsed`, distinguishable timeout exceptions, and a host-mode factory for reusing an existing DI container.
 
 ## Table of Contents
@@ -47,6 +49,9 @@ Plumber gives console apps, Lambdas, queue consumers, and other host-free .NET p
     - [Multiple `Build()` calls](#multiple-build-calls)
     - [Custom `TimeProvider` for tests](#custom-timeprovider-for-tests)
   - [FAQ](#faq)
+  - [Migration v3.x → v4.x](#migration-v3x--v4x)
+    - [1. `AddDefaultConfigurationSources` defaults to `Production`](#1-adddefaultconfigurationsources-defaults-to-production)
+    - [2. Disposal is async-aware](#2-disposal-is-async-aware)
   - [Migration v2.x → v3.x](#migration-v2x--v3x)
     - [1. Interfaces removed](#1-interfaces-removed)
     - [2. `Void` → `Unit`](#2-void--unit)
@@ -94,7 +99,7 @@ Console.WriteLine(greeting); // Hello, World!
 
 That's the whole shape: a builder, a built handler, one or more middleware, and an `InvokeAsync` call. Each invocation gets its own DI scope and cancellation token.
 
-`RequestHandler<TRequest, TResponse>` is `IDisposable` — wrap it in `using` to dispose the service provider it builds.
+`RequestHandler<TRequest, TResponse>` is `IDisposable` and `IAsyncDisposable` — wrap it in `using`, or `await using` when you register services that implement only `IAsyncDisposable`, to dispose the service provider it builds.
 
 ## Pipeline architecture
 Middleware in Plumber forms an onion: code before `await next(context)` runs in registration order, code after runs in reverse. A request travels inward; the response travels outward.
@@ -187,6 +192,8 @@ If you want the conventional set (`appsettings.json`, `appsettings.{env}.json`, 
 ```csharp
 builder.AddDefaultConfigurationSources();
 ```
+`{env}` comes from `DOTNET_ENVIRONMENT` and defaults to `Production` when unset — the same convention the .NET host uses. Set `DOTNET_ENVIRONMENT=Development` on your dev machine to load `appsettings.Development.json`.
+
 User secrets stay out of the conventional set — call `AddUserSecrets<T>()` explicitly with a type from your assembly when you want them.
 
 ### Service registration
@@ -562,6 +569,34 @@ v3 doesn't auto-load configuration. Call `AddJsonFile("appsettings.json", option
 
 #### Can I add middleware after the pipeline has been invoked?
 No. The first call to `InvokeAsync` builds the pipeline; further `Use` calls throw `InvalidOperationException`. Configure all your middleware before your first invocation.
+
+## Migration v3.x → v4.x
+
+v4 changes two behaviors; most code compiles unchanged.
+
+### 1. `AddDefaultConfigurationSources` defaults to `Production`
+
+v3 loaded `appsettings.Development.json` when `DOTNET_ENVIRONMENT` was unset. v4 defaults to `Production`, matching the .NET host convention — an unconfigured machine gets the locked-down configuration, and developers opt in to dev settings.
+
+Set the variable on machines that should keep loading Development config:
+```bash
+export DOTNET_ENVIRONMENT=Development
+```
+Only `AddDefaultConfigurationSources()` reads the variable — explicit `AddJsonFile` calls load whatever file you name.
+
+### 2. Disposal is async-aware
+
+`RequestHandler<TRequest, TResponse>` and `PlumberApplicationFactory<TRequest, TResponse>` implement `IAsyncDisposable` alongside `IDisposable`, and the per-request DI scope is disposed asynchronously. Services that implement only `IAsyncDisposable` now dispose correctly; in v3 they threw `InvalidOperationException` at scope or provider teardown.
+
+```csharp
+// v3
+using var handler = builder.Build();
+```
+```csharp
+// v4 — prefer await using in async contexts
+await using var handler = builder.Build();
+```
+`using` remains valid when every registered disposable implements `IDisposable`.
 
 ## Migration v2.x → v3.x
 
