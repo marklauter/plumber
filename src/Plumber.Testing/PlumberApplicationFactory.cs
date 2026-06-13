@@ -71,8 +71,6 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     /// <param name="configure">Callback that mutates the <see cref="IServiceCollection"/> before the handler is built.</param>
     /// <returns>This factory for chaining.</returns>
     /// <remarks>WAF analog: <c>ConfigureTestServices</c>.</remarks>
-    [SuppressMessage("Style", "IDE0039:Use local function",
-        Justification = "a named delegate adapter reads more clearly than a local function here; it is converted to a delegate for ConfigureServices either way")]
     public PlumberApplicationFactory<TRequest, TResponse> WithServices(Action<IServiceCollection> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
@@ -108,8 +106,6 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     /// </summary>
     /// <param name="configure">Callback that mutates the <see cref="IConfigurationBuilder"/> before the handler is built.</param>
     /// <returns>This factory for chaining.</returns>
-    [SuppressMessage("Style", "IDE0039:Use local function",
-        Justification = "a named delegate adapter reads more clearly than a local function here; it is converted to a delegate for ConfigureConfiguration either way")]
     public PlumberApplicationFactory<TRequest, TResponse> WithConfiguration(Action<IConfigurationBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
