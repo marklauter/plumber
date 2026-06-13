@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\Plumber\Plumber.csproj" />
+		<ProjectReference Include="..\Plumber\Plumber.csproj" />
 	</ItemGroup>
 
 </Project>

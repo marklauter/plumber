@@ -10,7 +10,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Sample.Cli\Sample.Cli.csproj" />
-		<ProjectReference Include="..\..\tests\Plumber.Testing\Plumber.Testing.csproj" />
+		<ProjectReference Include="..\..\src\Plumber.Testing\Plumber.Testing.csproj" />
 	</ItemGroup>
 
 </Project>
