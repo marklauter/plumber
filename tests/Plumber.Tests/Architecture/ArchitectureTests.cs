@@ -24,6 +24,30 @@ public sealed class ArchitectureTests : global::Architecture.Testing.Architectur
             .Because("Plumber is a library; consumers route output through ILogger or their own sink — direct Console writes leak into hosts that suppress stdout (lambdas, services)."));
 
     [Fact]
+    public void PlumberDoesNotDependOnPlumberTesting() =>
+        Verify(Types()
+            .Should()
+            .NotDependOnAnyTypesThat()
+            .ResideInNamespaceMatching(@"^Plumber\.Testing.*")
+            .Because("dependency direction is one-way: Plumber.Testing references Plumber, never the reverse — test scaffolding must not leak into the shipped library."));
+
+    [Fact]
+    public void PlumberDoesNotDependOnSampleDependencies() =>
+        Verify(Types()
+            .Should()
+            .NotDependOnAnyTypesThat()
+            .ResideInNamespaceMatching(@"^(Serilog|Amazon)(\..*)?$")
+            .Because("Serilog and Amazon.* are sample/host concerns; the core stays sink- and vendor-agnostic so consumers choose their own logging and hosting."));
+
+    [Fact]
+    public void PlumberDoesNotDependOnHttp() =>
+        Verify(Types()
+            .Should()
+            .NotDependOnAnyTypesThat()
+            .ResideInNamespaceMatching(@"^System\.Net\.Http.*")
+            .Because("Plumber is a transport-agnostic request pipeline; a dependency on HTTP would tie the generic abstraction to one protocol."));
+
+    [Fact]
     public void PlumberDoesNotDependOnStopwatch() =>
         Verify(Types()
             .Should()

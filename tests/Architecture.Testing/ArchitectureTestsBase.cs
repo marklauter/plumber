@@ -77,6 +77,37 @@ public abstract class ArchitectureTestsBase
             .ResideInNamespaceMatching(@"^Microsoft\.Extensions\.Hosting.*")
             .Because("Plumber targets host-free .NET (console apps, AWS Lambdas, queue consumers); the consumer owns the host, not Plumber."));
 
+    [Fact]
+    public void PublicTypesAreNotNested() =>
+        Verify(Types()
+            .That()
+            .AreNested()
+            .And()
+            .DoNotHaveNameContaining("<") // exclude compiler-generated closures / state machines
+            .Should()
+            .NotBePublic()
+            // an assembly may legitimately have no nested types at all (e.g. Plumber.Testing)
+            .Because("the public API is intentionally flat and discoverable; a public nested type hides surface area inside another type.")
+            .WithoutRequiringPositiveResults());
+
+    [Fact]
+    public void AsyncMethodsHaveAsyncSuffix() =>
+        Verify(MethodMembers()
+            .That()
+            // A member's FullName begins with its return type; match Task / Task<T> / ValueTask / ValueTask<T>.
+            // ArchUnit's HaveReturnType(typeof(Task<>)) does not match constructed generics, so match on the name.
+            .HaveFullNameMatching(@"^System\.Threading\.Tasks\.(Task|ValueTask)(`\d+)?(<.*>)? ")
+            .And()
+            .DoNotHaveNameContaining("<") // exclude compiler-generated async state-machine members
+            .And()
+            .DoNotHaveNameContaining("Invoke(") // exclude delegate Invoke/BeginInvoke/EndInvoke (not user methods)
+            .Should()
+            // The member Name carries its parameter list (e.g. "InvokeAsync(TRequest)"), so assert the
+            // identifier ends in Async immediately before the '(' rather than using HaveNameEndingWith.
+            .HaveNameMatching(@"Async\(")
+            .Because("csharp-guidance.md: Async suffix on async methods — the suffix is the only signal a call returns a Task that must be awaited.")
+            .WithoutRequiringPositiveResults());
+
     /// <summary>Evaluate a rule against <see cref="TargetAssembly"/>, failing with ArchUnit's diagnostic on violation.</summary>
     /// <param name="rule">The ArchUnit rule to evaluate.</param>
     protected void Verify(IArchRule rule)
