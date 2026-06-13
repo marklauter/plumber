@@ -1,9 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
+		<PackageId>MSL.Plumber.Serilog.Extensions</PackageId>
 		<Title>Plumber.Serilog.Extensions: Serilog Request Logging for Plumber Pipelines</Title>
-		<PackageId>MSL.$(AssemblyName)</PackageId>
-		<ProductName>Plumber.Serilog.Extensions: Serilog Request Logging for Plumber Pipelines</ProductName>
 		<Authors>Mark Lauter</Authors>
 		<Description>Serilog middleware for the Plumber pipeline framework: structured per-request logging with a Serilog DiagnosticContext, configurable level, message template, and enrichment.</Description>
 		<Copyright>Copyright (c) 2024 Mark Lauter</Copyright>
