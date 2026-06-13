@@ -205,12 +205,12 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
     /// </summary>
     /// <returns>The builder for chaining.</returns>
     [ExcludeFromCodeCoverage(Justification = "composite over already-covered AddJsonFile/AddEnvironmentVariables; DOTNET_ENVIRONMENT branch needs global env-var manipulation that risks test isolation")]
-    public RequestHandlerBuilder<TRequest, TResponse> AddDefaultConfigurationSources()
+    public RequestHandlerBuilder<TRequest, TResponse> AddDefaultConfigurationSources(bool reloadOnChange = false)
     {
         var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? ProductionEnv;
         _ = configurationBuilder
-            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-            .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true)
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: reloadOnChange)
+            .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: reloadOnChange)
             .AddEnvironmentVariables("DOTNET_")
             .AddEnvironmentVariables();
 
