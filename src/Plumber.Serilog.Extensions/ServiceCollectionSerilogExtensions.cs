@@ -34,7 +34,9 @@ public static class ServiceCollectionSerilogExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configureLogger);
 
-        _ = services.AddSerilog(configureLogger);
+        // preserveStaticLogger: true keeps this from replacing/freezing the global Log.Logger — the middleware
+        // resolves its ILogger from DI, so the registration must not reach into Serilog's static state.
+        _ = services.AddSerilog(configureLogger, preserveStaticLogger: true);
         var options = services.AddOptions<RequestLoggerOptions<TRequest, TResponse>>();
         if (configureOptions is not null)
         {

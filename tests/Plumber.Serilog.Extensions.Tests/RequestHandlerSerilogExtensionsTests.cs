@@ -1,4 +1,3 @@
-using Serilog;
 using Serilog.Events;
 using Serilog.Exceptions;
 using System.Diagnostics.CodeAnalysis;
@@ -16,15 +15,13 @@ public sealed class RequestHandlerSerilogExtensionsTests
         var request = "Hello, World!";
 
         var sink = new TestSink();
-        Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
-            .Enrich.FromLogContext()
-            .Enrich.WithExceptionDetails()
-            .WriteTo.Sink(sink)
-            .CreateBootstrapLogger();
-
         using var handler = RequestHandlerBuilder.Create<string, string>()
-            .ConfigureServices((services, _) => services.AddSerilog(Log.Logger))
+            .ConfigureServices((services, _) => services
+                .AddSerilogRequestLogging<string, string>(logger => logger
+                    .MinimumLevel.Debug()
+                    .Enrich.FromLogContext()
+                    .Enrich.WithExceptionDetails()
+                    .WriteTo.Sink(sink)))
             .Build();
 
         _ = handler
