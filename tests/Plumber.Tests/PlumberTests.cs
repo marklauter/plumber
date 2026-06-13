@@ -35,6 +35,32 @@ public sealed class RequestHandlerBuilderTests
     }
 
     [Fact]
+    public void BuildDisposesProviderWhenTimeProviderResolutionThrows()
+    {
+        TrackingDisposable? created = null;
+        var builder = RequestHandlerBuilder.Create<string, string>()
+            .ConfigureServices((services, _) => services
+                .AddSingleton<TrackingDisposable>()
+                .AddSingleton<TimeProvider>(sp =>
+                {
+                    // force the container to create (and thereby own) a disposable, then fail
+                    created = sp.GetRequiredService<TrackingDisposable>();
+                    throw new InvalidOperationException("boom");
+                }));
+
+        _ = Assert.Throws<InvalidOperationException>(builder.Build);
+
+        Assert.NotNull(created);
+        Assert.True(created.Disposed, "the owned provider must be disposed when TimeProvider resolution throws in the ctor");
+    }
+
+    private sealed class TrackingDisposable : IDisposable
+    {
+        public bool Disposed { get; private set; }
+        public void Dispose() => Disposed = true;
+    }
+
+    [Fact]
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
     public async Task AddInMemoryCollectionExposesValuesViaConfigurationAsync()
     {
@@ -567,6 +593,28 @@ public sealed class PlumberTests
 
         _ = await Assert.ThrowsAsync<ObjectDisposedException>(
             () => handler.InvokeAsync("request", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    public async Task InvokeAsyncThrowsOnNullRequestAsync()
+    {
+        using var handler = RequestHandlerBuilder.Create<string, string>().Build();
+
+        var ex = await Assert.ThrowsAsync<ArgumentNullException>(
+            () => handler.InvokeAsync(null!, TestContext.Current.CancellationToken));
+        Assert.Equal("request", ex.ParamName);
+    }
+
+    [Fact]
+    [SuppressMessage("Usage", "xUnit1051:Calls to methods which accept CancellationToken should use TestContext.Current.CancellationToken", Justification = "test exists specifically to exercise the no-CT InvokeAsync overload")]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    public async Task InvokeAsyncNoCancellationTokenOverloadThrowsOnNullRequestAsync()
+    {
+        using var handler = RequestHandlerBuilder.Create<string, string>().Build();
+
+        var ex = await Assert.ThrowsAsync<ArgumentNullException>(() => handler.InvokeAsync(null!));
+        Assert.Equal("request", ex.ParamName);
     }
 
     [Fact]

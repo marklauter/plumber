@@ -180,6 +180,41 @@ public sealed class PlumberApplicationFactoryTests
     }
 
     [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
+        Justification = "the foreign handler is owned by the using-scoped local; the factory rejects it without taking ownership")]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP011:Don't return disposed instance",
+        Justification = "deliberately returning the using-scoped foreign handler to prove the factory rejects a non-identity result")]
+    public void CreateHandlerThrowsWhenConfigurePipelineReturnsForeignHandler()
+    {
+        using var foreign = RequestHandlerBuilder.Create<string, string>().Build();
+        using var factory = new PlumberApplicationFactory<string, string>(
+            CreateBuilder,
+            _ => foreign);
+
+        var ex = Assert.Throws<InvalidOperationException>(factory.CreateHandler);
+
+        Assert.Contains("must return the handler instance it was given", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CreateHandlerCachesBuildFailure()
+    {
+        var builds = 0;
+        using var factory = new PlumberApplicationFactory<string, string>(
+            args =>
+            {
+                ++builds;
+                return CreateBuilder(args);
+            },
+            _ => throw new InvalidOperationException("boom"));
+
+        _ = Assert.Throws<InvalidOperationException>(factory.CreateHandler);
+        _ = Assert.Throws<InvalidOperationException>(factory.CreateHandler);
+
+        Assert.Equal(1, builds);
+    }
+
+    [Fact]
     public void ServicesReturnsSameProviderAndFreezesHooks()
     {
         using var factory = CreateFactory();

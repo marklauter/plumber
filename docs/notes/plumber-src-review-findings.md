@@ -39,8 +39,12 @@ Fixed 2026-06-12: resolved as a documented contract, not a code change. `Request
 
 `RequestHandlerBuilder{TRequest, TResponse}.cs:258-272` — the per-build copy reuses source instances. For JSON sources with `reloadOnChange: true`, the first `Build()` caches a `PhysicalFileProvider` on the shared source; subsequent handlers share that watcher and disposing one configuration root leaves it alive. Process-lifetime leak of one watcher per source. Contradicts the "independent handler" doc claim in spirit.
 
-## 8. Smaller items
+## 8. Smaller items — all fixed
 
-- `InvokeAsync(TRequest)` at `RequestHandler{TRequest, TResponse}.cs:91` lacks `ArgumentNullException.ThrowIfNull(request)` — the only public entry point without the guard.
-- If the `RequestHandler` ctor throws after `BuildServiceProvider()` succeeds (e.g. a user-registered `TimeProvider` factory throws), the built provider leaks; `Build()`'s catch at `RequestHandlerBuilder{TRequest, TResponse}.cs:244-251` disposes only the configuration.
-- `PlumberApplicationFactory.CreateHandler` (`PlumberApplicationFactory.cs:133-160`) is check-then-act on `handler` — concurrent callers build two handlers, one never disposed. And if `configurePipeline` returns a different handler than the one passed in, the original `built` instance leaks; the IDISP suppression assumes identity but nothing enforces it.
+Fixed 2026-06-12.
+
+- **8a — null guard.** Both public `InvokeAsync` overloads now guard `request` before the disposed-state check, via a private `ThrowIfRequestNull` using the `is null` form (not `ArgumentNullException.ThrowIfNull`, which boxes value-type `TRequest` on every call; `is null` is JIT-elided for value types). CA1510 suppressed at the guard with that justification. Two boundary tests, one per overload.
+- **8b — ctor provider leak.** The owning `RequestHandler` ctor wraps `GetRequiredService<TimeProvider>()` in try/catch and disposes the provider before rethrowing. `Build()`'s catch stays (it covers pre-ctor failures and the configuration, which the provider doesn't own when resolution never ran). Test: a `TimeProvider` factory that resolves a tracking disposable then throws; asserts the tracker was disposed.
+- **8c — factory check-then-act + identity.** `PlumberApplicationFactory.handler` is now a `Lazy<RequestHandler>` (matching `RequestHandler`'s own pipeline `Lazy`), so the build runs exactly once across concurrent callers — no manual lock. `BuildHandler` adds `ReferenceEquals(configurePipeline(built), built)` and fails loud if `configurePipeline` returns a foreign handler, making the IDISP suppression justifications true by construction. `WithBuilder`/`Dispose`/`DisposeAsync` gate on `handler.IsValueCreated`. Build failures cache (Lazy semantics) rather than rebuild. Tests: foreign-handler throw, cached-failure-builds-once, plus the existing dispose/freeze suite.
+
+Note: finding 4 (the `RequestHandler.Use`-vs-first-invoke race) is a distinct issue in the core handler and remains open — 8c fixed the *factory's* check-then-act, not the handler's.
