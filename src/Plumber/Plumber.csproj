@@ -10,7 +10,7 @@
 		<PackageProjectUrl>https://github.com/marklauter/Plumber</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/marklauter/Plumber</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<PackageTags>aws lambda;middleware;pipeline;plumber</PackageTags>
+		<PackageTags>middleware;pipeline;plumber;chain-of-responsibility;dependency-injection;console;queue;worker;request-handler;timeout;dotnet;msl-armory</PackageTags>
 		<NeutralLanguage>en-US</NeutralLanguage>
 		<IncludeContentInPack>true</IncludeContentInPack>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
