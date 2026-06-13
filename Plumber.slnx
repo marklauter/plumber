@@ -1,0 +1,32 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitignore" />
+    <File Path="LICENSE" />
+    <File Path="plumber.png" />
+    <File Path="plumber.svg" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/Solution Items/github-workflows/">
+    <File Path=".github/workflows/dotnet.publish.yml" />
+    <File Path=".github/workflows/dotnet.tests.yml" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Plumber.Serilog.Extensions/Plumber.Serilog.Extensions.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Architecture.Testing/Architecture.Testing.csproj" />
+    <Project Path="tests/Plumber.Serilog.Extensions.Tests/Plumber.Serilog.Extensions.Tests.csproj" />
+  </Folder>
+  <Project Path="samples/Sample.Cli.Tests/Sample.Cli.Tests.csproj" />
+  <Project Path="samples/Sample.Cli/Sample.Cli.csproj" />
+  <Project Path="src/Plumber.Testing/Plumber.Testing.csproj" />
+  <Project Path="src/Plumber/Plumber.csproj" />
+  <Project Path="tests/Plumber.Testing.Tests/Plumber.Testing.Tests.csproj" />
+  <Project Path="tests/Plumber.Tests/Plumber.Tests.csproj" />
+</Solution>
