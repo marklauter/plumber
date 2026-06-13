@@ -12,6 +12,7 @@ namespace Plumber;
 /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
 public sealed class RequestHandler<TRequest, TResponse>
     : IDisposable
+    , IAsyncDisposable
     where TRequest : notnull
 {
     private readonly List<Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>>> components = [];
@@ -257,7 +258,7 @@ public sealed class RequestHandler<TRequest, TResponse>
 
     private async Task<TResponse?> InvokeInternalAsync(TRequest request, CancellationToken cancellationToken)
     {
-        using var serviceScope = serviceProvider.CreateScope();
+        await using var serviceScope = serviceProvider.CreateAsyncScope();
         var context = new RequestContext<TRequest, TResponse>(
             request,
             Ulid.NewUlid(),
@@ -365,6 +366,10 @@ public sealed class RequestHandler<TRequest, TResponse>
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Prefer <see cref="DisposeAsync"/> when any registered singleton implements only <see cref="IAsyncDisposable"/> —
+    /// the underlying service provider's synchronous <c>Dispose</c> throws <see cref="InvalidOperationException"/> for such services.
+    /// </remarks>
     public void Dispose()
     {
         if (disposed)
@@ -375,6 +380,27 @@ public sealed class RequestHandler<TRequest, TResponse>
         if (ownsProvider)
         {
             (serviceProvider as IDisposable)?.Dispose();
+        }
+
+        disposed = true;
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Disposes the owned service provider asynchronously so singletons implementing only
+    /// <see cref="IAsyncDisposable"/> are disposed correctly. Injected providers are never disposed.
+    /// </remarks>
+    public async ValueTask DisposeAsync()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        if (ownsProvider)
+        {
+            // the owned provider always comes from ServiceCollection.BuildServiceProvider, which is IAsyncDisposable
+            await ((IAsyncDisposable)serviceProvider).DisposeAsync();
         }
 
         disposed = true;

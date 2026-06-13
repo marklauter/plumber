@@ -15,9 +15,9 @@ Code review of `src/Plumber` and `tests/Plumber.Testing` found one security-rele
 
 Fixed 2026-06-12: the fallback is now `Production` and the XML doc states the default. Original finding: `RequestHandlerBuilder{TRequest, TResponse}.cs:209` fell back to `Development` when `DOTNET_ENVIRONMENT` was unset, inverting the .NET host convention — a production deployment that forgot the variable silently loaded `appsettings.Development.json`.
 
-## 2. Synchronous DI scope disposal
+## 2. Synchronous DI scope disposal — fixed
 
-`RequestHandler{TRequest, TResponse}.cs:260` uses `using var serviceScope = serviceProvider.CreateScope()`. A scoped service implementing only `IAsyncDisposable` makes the scope's `Dispose()` throw `InvalidOperationException` at the end of every request. Fix: `CreateAsyncScope()` with `await using`.
+Fixed 2026-06-12: the per-request scope is now `await using serviceProvider.CreateAsyncScope()`, and `RequestHandler` and `PlumberApplicationFactory` implement `IAsyncDisposable` so the root provider disposes async-only singletons correctly (major-version change, accepted). Original finding: `using var serviceScope = serviceProvider.CreateScope()` made a scoped service implementing only `IAsyncDisposable` throw `InvalidOperationException` from the scope's `Dispose()` at the end of every request.
 
 ## 3. Middleware constructed at first invoke, not registration
 

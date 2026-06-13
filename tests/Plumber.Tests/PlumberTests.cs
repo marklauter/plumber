@@ -559,6 +559,7 @@ public sealed class PlumberTests
     [Fact]
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP016:Don't use disposed instance", Justification = "test verifies the post-dispose contract")]
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP017:Prefer using", Justification = "test disposes explicitly to assert post-dispose behavior")]
+    [SuppressMessage("Performance", "CA1849:Call async methods when in an async method", Justification = "test deliberately exercises the synchronous Dispose path, which remains part of the public contract")]
     public async Task InvokeAsyncAfterDisposeThrowsObjectDisposedAsync()
     {
         var handler = RequestHandlerBuilder.Create<string, string>().Build();
@@ -591,6 +592,68 @@ public sealed class PlumberTests
     }
 
     [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP016:Don't use disposed instance", Justification = "test verifies double-dispose is safe")]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP017:Prefer using", Justification = "test disposes explicitly to assert idempotency")]
+    public async Task DoubleDisposeAsyncIsSafeAsync()
+    {
+        var handler = RequestHandlerBuilder.Create<string, string>().Build();
+        await handler.DisposeAsync();
+        await handler.DisposeAsync();
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    public async Task InvokeAsyncDisposesAsyncOnlyScopedServiceAsync()
+    {
+        AsyncOnlyDisposable? resolved = null;
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .ConfigureServices((services, _) => services.AddScoped<AsyncOnlyDisposable>())
+            .Build()
+            .Use((context, next) =>
+            {
+                resolved = context.Services.GetRequiredService<AsyncOnlyDisposable>();
+                return next(context);
+            });
+
+        _ = await handler.InvokeAsync("request", TestContext.Current.CancellationToken);
+
+        Assert.NotNull(resolved);
+        Assert.True(resolved.Disposed, "the per-request scope must dispose async-only scoped services when the pipeline returns");
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP017:Prefer using", Justification = "test disposes explicitly via DisposeAsync to assert async disposal of the owned provider")]
+    public async Task DisposeAsyncDisposesAsyncOnlySingletonAsync()
+    {
+        AsyncOnlyDisposable? resolved = null;
+        var handler = RequestHandlerBuilder.Create<string, string>()
+            .ConfigureServices((services, _) => services.AddSingleton<AsyncOnlyDisposable>())
+            .Build();
+        _ = handler.Use((context, next) =>
+        {
+            resolved = context.Services.GetRequiredService<AsyncOnlyDisposable>();
+            return next(context);
+        });
+
+        _ = await handler.InvokeAsync("request", TestContext.Current.CancellationToken);
+        await handler.DisposeAsync();
+
+        Assert.NotNull(resolved);
+        Assert.True(resolved.Disposed, "DisposeAsync must dispose async-only singletons owned by the provider");
+    }
+
+    private sealed class AsyncOnlyDisposable : IAsyncDisposable
+    {
+        public bool Disposed { get; private set; }
+
+        public ValueTask DisposeAsync()
+        {
+            Disposed = true;
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    [Fact]
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
     public async Task UseAfterFirstInvokeThrowsInvalidOperationAsync()
     {
@@ -609,7 +672,8 @@ public sealed class PlumberTests
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
     public async Task InvokeAsyncNoCancellationTokenOverloadAsync()
     {
-        using var handler = RequestHandlerBuilder.Create<string, string>()
+        using var handler = RequestHandlerBuilder
+            .Create<string, string>()
             .Build()
             .Use((context, next) =>
             {
@@ -883,6 +947,7 @@ public sealed class PlumberTests
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP017:Prefer using", Justification = "handler1 is intentionally disposed mid-test to verify handler2 stays functional")]
     [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP007:Don't dispose injected", Justification = "handler1 is owned by this method, intentionally disposed mid-test")]
+    [SuppressMessage("Performance", "CA1849:Call async methods when in an async method", Justification = "test deliberately exercises the synchronous Dispose path, which remains part of the public contract")]
     public async Task BuildTwiceProducesIndependentHandlersWithPerBuildSnapshotAsync()
     {
         var builder = RequestHandlerBuilder.Create<string, string>()
@@ -1080,6 +1145,25 @@ public sealed class InjectedServiceProviderTests
         handler.Dispose();
 
         Assert.False(tracker.Disposed, "handler.Dispose must not dispose the externally-owned provider");
+
+        // resolution still works against the live external provider
+        Assert.Same(tracker, provider.GetRequiredService<DisposalTracker>());
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP017:Prefer using", Justification = "Test deliberately calls DisposeAsync to assert ownership semantics on the externally-owned provider.")]
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "tracker is intentionally not disposed; the test asserts that handler.DisposeAsync() leaves the externally-owned tracker alive")]
+    public async Task DisposeAsyncDoesNotDisposeInjectedProviderAsync()
+    {
+        var tracker = new DisposalTracker();
+        using var provider = new ServiceCollection()
+            .AddSingleton(tracker)
+            .BuildServiceProvider();
+
+        using var handler = RequestHandler.Create<string, string>(provider);
+        await handler.DisposeAsync();
+
+        Assert.False(tracker.Disposed, "handler.DisposeAsync must not dispose the externally-owned provider");
 
         // resolution still works against the live external provider
         Assert.Same(tracker, provider.GetRequiredService<DisposalTracker>());

@@ -13,7 +13,7 @@ namespace Plumber.Testing;
 /// </summary>
 /// <typeparam name="TRequest">The type of request handled by the pipeline.</typeparam>
 /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
-public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
+public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable, IAsyncDisposable
     where TRequest : notnull
 {
     private readonly string[] args;
@@ -169,6 +169,10 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
         CreateHandler().InvokeAsync(request, cancellationToken);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Prefer <see cref="DisposeAsync"/> when any registered singleton implements only <see cref="IAsyncDisposable"/> —
+    /// see <see cref="RequestHandler{TRequest, TResponse}.DisposeAsync"/>.
+    /// </remarks>
     public void Dispose()
     {
         if (disposed)
@@ -177,6 +181,26 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
         }
 
         handler?.Dispose();
+        disposed = true;
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Disposes the built handler via <see cref="RequestHandler{TRequest, TResponse}.DisposeAsync"/> so
+    /// singletons implementing only <see cref="IAsyncDisposable"/> are disposed correctly.
+    /// </remarks>
+    public async ValueTask DisposeAsync()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        if (handler is not null)
+        {
+            await handler.DisposeAsync();
+        }
+
         disposed = true;
     }
 }

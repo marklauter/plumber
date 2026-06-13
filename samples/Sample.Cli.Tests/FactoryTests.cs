@@ -130,4 +130,32 @@ public sealed class FactoryTests
         _ = Assert.Throws<ObjectDisposedException>(factory.CreateHandler);
         _ = Assert.Throws<ObjectDisposedException>(() => factory.WithServices(_ => { }));
     }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP016:Don't use disposed instance",
+        Justification = "the test exists specifically to verify behavior after dispose")]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP017:Prefer using",
+        Justification = "the test needs to dispose mid-method to verify post-dispose behavior")]
+    public async Task DisposeAsyncDisposesHandlerAsync()
+    {
+        var factory = CreateFactory();
+        var handler = factory.CreateHandler();
+
+        await factory.DisposeAsync();
+
+        _ = await Assert.ThrowsAsync<ObjectDisposedException>(
+            () => handler.InvokeAsync("x", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP016:Don't use disposed instance",
+        Justification = "test verifies double-dispose is safe")]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP017:Prefer using",
+        Justification = "test disposes explicitly to assert idempotency")]
+    public async Task DoubleDisposeAsyncWithoutHandlerIsSafeAsync()
+    {
+        var factory = CreateFactory();
+        await factory.DisposeAsync();
+        await factory.DisposeAsync();
+    }
 }
