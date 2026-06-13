@@ -74,7 +74,8 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     public PlumberApplicationFactory<TRequest, TResponse> WithServices(Action<IServiceCollection> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
-        return WithBuilder(builder => builder.ConfigureServices((services, _) => configure(services)));
+        Action<IServiceCollection, IConfiguration> adapter = (services, _) => configure(services);
+        return WithBuilder(builder => builder.ConfigureServices(adapter));
     }
 
     /// <summary>
@@ -108,7 +109,8 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     public PlumberApplicationFactory<TRequest, TResponse> WithConfiguration(Action<IConfigurationBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
-        return WithBuilder(builder => builder.ConfigureConfiguration((cb, _) => configure(cb)));
+        Action<IConfigurationBuilder, string[]> adapter = (cb, _) => configure(cb);
+        return WithBuilder(builder => builder.ConfigureConfiguration(adapter));
     }
 
     /// <summary>
