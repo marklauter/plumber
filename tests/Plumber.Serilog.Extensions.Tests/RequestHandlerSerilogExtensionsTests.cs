@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Events;
 using Serilog.Exceptions;
@@ -41,14 +40,14 @@ public sealed class RequestHandlerSerilogExtensionsTests
             .Use<ToLowerMiddleware>();
 
         var response = await handler.InvokeAsync(request, TestContext.Current.CancellationToken);
-        Assert.False(String.IsNullOrEmpty(response));
+        Assert.False(string.IsNullOrEmpty(response));
         Assert.Equal(request.ToLowerInvariant(), response);
 
         Assert.NotEmpty(sink.Events);
         var e = sink.Events.First();
 
-        Assert.Equal(request, e.Properties[nameof(RequestContext<string, string>.Request)].ToString().TrimStart('"').TrimEnd('"'));
-        Assert.Equal(response, e.Properties[nameof(RequestContext<string, string>.Response)].ToString().TrimStart('"').TrimEnd('"'));
+        Assert.Equal(request, e.Properties[nameof(RequestContext<,>.Request)].ToString().TrimStart('"').TrimEnd('"'));
+        Assert.Equal(response, e.Properties[nameof(RequestContext<,>.Response)].ToString().TrimStart('"').TrimEnd('"'));
         Assert.True(e.Properties.ContainsKey("RequestId"));
         Assert.True(e.Properties.ContainsKey("Elapsed"));
 

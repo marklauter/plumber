@@ -18,7 +18,7 @@ public sealed class RequestLoggerOptions<TRequest, TResponse>
     [
         // Surfaced as "RequestId" to bind the {RequestId} token in DefaultCompletedMessage; the value is RequestContext.Id.
         new LogEventProperty("RequestId", new ScalarValue(context.Id)),
-        new LogEventProperty(nameof(RequestContext<TRequest, TResponse>.Elapsed), new ScalarValue(context.Elapsed.TotalMilliseconds))
+        new LogEventProperty(nameof(RequestContext<,>.Elapsed), new ScalarValue(context.Elapsed.TotalMilliseconds))
     ];
 
     /// <summary>
