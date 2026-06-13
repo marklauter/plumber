@@ -2,6 +2,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Plumber;
+using Plumber.Serilog.Extensions;
+using Serilog;
+using Serilog.Formatting.Compact;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Sample.Cli;
@@ -27,6 +30,7 @@ internal static class Pipeline
                 var options = configuration.GetSection(TokenizerOptions.SectionName).Get<TokenizerOptions>()
                     ?? TokenizerOptions.Defaults;
                 _ = services
+                    .AddSerilogRequestLogging<string, TextReport>(logger => logger.WriteTo.Console(new CompactJsonFormatter()))
                     .AddSingleton(options)
                     .AddSingleton<ITokenizer, WhitespaceTokenizer>();
             });
@@ -35,6 +39,7 @@ internal static class Pipeline
         Justification = "fluent .Use() returns the same handler instance; caller disposes")]
     public static RequestHandler<string, TextReport> Configure(RequestHandler<string, TextReport> handler) =>
         handler
+            .UseSerilogRequestLogging()
             .Use(async (context, next) =>
             {
                 var start = DateTime.UtcNow;

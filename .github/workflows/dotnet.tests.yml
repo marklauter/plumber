@@ -34,7 +34,7 @@ jobs:
           ${{ runner.os }}-nuget-
 
     - name: Verify formatting
-      run: dotnet format "Plumber.sln" --severity info --verify-no-changes
+      run: dotnet format "Plumber.slnx" --severity info --verify-no-changes
 
   test:
     runs-on: ubuntu-latest

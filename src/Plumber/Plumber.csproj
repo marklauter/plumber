@@ -1,11 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
+		<PackageId>MSL.Plumber.Pipeline</PackageId>
 		<Title>Plumber: Middleware Pipelines for Host-Free .NET</Title>
-		<PackageId>MSL.$(AssemblyName).Pipeline</PackageId>
-		<ProductName>Plumber: Middleware Pipelines for Host-Free .NET</ProductName>
 		<Authors>Mark Lauter</Authors>
-		<Description>Middleware pipeline framework for host-free .NET projects (console apps, AWS Lambdas, queue consumers) with delegate- and class-based middleware, dependency injection, configuration, and timeouts.</Description>
+		<Description>The ASP.NET Core middleware-pipeline model for host-free .NET — console apps, AWS Lambdas, Azure Functions, and queue consumers. Compose a request/response pipeline from delegate- and class-based middleware with dependency injection, configuration, logging, per-request scoping, timeouts, and cancellation.</Description>
 		<Copyright>Copyright (c) 2024 Mark Lauter</Copyright>
 		<PackageProjectUrl>https://github.com/marklauter/Plumber</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/marklauter/Plumber</RepositoryUrl>

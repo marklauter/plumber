@@ -51,6 +51,8 @@ public sealed class PipelineTests
 
         Assert.Collection(
             handler.Middleware,
+            // the Serilog request logger is internal to Plumber.Serilog.Extensions, so assert by type name
+            m => Assert.StartsWith("RequestLoggerMiddleware", m.MiddlewareType!.Name, StringComparison.Ordinal),
             m => Assert.Equal(MiddlewareDescriptor.DelegateDisplayName, m.DisplayName), // the timing delegate
             m => Assert.Equal(typeof(ValidationMiddleware), m.MiddlewareType),
             m => Assert.Equal(typeof(NormalizeMiddleware), m.MiddlewareType),

@@ -1,15 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<PackageId>MSL.Plumber.Pipeline.Testing</PackageId>
-		<Title>Plumber.Testing: In-Process Test Host for Plumber Pipelines</Title>
+		<PackageId>MSL.Plumber.Serilog.Extensions</PackageId>
+		<Title>Plumber.Serilog.Extensions: Serilog Request Logging for Plumber Pipelines</Title>
 		<Authors>Mark Lauter</Authors>
-		<Description>Test host for Plumber middleware pipelines. PlumberApplicationFactory models the WebApplicationFactory pattern: bootstraps the application's real builder and pipeline, then lets tests override services, configuration, and logging before the pipeline is built.</Description>
+		<Description>Serilog middleware for the Plumber pipeline framework: structured per-request logging with a Serilog DiagnosticContext, configurable level, message template, and enrichment.</Description>
 		<Copyright>Copyright (c) 2024 Mark Lauter</Copyright>
 		<PackageProjectUrl>https://github.com/marklauter/Plumber</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/marklauter/Plumber</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<PackageTags>middleware;pipeline;plumber;testing;integration-testing;test-host;webapplicationfactory;dependency-injection;dotnet;msl-armory</PackageTags>
+		<PackageTags>middleware;pipeline;plumber;serilog;logging;log;request-logging;structured-logging;dotnet;msl-armory</PackageTags>
 		<NeutralLanguage>en-US</NeutralLanguage>
 		<IncludeContentInPack>true</IncludeContentInPack>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
@@ -23,10 +23,19 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Options" />
+		<PackageReference Include="Serilog" />
+		<PackageReference Include="Serilog.Extensions.Hosting" />
 		<PackageReference Include="Microsoft.SourceLink.GitHub">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+			<_Parameter1>$(AssemblyName).Tests</_Parameter1>
+		</AssemblyAttribute>
 	</ItemGroup>
 
 	<ItemGroup>
