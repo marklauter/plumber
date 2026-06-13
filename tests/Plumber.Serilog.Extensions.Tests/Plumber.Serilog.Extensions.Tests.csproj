@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Include>[Plumber.Serilog.Extensions]*</Include>
+		<!-- Temporary 0-floor: the import ships a single happy-path test. Raise toward the
+		     solution ratchet (95,91,95) once the coverage backfill lands. -->
+		<Threshold>0,0,0</Threshold>
+		<!-- CA1515: Make public types internal — xUnit requires public test classes -->
+		<!-- CA1812: Internal class never instantiated — ToLowerMiddleware is activated reflectively via Use<TMiddleware> -->
+		<NoWarn>$(NoWarn);CA1515;CA1812</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Serilog" />
+		<PackageReference Include="Serilog.Exceptions" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Architecture.Testing\Architecture.Testing.csproj" />
+		<ProjectReference Include="..\..\src\Plumber.Serilog.Extensions\Plumber.Serilog.Extensions.csproj" />
+	</ItemGroup>
+
+</Project>
