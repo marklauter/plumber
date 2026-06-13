@@ -60,6 +60,7 @@ public sealed class AllocationTests
             {
                 Drain(handler, cancellationToken);
             }
+
             var after = GC.GetAllocatedBytesForCurrentThread();
 
             best = Math.Min(best, after - before);
