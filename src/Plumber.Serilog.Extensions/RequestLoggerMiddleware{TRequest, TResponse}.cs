@@ -10,8 +10,6 @@ namespace Plumber.Serilog.Extensions;
 internal sealed class RequestLoggerMiddleware<TRequest, TResponse>
     where TRequest : class
 {
-    private static readonly LogEventProperty[] ZeroProperties = [];
-
     private readonly RequestMiddleware<TRequest, TResponse> next;
     private readonly DiagnosticContext diagnosticContext;
     private readonly ILogger logger;
@@ -76,12 +74,11 @@ internal sealed class RequestLoggerMiddleware<TRequest, TResponse>
         var now = DateTimeOffset.Now;
 
         enrichDiagnosticContext?.Invoke(diagnosticContext, context);
-        if (!collector.TryComplete(out var properties, out var exception))
-        {
-            properties = ZeroProperties;
-        }
+        // TryComplete always yields a (possibly empty) property sequence; its bool only reports whether the
+        // ambient collection was still active, which doesn't change what we log, so the result is discarded.
+        _ = collector.TryComplete(out var collected, out var exception);
 
-        properties = properties!.Concat(getMessageTemplateProperties(context));
+        var properties = collected!.Concat(getMessageTemplateProperties(context));
 
         var current = Activity.Current;
         var logEvent = new LogEvent(
