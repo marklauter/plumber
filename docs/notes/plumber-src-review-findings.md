@@ -1,50 +1,53 @@
 ---
-title: Plumber src review surfaces eight findings
-summary: Code review of src/Plumber and Plumber.Testing found one security-relevant default, two runtime bugs, and five lesser flaws. No injection-style vulnerabilities.
+title: Plumber src review — four open findings
+summary: Of eight code-review findings on src/Plumber, four are fixed; four remain open — late middleware construction, a Use-vs-invoke race, AmbiguousMatchException on overloaded InvokeAsync, and shared file-provider watchers across Build calls.
 tags: [note, code-review, csharp, plumber]
 created: 2026-06-12
 document:
   status: open
 ---
 
-# Plumber src review surfaces eight findings
+# Plumber src review — four open findings
 
-Code review of `src/Plumber` and `tests/Plumber.Testing` found one security-relevant default, two runtime bugs, and five lesser flaws. No injection-style vulnerabilities. Findings ordered by severity; line refs are as of commit 5d014f5.
+Code review of `src/Plumber` found eight issues; no injection-style vulnerabilities. Four are fixed (see below); four remain open and are detailed here. Original numbering is preserved so prior references hold. Findings cite symbols, not line numbers — the line numbers have drifted across the fix commits.
 
-## 1. AddDefaultConfigurationSources defaults the environment to Development — fixed
+## Resolved
 
-Fixed 2026-06-12: the fallback is now `Production` and the XML doc states the default. Original finding: `RequestHandlerBuilder{TRequest, TResponse}.cs:209` fell back to `Development` when `DOTNET_ENVIRONMENT` was unset, inverting the .NET host convention — a production deployment that forgot the variable silently loaded `appsettings.Development.json`.
+Findings 1, 2, 5, and 8a–8c are fixed (commits `f16762f`, `1f20504`, the `RequestContext` contract commit, and `834c983`): the `Production` environment default, async-aware disposal, the `RequestContext` single-threaded contract, the `InvokeAsync` null guards, the ctor provider-leak guard, and the `PlumberApplicationFactory` `Lazy`/identity fix. Details live in the commit messages.
 
-## 2. Synchronous DI scope disposal — fixed
+## 3. Class middleware is constructed at first invoke, and the doc says otherwise
 
-Fixed 2026-06-12: the per-request scope is now `await using serviceProvider.CreateAsyncScope()`, and `RequestHandler` and `PlumberApplicationFactory` implement `IAsyncDisposable` so the root provider disposes async-only singletons correctly (major-version change, accepted). Original finding: `using var serviceScope = serviceProvider.CreateScope()` made a scoped service implementing only `IAsyncDisposable` throw `InvalidOperationException` from the scope's `Dispose()` at the end of every request.
+`Use<TMiddleware>()` registers a `next => new MiddlewareFactory<TMiddleware>(...)` lambda. That lambda runs inside `BuildPipeline()`, which the pipeline `Lazy` invokes on the first `InvokeAsync` — so the middleware instance is constructed at first invoke, not at registration.
 
-## 3. Middleware constructed at first invoke, not registration
+Two consequences:
 
-`RequestHandler{TRequest, TResponse}.cs:170-206` remarks claim the instance is "constructed once at registration time," but the `MiddlewareFactory` lambda runs inside `BuildPipeline()` on the first `InvokeAsync`. All `Use<TMiddleware>()` validation (missing `InvokeAsync`, wrong first parameter, unresolvable ctor args) fails late at first invocation. Validate the shape eagerly in `Use<TMiddleware>()` and fix the doc.
+- **The doc is wrong.** The `Use<TMiddleware>()` remarks state the instance is "constructed once at registration time." It cannot be: the middleware's first constructor parameter is `RequestMiddleware next`, and `next` is a build-time artifact (each middleware's `next` is the already-built downstream, assembled in reverse by `BuildPipeline`). Construction is inherently deferred to pipeline build. The doc should say "constructed once when the pipeline is built, on the first `InvokeAsync`."
+- **All shape validation fails late.** The `MiddlewareFactory` constructor does every structural check — `InvokeAsync` exists, returns `Task`, first parameter is the context type — plus `ActivatorUtilities.CreateInstance`. Because the factory runs at first invoke, a misconfigured registration (typo'd method name, wrong signature) throws from `InvokeAsync`, far from the `Use<T>()` call that caused it. The `NoInvokeAsyncMiddleware` / `WrongFirstParamMiddleware` / `WrongReturnTypeMiddleware` test fixtures all assert this late-failure behavior.
 
-## 4. Check-then-act race between Use and first invoke
+Suggestion: split `MiddlewareFactory` into eager shape-validation and deferred instantiation. The shape checks are static reflection over `typeof(TMiddleware)` — they need neither `next` nor the DI container, so run them synchronously inside `Use<TMiddleware>()` and fail at the call site. Keep `ActivatorUtilities.CreateInstance` + `Compile` in the deferred lambda, since those need `next`. Unresolvable constructor arguments still surface at build time (they need the instance), but the common typos fail fast. Pairs with finding 6 — do both in the same eager check. Then correct the doc.
 
-`RequestHandler{TRequest, TResponse}.cs:218-225` checks `handler.IsValueCreated` then mutates `components`/`descriptors`. A `Use` racing the first `InvokeAsync` adds middleware that silently never executes — the `Lazy` already snapshotted the list. Low severity; configuration is normally single-threaded. A `Lock` or list freeze closes it.
+## 4. Check-then-act race between Use and the first invoke
 
-## 5. RequestContext.Data lazy init is unsynchronized — fixed
+The private `Use` overload checks `handler.IsValueCreated`, then mutates `components` and `descriptors`. `BuildPipeline` reads `components` when the pipeline `Lazy` first resolves. A `Use` call racing the first `InvokeAsync` has three failure modes: the add lands after `BuildPipeline` snapshotted the list (middleware silently never runs), the add lands during enumeration (`InvalidOperationException`, collection modified), or `List` tears under concurrent mutation. `descriptors` is also read concurrently through the `Middleware` property's `AsReadOnly()`.
 
-Fixed 2026-06-12: resolved as a documented contract, not a code change. `RequestContext` now carries a `<remarks>` declaring it not thread-safe (pipeline invokes middleware sequentially; parallel branches must not touch the context concurrently), with a matching note on `Data` and an invariant entry in `docs/agents/architecture.md`. `ConcurrentDictionary` was rejected: it would advertise a thread-safety guarantee the rest of the type (`Response` setter) doesn't honor, and `HttpContext.Items` sets the same precedent. Original finding: `RequestContext{TRequest, TResponse}.cs:70` — `data ??= []` from concurrent middleware branches within one request can create two dictionaries and drop writes; `Dictionary` corrupts under concurrent mutation.
+This looks like finding 8c (the factory's check-then-act, now fixed) but is not the same fix. The pipeline `Lazy` already guarantees `BuildPipeline` runs once; the contention is on the mutable `components` list feeding it, not on build-once-ness. A `Lazy` does not synchronize the list. In 8c, `Lazy` was the whole fix because the build decision *was* the contended state; here the build is already single, so `Lazy` buys nothing.
+
+Severity: low. It requires concurrent `Use` and `InvokeAsync`, which is a usage error — the contract is "configure the pipeline, then invoke." But the silent-drop mode is the nastiest of the three when it does occur.
+
+Suggestion: prefer the documentation route, matching how finding 5 (`RequestContext` threading) was resolved — state in the `Use` and `InvokeAsync` remarks, and as an architecture invariant, that pipeline configuration must happen-before the first invocation and is not thread-safe against it. If belt-and-suspenders is wanted, a `Lock` (the C# 13 `System.Threading.Lock`) around the `IsValueCreated`-check-plus-add in `Use`, taken again at the top of `BuildPipeline` (or snapshotting `components` to an array under it), closes all three windows in ~6 lines. Recommend documentation-first for consistency with finding 5, unless a real concurrent-configuration scenario exists.
 
 ## 6. Overloaded InvokeAsync throws AmbiguousMatchException
 
-`RequestHandler{TRequest, TResponse}.cs:302` — `type.GetMethod(name, flags)` throws `AmbiguousMatchException` when the middleware class overloads `InvokeAsync`. Filter `GetMethods()` for the overload whose first parameter is the context type; gives a named error per the fail-loud rule.
+`MiddlewareFactory`'s constructor resolves the method with `type.GetMethod("InvokeAsync", BindingFlags.Instance | BindingFlags.Public)`. `Type.GetMethod(string, BindingFlags)` throws `AmbiguousMatchException` when the type declares more than one `InvokeAsync`. A middleware that overloads `InvokeAsync` (a common, innocent thing) crashes with a framework-internal exception carrying no Plumber context — and, per finding 3, it crashes at first invoke rather than at registration, compounding the confusion. This violates the fail-loud-with-named-context rule.
 
-## 7. Shared file providers across Build calls
+Suggestion: replace `GetMethod` with `GetMethods(BindingFlags.Instance | BindingFlags.Public)`, then filter to methods named `InvokeAsync` whose first parameter is the context type and whose return is `Task`-assignable. Zero matches reuse the existing "not found" / "first parameter" messages; two or more matches throw a new explicit message ("multiple `InvokeAsync` overloads accept `RequestContext` as the first parameter; the convention requires exactly one"). This both removes the crash and explains it. Fold it into finding 3's eager shape-validation, and add a `MultipleInvokeAsyncMiddleware` fixture following the existing `Wrong*Middleware` pattern.
 
-`RequestHandlerBuilder{TRequest, TResponse}.cs:258-272` — the per-build copy reuses source instances. For JSON sources with `reloadOnChange: true`, the first `Build()` caches a `PhysicalFileProvider` on the shared source; subsequent handlers share that watcher and disposing one configuration root leaves it alive. Process-lifetime leak of one watcher per source. Contradicts the "independent handler" doc claim in spirit.
+## 7. Shared file-provider watchers leak across Build calls
 
-## 8. Smaller items — all fixed
+`CreatePerBuildConfigurationBuilder` copies the shared builder's source *instances* into each per-build `ConfigurationBuilder` (`perBuild.Sources.Add(src)`). The reuse is deliberate for stateless sources, but file sources are not stateless: `FileConfigurationSource.EnsureDefaults` does `FileProvider ??= builder.GetFileProvider()` during `Build()`, so the first `Build()` caches a `PhysicalFileProvider` on the shared source instance, and every later `Build()` keeps it. With `reloadOnChange: true`, that provider owns a `FileSystemWatcher`.
 
-Fixed 2026-06-12.
+Nothing disposes it. `ConfigurationRoot.Dispose()` disposes the `FileConfigurationProvider` instances it built (which release their change-token registrations) but not the `PhysicalFileProvider` — the provider doesn't own it, the source does, and the source outlives every handler. The watcher lives until process exit. A secondary effect: because the `FileProvider` is shared, a file change notifies every handler's `ConfigurationRoot` built from that source — cross-handler reload coupling.
 
-- **8a — null guard.** Both public `InvokeAsync` overloads now guard `request` before the disposed-state check, via a private `ThrowIfRequestNull` using the `is null` form (not `ArgumentNullException.ThrowIfNull`, which boxes value-type `TRequest` on every call; `is null` is JIT-elided for value types). CA1510 suppressed at the guard with that justification. Two boundary tests, one per overload.
-- **8b — ctor provider leak.** The owning `RequestHandler` ctor wraps `GetRequiredService<TimeProvider>()` in try/catch and disposes the provider before rethrowing. `Build()`'s catch stays (it covers pre-ctor failures and the configuration, which the provider doesn't own when resolution never ran). Test: a `TimeProvider` factory that resolves a tracking disposable then throws; asserts the tracker was disposed.
-- **8c — factory check-then-act + identity.** `PlumberApplicationFactory.handler` is now a `Lazy<RequestHandler>` (matching `RequestHandler`'s own pipeline `Lazy`), so the build runs exactly once across concurrent callers — no manual lock. `BuildHandler` adds `ReferenceEquals(configurePipeline(built), built)` and fails loud if `configurePipeline` returns a foreign handler, making the IDISP suppression justifications true by construction. `WithBuilder`/`Dispose`/`DisposeAsync` gate on `handler.IsValueCreated`. Build failures cache (Lazy semantics) rather than rebuild. Tests: foreign-handler throw, cached-failure-builds-once, plus the existing dispose/freeze suite.
+Severity: low-to-moderate. The leak is bounded (one watcher per reload-enabled file source, created once — it does not grow per `Build()`), but it contradicts the documented promise that each `Build()` yields an independent handler whose configuration root is "disposed when the handler is disposed," and a long-lived process building many recipes with `reloadOnChange` accumulates watchers.
 
-Note: finding 4 (the `RequestHandler.Use`-vs-first-invoke race) is a distinct issue in the core handler and remains open — 8c fixed the *factory's* check-then-act, not the handler's.
+Suggestion: change the file-source `Add*` methods to enqueue deferred registration actions instead of materializing `IConfigurationSource` instances on the shared builder — the model `ConfigureConfiguration` callbacks already use. `AddJsonFile(path, optional, reloadOnChange)` would enqueue `cb => cb.AddJsonFile(path, optional, reloadOnChange)`, and `Build()` replays the queue against the fresh per-build builder, creating a fresh source (and fresh `PhysicalFileProvider`) per `Build()`. To fully close the leak the per-build file provider must also be owned and disposed with the handler — register it for disposal in the per-build container, or give each build its own base-path `PhysicalFileProvider` rather than sharing one through `Properties`. This is the most involved of the four and unifies the two configuration paths (direct `Add*` versus `ConfigureConfiguration`) into one deferred model. Lower-effort interim: document that `reloadOnChange` file sources shared across multiple `Build()` calls leak one watcher per source, and recommend one builder per long-lived reload-enabled handler.
