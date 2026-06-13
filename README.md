@@ -478,6 +478,14 @@ Customization hooks:
 
 `CreateHandler()` is idempotent — every call returns the same handler. The first call freezes the builder hooks; adding more throws.
 
+`Services` exposes the built pipeline's root `IServiceProvider` for assertions — resolve singletons directly, or `CreateScope()` first for scoped services like a `DbContext`. Accessing it builds the handler, freezing the hooks just like `CreateHandler()`:
+
+```csharp
+using var scope = factory.Services.CreateScope();
+var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+Assert.Equal(2, await db.Records.CountAsync());
+```
+
 ### Asserting pipeline composition
 
 `RequestHandler<TRequest, TResponse>.Middleware` exposes one `MiddlewareDescriptor` per registration, in registration order — which is also inbound execution order. Use it to assert that your pipeline is wired in the order you expect, from registration metadata alone:
