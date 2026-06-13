@@ -73,7 +73,7 @@ jobs:
       run: dotnet pack src/Plumber.Testing -c Release --no-restore -o nuget -p:PackageVersion=$PACKAGE_VERSION -p:Version=$PACKAGE_VERSION
 
     - name: Upload package artifacts
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: nuget-packages
         path: nuget/*
