@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<Include>[Plumber.Serilog.Extensions]*</Include>
+		<Include>[Plumber.Serilog]*</Include>
 		<!-- Line and method are fully covered. Branch is floored below 100 because coverlet 10.0.1 counts
 		     compiler-generated branches (async state-machine transitions, delegate caches) that have no
 		     corresponding source branch to exercise — the same effect documented on Sample.Cli.Tests. -->
@@ -18,7 +18,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Architecture.Testing\Architecture.Testing.csproj" />
-		<ProjectReference Include="..\..\src\Plumber.Serilog.Extensions\Plumber.Serilog.Extensions.csproj" />
+		<ProjectReference Include="..\..\src\Plumber.Serilog\Plumber.Serilog.csproj" />
 	</ItemGroup>
 
 </Project>

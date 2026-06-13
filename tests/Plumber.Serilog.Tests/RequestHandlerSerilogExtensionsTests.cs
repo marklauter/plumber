@@ -3,7 +3,7 @@ using Serilog.Exceptions;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
-namespace Plumber.Serilog.Extensions.Tests;
+namespace Plumber.Serilog.Tests;
 
 public sealed class RequestHandlerSerilogExtensionsTests
 {

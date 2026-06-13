@@ -30,6 +30,11 @@
 		<PackageVersion Include="Serilog.Formatting.Compact" Version="3.0.0" />
 		<PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
 
+		<!-- OpenTelemetry SDK for the sample (the library instruments via the BCL ActivitySource/Meter
+		     and does not reference these; collecting/exporting telemetry is a consumer concern) -->
+		<PackageVersion Include="OpenTelemetry" Version="1.16.0" />
+		<PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.16.0" />
+
 		<!-- Test infrastructure -->
 		<PackageVersion Include="coverlet.collector" Version="10.0.1" />
 		<PackageVersion Include="coverlet.msbuild" Version="10.0.1" />

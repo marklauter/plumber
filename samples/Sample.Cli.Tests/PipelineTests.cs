@@ -51,13 +51,25 @@ public sealed class PipelineTests
 
         Assert.Collection(
             handler.Middleware,
-            // the Serilog request logger is internal to Plumber.Serilog.Extensions, so assert by type name
+            // the OpenTelemetry and Serilog middleware are internal to their extension packages, so assert by type name
+            m => Assert.StartsWith("RequestTracingMiddleware", m.MiddlewareType!.Name, StringComparison.Ordinal),
+            m => Assert.StartsWith("RequestMetricsMiddleware", m.MiddlewareType!.Name, StringComparison.Ordinal),
             m => Assert.StartsWith("RequestLoggerMiddleware", m.MiddlewareType!.Name, StringComparison.Ordinal),
             m => Assert.Equal(MiddlewareDescriptor.DelegateDisplayName, m.DisplayName), // the timing delegate
             m => Assert.Equal(typeof(ValidationMiddleware), m.MiddlewareType),
             m => Assert.Equal(typeof(NormalizeMiddleware), m.MiddlewareType),
             m => Assert.Equal(typeof(TokenizeMiddleware), m.MiddlewareType),
             m => Assert.Equal(typeof(ReportMiddleware), m.MiddlewareType));
+    }
+
+    [Fact]
+    public void TelemetryProvidersAreCreated()
+    {
+        using var tracerProvider = Telemetry.CreateTracerProvider();
+        using var meterProvider = Telemetry.CreateMeterProvider();
+
+        Assert.NotNull(tracerProvider);
+        Assert.NotNull(meterProvider);
     }
 
     [Fact]

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Options;
 
-namespace Plumber.Serilog.Extensions;
+namespace Plumber.Serilog;
 
 /// <summary>
 /// RequestHandlerSerilogExtensions provides extension methods for registering the Serilog middleware with the <see cref="RequestHandler{TRequest, TResponse}"/>.

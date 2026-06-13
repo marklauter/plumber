@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
-namespace Plumber.Serilog.Extensions;
+namespace Plumber.Serilog;
 
 /// <summary>
 /// ServiceCollectionSerilogExtensions registers the services the Serilog request-logging middleware depends on.

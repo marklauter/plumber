@@ -2,7 +2,7 @@ using Serilog.Core;
 using Serilog.Events;
 using System.Collections.ObjectModel;
 
-namespace Plumber.Serilog.Extensions.Tests;
+namespace Plumber.Serilog.Tests;
 
 internal sealed class TestSink
     : ILogEventSink

@@ -1,4 +1,4 @@
-﻿namespace Plumber.Serilog.Extensions.Tests;
+﻿namespace Plumber.Serilog.Tests;
 
 internal sealed class ToLowerMiddleware(RequestMiddleware<string, string> next)
 {

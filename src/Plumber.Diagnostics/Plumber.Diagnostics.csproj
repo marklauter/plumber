@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<PackageId>MSL.Plumber.Diagnostics</PackageId>
+		<Title>Plumber.Diagnostics: OpenTelemetry Tracing and Metrics for Plumber Pipelines</Title>
+		<Authors>Mark Lauter</Authors>
+		<Description>OpenTelemetry middleware for the Plumber pipeline framework: per-request distributed tracing spans and metrics emitted through the standard ActivitySource and Meter primitives, with configurable enrichment. Bring your own OpenTelemetry SDK exporters.</Description>
+		<Copyright>Copyright (c) 2024 Mark Lauter</Copyright>
+		<PackageProjectUrl>https://github.com/marklauter/Plumber</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/marklauter/Plumber</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageTags>middleware;pipeline;plumber;opentelemetry;otel;observability;tracing;metrics;telemetry;dotnet;msl-armory</PackageTags>
+		<NeutralLanguage>en-US</NeutralLanguage>
+		<IncludeContentInPack>true</IncludeContentInPack>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<PackageIcon>plumber.png</PackageIcon>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Plumber\Plumber.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Instrumentation flows through the BCL ActivitySource/Meter primitives (in-box in net10);
+		     the OpenTelemetry SDK is a consumer concern, so this library does not reference it. -->
+		<PackageReference Include="Microsoft.Extensions.Options" />
+		<PackageReference Include="Microsoft.SourceLink.GitHub">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+			<_Parameter1>$(AssemblyName).Tests</_Parameter1>
+		</AssemblyAttribute>
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\..\images\plumber.png">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+		<None Include="..\..\readme.md">
+			<Pack>True</Pack>
+			<PackagePath>README.md</PackagePath>
+		</None>
+		<None Include="..\..\LICENSE">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+	</ItemGroup>
+
+</Project>

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Include>[Plumber.Diagnostics]*</Include>
+		<!-- Line and method are fully covered. Branch is floored below 100 because coverlet 10.0.1 counts
+		     compiler-generated branches (async state-machine transitions, delegate caches) that have no
+		     corresponding source branch to exercise — the same effect documented on Sample.Cli.Tests. -->
+		<Threshold>100,91,100</Threshold>
+		<!-- CA1515: Make public types internal — xUnit requires public test classes -->
+		<!-- CA1812: Internal class never instantiated — test request/response types are activated reflectively -->
+		<NoWarn>$(NoWarn);CA1515;CA1812</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Architecture.Testing\Architecture.Testing.csproj" />
+		<ProjectReference Include="..\..\src\Plumber.Diagnostics\Plumber.Diagnostics.csproj" />
+	</ItemGroup>
+
+</Project>
