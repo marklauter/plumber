@@ -7,6 +7,13 @@ namespace Plumber;
 /// </summary>
 /// <typeparam name="TRequest">The type of request handled by the pipeline.</typeparam>
 /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
+/// <remarks>
+/// <see cref="RequestContext{TRequest, TResponse}"/> is not thread-safe. The pipeline invokes
+/// middleware sequentially, so no synchronization is needed in normal use. Middleware that
+/// fans out parallel work must not access the context (including <see cref="Data"/> and
+/// <see cref="Response"/>) concurrently — complete context writes before forking, or
+/// synchronize access and join before returning.
+/// </remarks>
 /// <param name="request">The request value flowed through the pipeline.</param>
 /// <param name="id">A <see cref="Ulid"/> used to trace the request across logs and middleware.</param>
 /// <param name="timeProvider">Time source used to capture <see cref="Timestamp"/> and measure <see cref="Elapsed"/>.</param>
@@ -67,6 +74,10 @@ public sealed class RequestContext<TRequest, TResponse>(
     /// <summary>
     /// Data that can be passed from one middleware to another.
     /// </summary>
+    /// <remarks>
+    /// Created lazily on first access and not thread-safe — like the context itself.
+    /// Parallel branches within a middleware must not read or write <see cref="Data"/> concurrently.
+    /// </remarks>
     public IDictionary<string, object?> Data => data ??= [];
 
     /// <summary>

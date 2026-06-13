@@ -13,4 +13,5 @@ created: 2026-05-10
 - `RequestHandler.Middleware` exposes registration metadata only (`MiddlewareDescriptor`: the middleware type for `Use<T>()`; null type for delegates, with `DisplayName` = method name for method groups or `MiddlewareDescriptor.DelegateDisplayName` for lambdas) — the component delegates and the compiled pipeline stay private. List order is registration order, which is inbound execution order.
 - `TRequest` is `where TRequest : notnull` (not `class`) so value-type requests work.
 - Cross-middleware state goes through `RequestContext.Data`. `Unit` is the response type for event-style pipelines.
+- `RequestContext` is single-threaded per request — the pipeline invokes middleware sequentially, and the context (including `Data` and `Response`) is deliberately unsynchronized, matching `HttpContext` semantics. Middleware that fans out parallel work must not touch the context concurrently. Don't "fix" the lazy `data ??= []` init.
 - Class middleware: `RequestMiddleware<TReq, TRes> next` must be the first ctor parameter; `RequestContext` must be the first `InvokeAsync` parameter (additional parameters resolve from the scoped service provider).

@@ -27,9 +27,9 @@ Fixed 2026-06-12: the per-request scope is now `await using serviceProvider.Crea
 
 `RequestHandler{TRequest, TResponse}.cs:218-225` checks `handler.IsValueCreated` then mutates `components`/`descriptors`. A `Use` racing the first `InvokeAsync` adds middleware that silently never executes — the `Lazy` already snapshotted the list. Low severity; configuration is normally single-threaded. A `Lock` or list freeze closes it.
 
-## 5. RequestContext.Data lazy init is unsynchronized
+## 5. RequestContext.Data lazy init is unsynchronized — fixed
 
-`RequestContext{TRequest, TResponse}.cs:70` — `data ??= []` from concurrent middleware branches within one request can create two dictionaries and drop writes; `Dictionary` corrupts under concurrent mutation. `HttpContext.Items` carries the same contract. Doc note or `ConcurrentDictionary` if parallel middleware is supported.
+Fixed 2026-06-12: resolved as a documented contract, not a code change. `RequestContext` now carries a `<remarks>` declaring it not thread-safe (pipeline invokes middleware sequentially; parallel branches must not touch the context concurrently), with a matching note on `Data` and an invariant entry in `docs/agents/architecture.md`. `ConcurrentDictionary` was rejected: it would advertise a thread-safety guarantee the rest of the type (`Response` setter) doesn't honor, and `HttpContext.Items` sets the same precedent. Original finding: `RequestContext{TRequest, TResponse}.cs:70` — `data ??= []` from concurrent middleware branches within one request can create two dictionaries and drop writes; `Dictionary` corrupts under concurrent mutation.
 
 ## 6. Overloaded InvokeAsync throws AmbiguousMatchException
 
