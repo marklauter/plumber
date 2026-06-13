@@ -39,7 +39,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
     steps:
     - uses: actions/checkout@v6
     - name: Setup .NET
@@ -81,9 +80,6 @@ jobs:
         name: nuget-packages
         path: nuget/*
         retention-days: 30
-
-    - name: Publish to nuget.pkg.github.com
-      run: dotnet nuget push nuget/*.nupkg --skip-duplicate -k ${{ secrets.GITHUB_TOKEN }} -s https://nuget.pkg.github.com/marklauter/index.json
 
     - name: Publish to api.nuget.org
       run: dotnet nuget push nuget/*.nupkg --skip-duplicate -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
