@@ -1,30 +1,22 @@
 ---
-title: Plumber src review — four open findings
-summary: Of eight code-review findings on src/Plumber, four are fixed; four remain open — late middleware construction, a Use-vs-invoke race, AmbiguousMatchException on overloaded InvokeAsync, and shared file-provider watchers across Build calls.
+title: Plumber src review — two open findings
+summary: Of eight code-review findings on src/Plumber, six are fixed; two remain open — the Use-vs-first-invoke race in the core handler, and shared file-provider watchers leaking across Build calls.
 tags: [note, code-review, csharp, plumber]
 created: 2026-06-12
 document:
   status: open
 ---
 
-# Plumber src review — four open findings
+# Plumber src review — two open findings
 
-Code review of `src/Plumber` found eight issues; no injection-style vulnerabilities. Four are fixed (see below); four remain open and are detailed here. Original numbering is preserved so prior references hold. Findings cite symbols, not line numbers — the line numbers have drifted across the fix commits.
+Code review of `src/Plumber` found eight issues; no injection-style vulnerabilities. Six are fixed (see below); two remain open and are detailed here. Original numbering is preserved so prior references hold. Findings cite symbols, not line numbers — the line numbers have drifted across the fix commits.
 
 ## Resolved
 
-Findings 1, 2, 5, and 8a–8c are fixed (commits `f16762f`, `1f20504`, the `RequestContext` contract commit, and `834c983`): the `Production` environment default, async-aware disposal, the `RequestContext` single-threaded contract, the `InvokeAsync` null guards, the ctor provider-leak guard, and the `PlumberApplicationFactory` `Lazy`/identity fix. Details live in the commit messages.
+- 1, 2, 5, 8a–8c — commits `f16762f`, `1f20504`, the `RequestContext` contract commit, and `834c983`: the `Production` environment default, async-aware disposal, the `RequestContext` single-threaded contract, the `InvokeAsync` null guards, the ctor provider-leak guard, and the `PlumberApplicationFactory` `Lazy`/identity fix.
+- 3 and 6 — `MiddlewareFactory` now exposes a static `ValidateInvokeMethod` that `Use<TMiddleware>()` calls eagerly, so a misconfigured middleware (missing/duplicate `InvokeAsync`, wrong return type, wrong first parameter) fails at the registration call site, not on first `InvokeAsync`. This mirrors ASP.NET Core's `UseMiddleware`, which validates shape eagerly and defers only `ActivatorUtilities.CreateInstance`. The ambiguity check uses `GetMethods()` + a count `switch` instead of `GetMethod(name, flags)`, so overloaded `InvokeAsync` throws a named error rather than `AmbiguousMatchException` (finding 6). Instantiation stays deferred — it needs `next`, a build-time value. Doc corrected to say construction happens at pipeline build.
 
-## 3. Class middleware is constructed at first invoke, and the doc says otherwise
-
-`Use<TMiddleware>()` registers a `next => new MiddlewareFactory<TMiddleware>(...)` lambda. That lambda runs inside `BuildPipeline()`, which the pipeline `Lazy` invokes on the first `InvokeAsync` — so the middleware instance is constructed at first invoke, not at registration.
-
-Two consequences:
-
-- **The doc is wrong.** The `Use<TMiddleware>()` remarks state the instance is "constructed once at registration time." It cannot be: the middleware's first constructor parameter is `RequestMiddleware next`, and `next` is a build-time artifact (each middleware's `next` is the already-built downstream, assembled in reverse by `BuildPipeline`). Construction is inherently deferred to pipeline build. The doc should say "constructed once when the pipeline is built, on the first `InvokeAsync`."
-- **All shape validation fails late.** The `MiddlewareFactory` constructor does every structural check — `InvokeAsync` exists, returns `Task`, first parameter is the context type — plus `ActivatorUtilities.CreateInstance`. Because the factory runs at first invoke, a misconfigured registration (typo'd method name, wrong signature) throws from `InvokeAsync`, far from the `Use<T>()` call that caused it. The `NoInvokeAsyncMiddleware` / `WrongFirstParamMiddleware` / `WrongReturnTypeMiddleware` test fixtures all assert this late-failure behavior.
-
-Suggestion: split `MiddlewareFactory` into eager shape-validation and deferred instantiation. The shape checks are static reflection over `typeof(TMiddleware)` — they need neither `next` nor the DI container, so run them synchronously inside `Use<TMiddleware>()` and fail at the call site. Keep `ActivatorUtilities.CreateInstance` + `Compile` in the deferred lambda, since those need `next`. Unresolvable constructor arguments still surface at build time (they need the instance), but the common typos fail fast. Pairs with finding 6 — do both in the same eager check. Then correct the doc.
+Details live in the commit messages.
 
 ## 4. Check-then-act race between Use and the first invoke
 
@@ -35,12 +27,6 @@ This looks like finding 8c (the factory's check-then-act, now fixed) but is not 
 Severity: low. It requires concurrent `Use` and `InvokeAsync`, which is a usage error — the contract is "configure the pipeline, then invoke." But the silent-drop mode is the nastiest of the three when it does occur.
 
 Suggestion: prefer the documentation route, matching how finding 5 (`RequestContext` threading) was resolved — state in the `Use` and `InvokeAsync` remarks, and as an architecture invariant, that pipeline configuration must happen-before the first invocation and is not thread-safe against it. If belt-and-suspenders is wanted, a `Lock` (the C# 13 `System.Threading.Lock`) around the `IsValueCreated`-check-plus-add in `Use`, taken again at the top of `BuildPipeline` (or snapshotting `components` to an array under it), closes all three windows in ~6 lines. Recommend documentation-first for consistency with finding 5, unless a real concurrent-configuration scenario exists.
-
-## 6. Overloaded InvokeAsync throws AmbiguousMatchException
-
-`MiddlewareFactory`'s constructor resolves the method with `type.GetMethod("InvokeAsync", BindingFlags.Instance | BindingFlags.Public)`. `Type.GetMethod(string, BindingFlags)` throws `AmbiguousMatchException` when the type declares more than one `InvokeAsync`. A middleware that overloads `InvokeAsync` (a common, innocent thing) crashes with a framework-internal exception carrying no Plumber context — and, per finding 3, it crashes at first invoke rather than at registration, compounding the confusion. This violates the fail-loud-with-named-context rule.
-
-Suggestion: replace `GetMethod` with `GetMethods(BindingFlags.Instance | BindingFlags.Public)`, then filter to methods named `InvokeAsync` whose first parameter is the context type and whose return is `Task`-assignable. Zero matches reuse the existing "not found" / "first parameter" messages; two or more matches throw a new explicit message ("multiple `InvokeAsync` overloads accept `RequestContext` as the first parameter; the convention requires exactly one"). This both removes the crash and explains it. Fold it into finding 3's eager shape-validation, and add a `MultipleInvokeAsyncMiddleware` fixture following the existing `Wrong*Middleware` pattern.
 
 ## 7. Shared file-provider watchers leak across Build calls
 

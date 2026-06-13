@@ -953,42 +953,39 @@ public sealed class PlumberTests
     }
 
     [Fact]
-    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
-    public async Task UseClassMiddlewareWithoutInvokeAsyncThrowsAsync()
+    public void UseClassMiddlewareWithoutInvokeAsyncThrowsAtRegistration()
     {
-        using var handler = RequestHandlerBuilder.Create<string, string>()
-            .Build()
-            .Use<NoInvokeAsyncMiddleware>();
+        using var handler = RequestHandlerBuilder.Create<string, string>().Build();
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => handler.InvokeAsync("request", TestContext.Current.CancellationToken));
+        var ex = Assert.Throws<InvalidOperationException>(handler.Use<NoInvokeAsyncMiddleware>);
         Assert.Contains("InvokeAsync", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
-    public async Task UseClassMiddlewareWithNonTaskReturnTypeThrowsAsync()
+    public void UseClassMiddlewareWithNonTaskReturnTypeThrowsAtRegistration()
     {
-        using var handler = RequestHandlerBuilder.Create<string, string>()
-            .Build()
-            .Use<WrongReturnTypeMiddleware>();
+        using var handler = RequestHandlerBuilder.Create<string, string>().Build();
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => handler.InvokeAsync("request", TestContext.Current.CancellationToken));
+        var ex = Assert.Throws<InvalidOperationException>(handler.Use<WrongReturnTypeMiddleware>);
         Assert.Contains("Task", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
-    public async Task UseClassMiddlewareWithWrongFirstParamThrowsAsync()
+    public void UseClassMiddlewareWithWrongFirstParamThrowsAtRegistration()
     {
-        using var handler = RequestHandlerBuilder.Create<string, string>()
-            .Build()
-            .Use<WrongFirstParamMiddleware>();
+        using var handler = RequestHandlerBuilder.Create<string, string>().Build();
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => handler.InvokeAsync("request", TestContext.Current.CancellationToken));
+        var ex = Assert.Throws<InvalidOperationException>(handler.Use<WrongFirstParamMiddleware>);
         Assert.Contains("first parameter", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void UseClassMiddlewareWithMultipleInvokeAsyncThrowsAtRegistration()
+    {
+        using var handler = RequestHandlerBuilder.Create<string, string>().Build();
+
+        var ex = Assert.Throws<InvalidOperationException>(handler.Use<MultipleInvokeAsyncMiddleware>);
+        Assert.Contains("multiple InvokeAsync", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

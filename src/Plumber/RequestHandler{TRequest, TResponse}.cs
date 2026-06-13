@@ -188,9 +188,10 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// Constructor arguments are always passed after the Next middleware argument and before arguments provided by the service provider.
     /// </para>
     /// <para>
-    /// The middleware instance is constructed once at registration time and reused for every request — it has
-    /// effectively a singleton lifetime, regardless of how <typeparamref name="TMiddleware"/> itself is
-    /// registered with the DI container.
+    /// The middleware's <c>InvokeAsync</c> shape is validated when <c>Use</c> is called; the instance is
+    /// constructed once when the pipeline is built (on the first <see cref="InvokeAsync(TRequest)"/>) and
+    /// reused for every request — it has effectively a singleton lifetime, regardless of how
+    /// <typeparamref name="TMiddleware"/> itself is registered with the DI container.
     /// </para>
     /// <para>
     /// Constructor parameters are resolved from the root <see cref="IServiceProvider"/>, not from the
@@ -205,11 +206,15 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// </para>
     /// </remarks>
     public RequestHandler<TRequest, TResponse> Use<TMiddleware>(params object[] parameters)
-        where TMiddleware : class =>
-        Use(
-            next => new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), Services, next, parameters)
+        where TMiddleware : class
+    {
+        // validate the middleware shape now so misconfiguration fails here, not on first InvokeAsync
+        var (method, methodParams) = MiddlewareFactory<TMiddleware>.ValidateInvokeMethod();
+        return Use(
+            next => new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), Services, next, parameters, method, methodParams)
                 .CreateMiddleware(),
             new MiddlewareDescriptor(typeof(TMiddleware), typeof(TMiddleware).Name));
+    }
 
     /// <summary>
     /// Adds a class-based middleware to the request handler's pipeline.
@@ -219,9 +224,10 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// <exception cref="InvalidOperationException">New middleware components can't be added after the pipeline has been built. The pipeline is built on the first call to InvokeAsync.</exception>
     /// <remarks>
     /// <para>
-    /// The middleware instance is constructed once at registration time and reused for every request — it has
-    /// effectively a singleton lifetime, regardless of how <typeparamref name="TMiddleware"/> itself is
-    /// registered with the DI container.
+    /// The middleware's <c>InvokeAsync</c> shape is validated when <c>Use</c> is called; the instance is
+    /// constructed once when the pipeline is built (on the first <see cref="InvokeAsync(TRequest)"/>) and
+    /// reused for every request — it has effectively a singleton lifetime, regardless of how
+    /// <typeparamref name="TMiddleware"/> itself is registered with the DI container.
     /// </para>
     /// <para>
     /// Constructor parameters are resolved from the root <see cref="IServiceProvider"/>, not from the
@@ -236,11 +242,15 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// </para>
     /// </remarks>
     public RequestHandler<TRequest, TResponse> Use<TMiddleware>()
-        where TMiddleware : class =>
-        Use(
-            next => new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), Services, next, null)
+        where TMiddleware : class
+    {
+        // validate the middleware shape now so misconfiguration fails here, not on first InvokeAsync
+        var (method, methodParams) = MiddlewareFactory<TMiddleware>.ValidateInvokeMethod();
+        return Use(
+            next => new MiddlewareFactory<TMiddleware>(typeof(TMiddleware), Services, next, null, method, methodParams)
                 .CreateMiddleware(),
             new MiddlewareDescriptor(typeof(TMiddleware), typeof(TMiddleware).Name));
+    }
 
     // '<' cannot appear in a C# identifier, so its presence marks a compiler-generated lambda method
     private static string DelegateDisplayName(Delegate middleware) =>
@@ -330,14 +340,23 @@ public sealed class RequestHandler<TRequest, TResponse>
         private const string InvokeMethodName = "InvokeAsync";
         private static readonly Type ContextType = typeof(RequestContext<TRequest, TResponse>);
 
-        public MiddlewareFactory(
-            Type type,
-            IServiceProvider services,
-            RequestMiddleware<TRequest, TResponse> next,
-            object[]? parameters)
+        // Eager shape validation, called from Use<TMiddleware>() at registration so a misconfigured
+        // middleware fails at the call site rather than on the first InvokeAsync. Pure reflection over
+        // TMiddleware — no 'next', no service provider, no instance. Mirrors ASP.NET Core's UseMiddleware,
+        // which validates the method shape eagerly and defers only ActivatorUtilities.CreateInstance.
+        public static (MethodInfo Method, ParameterInfo[] Parameters) ValidateInvokeMethod()
         {
-            var method = type.GetMethod(InvokeMethodName, BindingFlags.Instance | BindingFlags.Public)
-                ?? throw new InvalidOperationException($"{InvokeMethodName} method not found on class {type.FullName}.");
+            var candidates = typeof(TMiddleware)
+                .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                .Where(m => m.Name == InvokeMethodName)
+                .ToArray();
+
+            var method = candidates.Length switch
+            {
+                0 => throw new InvalidOperationException($"{InvokeMethodName} method not found on class {typeof(TMiddleware).FullName}."),
+                1 => candidates[0],
+                _ => throw new InvalidOperationException($"class {typeof(TMiddleware).FullName} declares multiple {InvokeMethodName} methods; the convention requires exactly one."),
+            };
 
             if (!typeof(Task).IsAssignableFrom(method.ReturnType))
             {
@@ -346,11 +365,21 @@ public sealed class RequestHandler<TRequest, TResponse>
 
             var methodParams = method.GetParameters();
 
-            if (methodParams.Length == 0 || methodParams[0].ParameterType != ContextType)
-            {
-                throw new InvalidOperationException($"method {method.Name} must have {ContextType.Name} as its first parameter");
-            }
+            return methodParams.Length == 0 || methodParams[0].ParameterType != ContextType
+                ? throw new InvalidOperationException($"method {method.Name} must have {ContextType.Name} as its first parameter")
+                : (method, methodParams);
+        }
 
+        // Deferred construction, run when the pipeline is built (first InvokeAsync). Consumes the
+        // method validated eagerly by ValidateInvokeMethod; only instantiation needs 'next' and the provider.
+        public MiddlewareFactory(
+            Type type,
+            IServiceProvider services,
+            RequestMiddleware<TRequest, TResponse> next,
+            object[]? parameters,
+            MethodInfo method,
+            ParameterInfo[] methodParams)
+        {
             var middleware = (TMiddleware)ActivatorUtilities.CreateInstance(
                 services,
                 type,
