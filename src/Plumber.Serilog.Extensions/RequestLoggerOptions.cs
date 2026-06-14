@@ -1,7 +1,7 @@
 using Serilog;
 using Serilog.Events;
 
-namespace Plumber.Serilog;
+namespace Plumber.Serilog.Extensions;
 
 /// <summary>
 /// RequestLoggerOptions lets you configure the Serilog middleware.

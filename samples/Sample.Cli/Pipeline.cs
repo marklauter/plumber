@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Plumber;
 using Plumber.Diagnostics;
-using Plumber.Serilog;
+using Plumber.Serilog.Extensions;
 using Serilog;
 using Serilog.Formatting.Compact;
 using System.Diagnostics.CodeAnalysis;

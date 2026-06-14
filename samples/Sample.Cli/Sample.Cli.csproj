@@ -8,7 +8,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Plumber\Plumber.csproj" />
-		<ProjectReference Include="..\..\src\Plumber.Serilog\Plumber.Serilog.csproj" />
+		<ProjectReference Include="..\..\src\Plumber.Serilog.Extensions\Plumber.Serilog.Extensions.csproj" />
 		<ProjectReference Include="..\..\src\Plumber.Diagnostics\Plumber.Diagnostics.csproj" />
 	</ItemGroup>
 

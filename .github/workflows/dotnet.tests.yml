@@ -52,6 +52,6 @@ jobs:
           tests/Plumber.Tests/coverage.cobertura.xml
           tests/Plumber.Testing.Tests/coverage.cobertura.xml
           tests/Plumber.Diagnostics.Tests/coverage.cobertura.xml
-          tests/Plumber.Serilog.Tests/coverage.cobertura.xml
+          tests/Plumber.Serilog.Extensions.Tests/coverage.cobertura.xml
           samples/Sample.Cli.Tests/coverage.cobertura.xml
         if-no-files-found: error

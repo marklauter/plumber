@@ -5,7 +5,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
-namespace Plumber.Serilog.Tests;
+namespace Plumber.Serilog.Extensions.Tests;
 
 public sealed class RequestHandlerSerilogExtensionsTests
 {
@@ -188,7 +188,7 @@ public sealed class RequestHandlerSerilogExtensionsTests
     {
         // When a request runs inside an active span (the realistic case with Plumber.Diagnostics also wired up),
         // the completion event must carry that span's trace and span ids so logs correlate with the trace.
-        using var source = new ActivitySource("Plumber.Serilog.Tests.TraceCorrelation");
+        using var source = new ActivitySource("Plumber.Serilog.Extensions.Tests.TraceCorrelation");
         using var listener = new ActivityListener
         {
             ShouldListenTo = s => s.Name == source.Name,
