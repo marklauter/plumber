@@ -39,6 +39,8 @@ internal static class Pipeline
         handler
             .UseRequestDiagnostics()
             .UseSerilogRequestLogging()
+            // Inline timer feeds the report payload's Elapsed (which the CLI prints). The OpenTelemetry span
+            // duration and the Serilog event measure observability timing separately; this one shapes output.
             .Use(async (context, next) =>
             {
                 var start = DateTime.UtcNow;

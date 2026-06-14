@@ -1,4 +1,6 @@
+using OpenTelemetry.Metrics;
 using Plumber;
+using System.Diagnostics;
 
 namespace Sample.Cli.Tests;
 
@@ -63,13 +65,22 @@ public sealed class PipelineTests
     }
 
     [Fact]
-    public void TelemetryProvidersAreCreated()
+    public async Task TelemetrySummaryReflectsAPipelineRunAsync()
     {
-        using var tracerProvider = Telemetry.CreateTracerProvider();
-        using var meterProvider = Telemetry.CreateMeterProvider();
+        List<Activity> spans = [];
+        List<Metric> metrics = [];
+        using var tracerProvider = Telemetry.CreateTracerProvider(spans);
+        using var meterProvider = Telemetry.CreateMeterProvider(metrics);
+        using var handler = Pipeline.Build([]);
 
-        Assert.NotNull(tracerProvider);
-        Assert.NotNull(meterProvider);
+        _ = await handler.InvokeAsync("Hello, World!", TestContext.Current.CancellationToken);
+
+        _ = meterProvider.ForceFlush();
+        var summary = Telemetry.Summarize(spans, metrics);
+
+        Assert.Contains("Plumber.HandleRequest", summary, StringComparison.Ordinal);
+        Assert.Contains("plumber.requests.count", summary, StringComparison.Ordinal);
+        Assert.Contains("plumber.requests.duration", summary, StringComparison.Ordinal);
     }
 
     [Fact]
