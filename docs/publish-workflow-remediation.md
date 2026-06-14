@@ -187,3 +187,43 @@ resolved after the repo is checked out, so it cannot be folded in.
 All of the above can land in a single PR against `lauterm/otel` (or a dedicated
 `ci/publish-hardening` branch) since they are confined to CI config plus one
 `IsPackable` flag.
+
+---
+
+## Follow-up findings (second pass)
+
+### 7. README filename casing breaks pack on Linux — **fixed**
+
+**Important.** All four packable projects packed `<None Include="..\..\readme.md">`,
+but the file is `README.md`. The publish job packs on `ubuntu-latest`
+(case-sensitive filesystem), so `dotnet pack` would fail with **NU5039** at
+release time. It passed locally only because Windows is case-insensitive, and no
+CI job packs before the release event — so the bug was invisible until a release.
+Corrected the include path to `README.md` in all four `src/*.csproj`.
+
+### 8. No deterministic-build flag in CI — **fixed**
+
+**Worth doing.** SourceLink was wired up (`Microsoft.SourceLink.GitHub`,
+`PublishRepositoryUrl`, `EmbedUntrackedSources`) but nothing set
+`ContinuousIntegrationBuild=true`, so packed binaries were not reproducible and
+SourceLink paths were not normalized. Added a `Directory.Build.props` property
+group gated on `'$(GITHUB_ACTIONS)' == 'true'` — on in CI, off locally.
+
+### 9. Publish path cannot be dry-run — **fixed**
+
+**Worth doing.** The workflow only triggered on `release: published`, so pack/push
+could not be exercised without cutting a real release (which is how #7 stayed
+hidden). Added a `workflow_dispatch` trigger with a `version` input; the
+`nuget push` step is now guarded by `if: github.event_name == 'release'`, so a
+manual run builds, tests, packs, and uploads the artifact without publishing.
+
+### 10. paths-filter vs. required status checks — **open, needs decision**
+
+**Verify.** `dotnet.tests.yml` uses `paths:` filters. If its checks are marked
+**required** in branch protection, a PR that touches only non-matching paths
+never triggers the workflow, so the required check never reports and the PR can
+be blocked indefinitely. Resolution depends on the repo's branch-protection
+settings (not visible from the tree): either rely on GitHub's "skipped =
+success" behavior for required checks, scope required checks accordingly, or add
+an always-run companion job that reports a neutral/green status. Left to the
+maintainer.

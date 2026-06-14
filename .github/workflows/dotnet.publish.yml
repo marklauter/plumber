@@ -3,9 +3,15 @@ name: .NET Publish
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to pack for a dry run (build/test/pack/upload only — no nuget push)"
+        required: false
+        default: "0.0.0-dryrun"
 
 concurrency:
-  group: publish-${{ github.event.release.tag_name }}
+  group: publish-${{ github.event.release.tag_name || github.run_id }}
   cancel-in-progress: false
 
 permissions:
@@ -38,11 +44,13 @@ jobs:
 
     - name: Resolve package version
       env:
+        EVENT: ${{ github.event_name }}
         TAG: ${{ github.event.release.tag_name }}
+        INPUT_VERSION: ${{ inputs.version }}
       run: |
-        version="${TAG#v}"
+        if [ "$EVENT" = "release" ]; then version="${TAG#v}"; else version="$INPUT_VERSION"; fi
         [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] \
-          || { echo "::error::invalid version '$version' from tag '$TAG'"; exit 1; }
+          || { echo "::error::invalid version '$version' (event '$EVENT')"; exit 1; }
         echo "Publishing version $version"
         echo "PACKAGE_VERSION=$version" >> "$GITHUB_ENV"
 
@@ -60,4 +68,5 @@ jobs:
         retention-days: 30
 
     - name: Publish to api.nuget.org
+      if: github.event_name == 'release'
       run: dotnet nuget push nuget/*.nupkg --skip-duplicate -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
