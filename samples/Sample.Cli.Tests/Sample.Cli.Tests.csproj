@@ -4,7 +4,8 @@
 		<Include>[Sample.Cli]*</Include>
 		<!-- Local override of the solution-wide ratchet: Sample.Cli is a demo CLI with untested branches; floored from current minimum-per-module values. Plumber.Testing coverage is owned by Plumber.Testing.Tests at the solution ratchet. -->
 		<!-- Branch floor lowered 45->40 with coverlet 10.0.1, which counts compiler-generated delegate-cache branches and the async Main entry point that 10.0.0 ignored; refactoring idiomatic demo middleware to chase them would make a worse example. -->
-		<Threshold>80,40,80</Threshold>
+		<!-- Lowered 40->38 for the host-free OpenTelemetry bootstrap's `using` provider disposables in the async Main (compiler-generated finally branches, unreachable from tests), then raised to 45: TelemetrySummaryReflectsAPipelineRun drives the pipeline through the in-memory exporters and Telemetry.Summarize, covering the telemetry branches. -->
+		<Threshold>80,45,80</Threshold>
 		<!-- CA1515: Make public types internal — xUnit requires public -->
 		<NoWarn>$(NoWarn);CA1515</NoWarn>
 	</PropertyGroup>

@@ -1,15 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<PackageId>MSL.Plumber.Serilog.Extensions</PackageId>
-		<Title>Plumber.Serilog.Extensions: Serilog Structured Request Logging for Plumber Pipelines</Title>
+		<PackageId>MSL.Plumber.Diagnostics</PackageId>
+		<Title>Plumber.Diagnostics: OpenTelemetry Tracing and Metrics for Plumber Pipelines</Title>
 		<Authors>Mark Lauter</Authors>
-		<Description>Serilog middleware for the Plumber pipeline framework: structured per-request logging through a Serilog DiagnosticContext, with configurable level, message template, and enrichment. Completion events carry the active trace's TraceId and SpanId, so logs correlate with your Plumber.Diagnostics spans.</Description>
+		<Description>OpenTelemetry tracing and metrics for the Plumber pipeline framework, with no OpenTelemetry SDK dependency: per-request spans and metrics are emitted through the in-box ActivitySource and Meter primitives, so you export to any backend — OTLP, Jaeger, Prometheus, or the console — with your own SDK setup. Configurable per-request enrichment.</Description>
 		<Copyright>Copyright (c) 2024 Mark Lauter</Copyright>
 		<PackageProjectUrl>https://github.com/marklauter/Plumber</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/marklauter/Plumber</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<PackageTags>middleware;pipeline;plumber;serilog;logging;structured-logging;request-logging;diagnostic-context;observability;trace-correlation;dotnet;msl-armory</PackageTags>
+		<PackageTags>middleware;pipeline;plumber;opentelemetry;otel;observability;tracing;distributed-tracing;metrics;telemetry;instrumentation;monitoring;activitysource;meter;dotnet;msl-armory</PackageTags>
 		<NeutralLanguage>en-US</NeutralLanguage>
 		<IncludeContentInPack>true</IncludeContentInPack>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
@@ -23,9 +23,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<!-- Instrumentation flows through the BCL ActivitySource/Meter primitives (in-box in net10);
+		     the OpenTelemetry SDK is a consumer concern, so this library does not reference it. -->
 		<PackageReference Include="Microsoft.Extensions.Options" />
-		<PackageReference Include="Serilog" />
-		<PackageReference Include="Serilog.Extensions.Hosting" />
 		<PackageReference Include="Microsoft.SourceLink.GitHub">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

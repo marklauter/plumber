@@ -2,14 +2,14 @@
 
 	<PropertyGroup>
 		<PackageId>MSL.Plumber.Pipeline</PackageId>
-		<Title>Plumber: Middleware Pipelines for Host-Free .NET</Title>
+		<Title>Plumber: ASP.NET Core-Style Middleware Pipelines for Console, Worker &amp; Serverless .NET</Title>
 		<Authors>Mark Lauter</Authors>
-		<Description>The ASP.NET Core middleware-pipeline model for host-free .NET — console apps, AWS Lambdas, Azure Functions, and queue consumers. Compose a request/response pipeline from delegate- and class-based middleware with dependency injection, configuration, logging, per-request scoping, timeouts, and cancellation.</Description>
+		<Description>The ASP.NET Core middleware-pipeline model, without the web host — for console apps, workers, AWS Lambda, Azure Functions, and queue consumers. Compose a request/response pipeline from delegate- and class-based middleware, built on the Microsoft.Extensions stack you already know: dependency injection, configuration, logging, per-request scoping, timeouts, and cancellation.</Description>
 		<Copyright>Copyright (c) 2024 Mark Lauter</Copyright>
 		<PackageProjectUrl>https://github.com/marklauter/Plumber</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/marklauter/Plumber</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<PackageTags>middleware;pipeline;plumber;chain-of-responsibility;dependency-injection;console;queue;worker;request-handler;timeout;dotnet;msl-armory</PackageTags>
+		<PackageTags>middleware;middleware-pipeline;pipeline;plumber;chain-of-responsibility;dependency-injection;di;console;worker;background-service;serverless;aws-lambda;azure-functions;queue;request-handler;cancellation;timeout;dotnet;msl-armory</PackageTags>
 		<NeutralLanguage>en-US</NeutralLanguage>
 		<IncludeContentInPack>true</IncludeContentInPack>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
@@ -49,7 +49,7 @@
 			<Pack>True</Pack>
 			<PackagePath>\</PackagePath>
 		</None>
-		<None Include="..\..\readme.md">
+		<None Include="..\..\README.md">
 			<Pack>True</Pack>
 			<PackagePath>README.md</PackagePath>
 		</None>

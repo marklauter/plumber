@@ -19,7 +19,7 @@ The [wiki](https://github.com/marklauter/plumber/wiki) is the full documentation
 - **`MSL.Plumber.Pipeline`** — the core builder, handler, middleware, and request context. See [Pipeline](https://github.com/marklauter/plumber/wiki/Building-A-Pipeline).
 - **`MSL.Plumber.Pipeline.Testing`** — `PlumberApplicationFactory` for exercising a real pipeline in tests. See [Testing](https://github.com/marklauter/plumber/wiki/Testing).
 - **`MSL.Plumber.Serilog.Extensions`** — per-request Serilog request logging. See [Serilog Extensions](https://github.com/marklauter/plumber/wiki/Serilog-Extensions).
-- **`MSL.Plumber.OpenTelemetry.Extensions`** — tracing and metrics middleware. *Planned.*
+- **`MSL.Plumber.Diagnostics`** — per-request OpenTelemetry tracing and metrics middleware. See [Diagnostics](https://github.com/marklauter/plumber/wiki/Diagnostics).
 
 ## Install
 

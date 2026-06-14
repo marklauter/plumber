@@ -1,5 +1,7 @@
+using Microsoft.Extensions.DependencyInjection;
 using Serilog.Events;
 using Serilog.Exceptions;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
@@ -177,5 +179,100 @@ public sealed class RequestHandlerSerilogExtensionsTests
 
         var e = sink.Events.First();
         Assert.Equal("DONE {RequestId}", e.MessageTemplate.Text);
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
+        Justification = "fluent UseSerilogRequestLogging/Use return the same handler instance; the using var owns disposal")]
+    public async Task CompletionEventCarriesAmbientActivityTraceContextAsync()
+    {
+        // When a request runs inside an active span (the realistic case with Plumber.Diagnostics also wired up),
+        // the completion event must carry that span's trace and span ids so logs correlate with the trace.
+        using var source = new ActivitySource("Plumber.Serilog.Extensions.Tests.TraceCorrelation");
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = s => s.Name == source.Name,
+            Sample = static (ref _) => ActivitySamplingResult.AllDataAndRecorded,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var sink = new TestSink();
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .ConfigureServices((services, _) => services
+                .AddSerilogRequestLogging<string, string>(logger => logger.MinimumLevel.Debug().WriteTo.Sink(sink)))
+            .Build();
+
+        _ = handler
+            .UseSerilogRequestLogging()
+            .Use<ToLowerMiddleware>();
+
+        using var activity = source.StartActivity("request");
+        Assert.NotNull(activity); // the listener samples AllDataAndRecorded, so a recording activity must exist
+
+        _ = await handler.InvokeAsync("Hello", TestContext.Current.CancellationToken);
+
+        var e = sink.Events.First();
+        Assert.Equal(activity.TraceId, Assert.NotNull(e.TraceId));
+        Assert.Equal(activity.SpanId, Assert.NotNull(e.SpanId));
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
+        Justification = "the completion event must NOT borrow trace context from an unrelated span; the using var owns disposal")]
+    public async Task CompletionEventOmitsTraceContextWhenNoActivityIsActiveAsync()
+    {
+        // No ambient activity: the completion event must leave trace/span ids unset rather than fabricate them.
+        Assert.Null(Activity.Current);
+
+        var sink = new TestSink();
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .ConfigureServices((services, _) => services
+                .AddSerilogRequestLogging<string, string>(logger => logger.MinimumLevel.Debug().WriteTo.Sink(sink)))
+            .Build();
+
+        _ = handler
+            .UseSerilogRequestLogging()
+            .Use<ToLowerMiddleware>();
+
+        _ = await handler.InvokeAsync("Hello", TestContext.Current.CancellationToken);
+
+        var e = sink.Events.First();
+        Assert.Null(e.TraceId);
+        Assert.Null(e.SpanId);
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP005:Return type should indicate that the value should be disposed",
+        Justification = "the guarded extension throws ArgumentNullException before constructing anything; no disposable is created")]
+    public void UseSerilogRequestLoggingGuardsAgainstNullArguments()
+    {
+        RequestHandler<string, string> handler = null!;
+
+        _ = Assert.Throws<ArgumentNullException>(() => handler.UseSerilogRequestLogging());
+        _ = Assert.Throws<ArgumentNullException>(() => handler.UseSerilogRequestLogging(_ => { }));
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
+        Justification = "the using var owns disposal; the guarded call throws before returning a handler")]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP005:Return type should indicate that the value should be disposed",
+        Justification = "the guarded extension throws ArgumentNullException before constructing anything; no disposable is created")]
+    public void UseSerilogRequestLoggingGuardsAgainstNullConfiguration()
+    {
+        using var handler = RequestHandlerBuilder.Create<string, string>().Build();
+
+        _ = Assert.Throws<ArgumentNullException>(() => handler.UseSerilogRequestLogging(null!));
+    }
+
+    [Fact]
+    public void AddSerilogRequestLoggingGuardsAgainstNullArguments()
+    {
+        IServiceCollection nullServices = null!;
+        _ = Assert.Throws<ArgumentNullException>(
+            () => nullServices.AddSerilogRequestLogging<string, string>(_ => { }));
+
+        var services = new ServiceCollection();
+        _ = Assert.Throws<ArgumentNullException>(
+            () => services.AddSerilogRequestLogging<string, string>(null!));
     }
 }

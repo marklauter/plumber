@@ -17,10 +17,12 @@
     <File Path=".github/workflows/dotnet.tests.yml" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/Plumber.Diagnostics/Plumber.Diagnostics.csproj" />
     <Project Path="src/Plumber.Serilog.Extensions/Plumber.Serilog.Extensions.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Architecture.Testing/Architecture.Testing.csproj" />
+    <Project Path="tests/Plumber.Diagnostics.Tests/Plumber.Diagnostics.Tests.csproj" />
     <Project Path="tests/Plumber.Serilog.Extensions.Tests/Plumber.Serilog.Extensions.Tests.csproj" />
   </Folder>
   <Project Path="samples/Sample.Cli.Tests/Sample.Cli.Tests.csproj" />

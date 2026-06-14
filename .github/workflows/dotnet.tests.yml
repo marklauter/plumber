@@ -3,10 +3,10 @@ name: .NET Tests
 on:
   push:
     branches: [ "main" ]
-    paths: [ "src/**", "tests/**", "samples/**", "Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props", ".editorconfig", ".gitattributes", ".github/workflows/dotnet.tests.yml" ]
+    paths: [ "src/**", "tests/**", "samples/**", "Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props", ".editorconfig", ".gitattributes", "global.json", ".github/workflows/dotnet.tests.yml", ".github/actions/setup-dotnet/action.yml" ]
   pull_request:
     branches: [ "main" ]
-    paths: [ "src/**", "tests/**", "samples/**", "Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props", ".editorconfig", ".gitattributes", ".github/workflows/dotnet.tests.yml" ]
+    paths: [ "src/**", "tests/**", "samples/**", "Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props", ".editorconfig", ".gitattributes", "global.json", ".github/workflows/dotnet.tests.yml", ".github/actions/setup-dotnet/action.yml" ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -20,18 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v5
-      with:
-        dotnet-version: 10.0.x
-
-    - name: Cache NuGet packages
-      uses: actions/cache@v5
-      with:
-        path: ~/.nuget/packages
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
-        restore-keys: |
-          ${{ runner.os }}-nuget-
+    - uses: ./.github/actions/setup-dotnet
 
     - name: Verify formatting
       run: dotnet format "Plumber.slnx" --severity info --verify-no-changes
@@ -43,18 +32,7 @@ jobs:
         configuration: [ Debug, Release ]
     steps:
     - uses: actions/checkout@v6
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v5
-      with:
-        dotnet-version: 10.0.x
-
-    - name: Cache NuGet packages
-      uses: actions/cache@v5
-      with:
-        path: ~/.nuget/packages
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
-        restore-keys: |
-          ${{ runner.os }}-nuget-
+    - uses: ./.github/actions/setup-dotnet
 
     - name: Restore dependencies
       run: dotnet restore
@@ -72,5 +50,8 @@ jobs:
         name: coverage-cobertura
         path: |
           tests/Plumber.Tests/coverage.cobertura.xml
+          tests/Plumber.Testing.Tests/coverage.cobertura.xml
+          tests/Plumber.Diagnostics.Tests/coverage.cobertura.xml
+          tests/Plumber.Serilog.Extensions.Tests/coverage.cobertura.xml
           samples/Sample.Cli.Tests/coverage.cobertura.xml
         if-no-files-found: error

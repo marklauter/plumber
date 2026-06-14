@@ -41,8 +41,9 @@ public sealed class RequestHandler<TRequest, TResponse>
         {
             // We own the provider, but no instance escapes the ctor to call Dispose, so tear it down here.
             // Sync Dispose is correct: an async-only singleton could only exist if the throwing resolution
-            // had already created one, which is pathological.
-            (Services as IDisposable)?.Dispose();
+            // had already created one, which is pathological. BuildServiceProvider always returns an
+            // IDisposable provider, so cast directly rather than guard a case that cannot occur.
+            ((IDisposable)Services).Dispose();
             throw;
         }
 
@@ -417,8 +418,9 @@ public sealed class RequestHandler<TRequest, TResponse>
                 call = Expression.Convert(call, typeof(Task));
             }
 
-            // preserve the "returned null" diagnostic from the previous reflection-based dispatch
-            var nullMessage = $"{method.DeclaringType?.FullName}.{method.Name} returned null.";
+            // preserve the "returned null" diagnostic from the previous reflection-based dispatch.
+            // DeclaringType is non-null for an InvokeAsync method resolved from a class via GetMethods.
+            var nullMessage = $"{method.DeclaringType!.FullName}.{method.Name} returned null.";
             var throwOnNull = Expression.Throw(
                 Expression.New(
                     typeof(InvalidOperationException).GetConstructor([typeof(string)])!,
@@ -444,7 +446,9 @@ public sealed class RequestHandler<TRequest, TResponse>
 
         if (ownsProvider)
         {
-            (Services as IDisposable)?.Dispose();
+            // the owned provider always comes from ServiceCollection.BuildServiceProvider, which is IDisposable;
+            // cast directly to match the IAsyncDisposable cast in DisposeAsync rather than guard an impossible case
+            ((IDisposable)Services).Dispose();
         }
 
         disposed = true;

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Plumber;
+using Plumber.Diagnostics;
 using Plumber.Serilog.Extensions;
 using Serilog;
 using Serilog.Formatting.Compact;
@@ -18,19 +19,16 @@ internal static class Pipeline
                 new($"{TokenizerOptions.SectionName}:{nameof(TokenizerOptions.RemoveEmptyEntries)}", TokenizerOptions.Defaults.RemoveEmptyEntries.ToString()),
                 new($"{TokenizerOptions.SectionName}:{nameof(TokenizerOptions.TrimEntries)}", TokenizerOptions.Defaults.TrimEntries.ToString()),
             ]))
-            .ConfigureLogging(logging => logging
-                .SetMinimumLevel(LogLevel.Information)
-                .AddSimpleConsole(o =>
-                {
-                    o.SingleLine = true;
-                    o.IncludeScopes = false;
-                }))
+            // Register the Microsoft.Extensions.Logging stack so middleware can take ILogger<T>, but add no
+            // console provider — structured console output is Serilog's job (AddSerilogRequestLogging below).
+            .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Information))
             .ConfigureServices((services, configuration) =>
             {
                 var options = configuration.GetSection(TokenizerOptions.SectionName).Get<TokenizerOptions>()
                     ?? TokenizerOptions.Defaults;
                 _ = services
                     .AddSerilogRequestLogging<string, TextReport>(logger => logger.WriteTo.Console(new CompactJsonFormatter()))
+                    .AddPlumberDiagnostics<string, TextReport>()
                     .AddSingleton(options)
                     .AddSingleton<ITokenizer, WhitespaceTokenizer>();
             });
@@ -39,7 +37,10 @@ internal static class Pipeline
         Justification = "fluent .Use() returns the same handler instance; caller disposes")]
     public static RequestHandler<string, TextReport> Configure(RequestHandler<string, TextReport> handler) =>
         handler
+            .UseRequestDiagnostics()
             .UseSerilogRequestLogging()
+            // Inline timer feeds the report payload's Elapsed (which the CLI prints). The OpenTelemetry span
+            // duration and the Serilog event measure observability timing separately; this one shapes output.
             .Use(async (context, next) =>
             {
                 var start = DateTime.UtcNow;

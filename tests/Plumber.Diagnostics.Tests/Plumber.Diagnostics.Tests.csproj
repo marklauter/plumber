@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Include>[Plumber.Diagnostics]*</Include>
+		<!-- CA1515: Make public types internal — xUnit requires public test classes -->
+		<!-- CA1812: Internal class never instantiated — test request/response types are activated reflectively -->
+		<NoWarn>$(NoWarn);CA1515;CA1812</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Architecture.Testing\Architecture.Testing.csproj" />
+		<ProjectReference Include="..\..\src\Plumber.Diagnostics\Plumber.Diagnostics.csproj" />
+	</ItemGroup>
+
+</Project>
