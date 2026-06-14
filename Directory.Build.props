@@ -14,6 +14,11 @@
 		<EmbedUntrackedSources>true</EmbedUntrackedSources>
 	</PropertyGroup>
 
+	<PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+		<!-- Reproducible builds + normalized SourceLink paths in packed binaries. On only in CI. -->
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+	</PropertyGroup>
+
 	<PropertyGroup>
 		<!-- CA1308: ToUpperInvariant over ToLowerInvariant is a Turkic-locale normalization rule; this codebase does not use the result for security/identity comparisons -->
 		<!-- CA2007: ConfigureAwait is windows-only advice; Plumber is a library -->

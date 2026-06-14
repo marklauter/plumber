@@ -3,6 +3,16 @@ name: .NET Publish
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to pack for a dry run (build/test/pack/upload only — no nuget push)"
+        required: false
+        default: "0.0.0-dryrun"
+
+concurrency:
+  group: publish-${{ github.event.release.tag_name || github.run_id }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -12,27 +22,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v5
-      with:
-        dotnet-version: 10.0.x
-
-    - name: Cache NuGet packages
-      uses: actions/cache@v5
-      with:
-        path: ~/.nuget/packages
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
-        restore-keys: |
-          ${{ runner.os }}-nuget-
+    - uses: ./.github/actions/setup-dotnet
 
     - name: Restore dependencies
       run: dotnet restore
 
     - name: Build
-      run: dotnet build -c Debug --no-restore
+      run: dotnet build -c Release --no-restore
 
     - name: Test
-      run: dotnet test --no-build
+      run: dotnet test -c Release --no-build
 
   publish:
     needs: test
@@ -41,41 +40,25 @@ jobs:
       contents: read
     steps:
     - uses: actions/checkout@v6
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v5
-      with:
-        dotnet-version: 10.0.x
-
-    - name: Cache NuGet packages
-      uses: actions/cache@v5
-      with:
-        path: ~/.nuget/packages
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
-        restore-keys: |
-          ${{ runner.os }}-nuget-
+    - uses: ./.github/actions/setup-dotnet
 
     - name: Resolve package version
       env:
+        EVENT: ${{ github.event_name }}
         TAG: ${{ github.event.release.tag_name }}
+        INPUT_VERSION: ${{ inputs.version }}
       run: |
-        version="${TAG#v}"
+        if [ "$EVENT" = "release" ]; then version="${TAG#v}"; else version="$INPUT_VERSION"; fi
+        [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] \
+          || { echo "::error::invalid version '$version' (event '$EVENT')"; exit 1; }
         echo "Publishing version $version"
         echo "PACKAGE_VERSION=$version" >> "$GITHUB_ENV"
 
     - name: Restore
       run: dotnet restore
 
-    - name: Pack Plumber
-      run: dotnet pack src/Plumber -c Release --no-restore -o nuget -p:PackageVersion=$PACKAGE_VERSION -p:Version=$PACKAGE_VERSION
-
-    - name: Pack Plumber.Testing
-      run: dotnet pack src/Plumber.Testing -c Release --no-restore -o nuget -p:PackageVersion=$PACKAGE_VERSION -p:Version=$PACKAGE_VERSION
-
-    - name: Pack Plumber.Serilog
-      run: dotnet pack src/Plumber.Serilog -c Release --no-restore -o nuget -p:PackageVersion=$PACKAGE_VERSION -p:Version=$PACKAGE_VERSION
-
-    - name: Pack Plumber.Diagnostics
-      run: dotnet pack src/Plumber.Diagnostics -c Release --no-restore -o nuget -p:PackageVersion=$PACKAGE_VERSION -p:Version=$PACKAGE_VERSION
+    - name: Pack
+      run: dotnet pack Plumber.slnx -c Release --no-restore -o nuget -p:PackageVersion=$PACKAGE_VERSION -p:Version=$PACKAGE_VERSION
 
     - name: Upload package artifacts
       uses: actions/upload-artifact@v7
@@ -85,4 +68,5 @@ jobs:
         retention-days: 30
 
     - name: Publish to api.nuget.org
+      if: github.event_name == 'release'
       run: dotnet nuget push nuget/*.nupkg --skip-duplicate -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json

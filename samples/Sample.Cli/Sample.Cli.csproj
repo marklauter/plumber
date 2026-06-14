@@ -2,6 +2,8 @@
 
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
+		<!-- Demo app, not a shipped package: keep it out of solution-wide `dotnet pack`. -->
+		<IsPackable>false</IsPackable>
 	</PropertyGroup>
 
 	<ItemGroup>
