@@ -12,8 +12,7 @@ Findings from a best-practices review of `.github/workflows/dotnet.publish.yml`.
 Trusted Publishing (OIDC) is **deferred** — tracked separately as a cross-repo
 initiative — and is intentionally out of scope here.
 
-**Status:** Items 1–5 implemented on branch `ci/publish-hardening`. Item 6
-(de-duplicate job setup) deferred as cosmetic.
+**Status:** Items 1–6 implemented on branch `ci/publish-hardening`.
 
 Ordered by priority. Items are independent unless a dependency is noted.
 
@@ -160,16 +159,18 @@ baseline version from the current CI SDK.
 
 ---
 
-## 6. De-duplicate job setup (optional, cosmetic)
+## 6. De-duplicate job setup
 
-**Minor.** Lowest priority; purely maintainability.
+**Minor.** Maintainability.
 
-**Problem.** `checkout` + `setup-dotnet` + NuGet cache are copy-pasted across the
-`test` and `publish` jobs (and across both workflows).
+**Problem.** `setup-dotnet` + NuGet cache are copy-pasted across the `test` and
+`publish` jobs (and across both workflows).
 
 **Fix.** Extract a local composite action
-(`.github/actions/setup-dotnet/action.yml`) bundling those three steps and
-reference it from each job. Defer unless the duplication starts causing drift.
+(`.github/actions/setup-dotnet/action.yml`) bundling `setup-dotnet` and the
+NuGet cache, and reference it from each job as `uses: ./.github/actions/setup-dotnet`.
+`actions/checkout` stays in each job — a local composite action can only be
+resolved after the repo is checked out, so it cannot be folded in.
 
 **Files.** `.github/actions/setup-dotnet/action.yml` (new), both workflows.
 
