@@ -12,7 +12,9 @@ Findings from a best-practices review of `.github/workflows/dotnet.publish.yml`.
 Trusted Publishing (OIDC) is **deferred** — tracked separately as a cross-repo
 initiative — and is intentionally out of scope here.
 
-**Status:** Items 1–6 implemented on branch `ci/publish-hardening`.
+**Status:** Items 1–9 implemented on branch `ci/publish-hardening`. Item 10
+(paths-filter vs. required status checks) is open — it depends on branch-protection
+settings and is left to the maintainer.
 
 Ordered by priority. Items are independent unless a dependency is noted.
 
