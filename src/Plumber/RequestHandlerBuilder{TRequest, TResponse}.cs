@@ -218,8 +218,9 @@ public sealed class RequestHandlerBuilder<TRequest, TResponse>
         }
         catch
         {
-            // DI hasn't captured the configuration yet — dispose it ourselves so file watchers don't leak
-            (configuration as IDisposable)?.Dispose();
+            // DI hasn't captured the configuration yet — dispose it ourselves so file watchers don't leak.
+            // ConfigurationBuilder.Build() always returns a ConfigurationRoot, which is IDisposable, so cast directly.
+            ((IDisposable)configuration).Dispose();
             throw;
         }
     }

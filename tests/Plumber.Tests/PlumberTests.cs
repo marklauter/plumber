@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Plumber.Tests.Middleware;
 using System.Diagnostics.CodeAnalysis;
@@ -52,6 +53,33 @@ public sealed class RequestHandlerBuilderTests
 
         Assert.NotNull(created);
         Assert.True(created.Disposed, "the owned provider must be disposed when TimeProvider resolution throws in the ctor");
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP013:Await in using", Justification = "IDisposable analyzer is misjudging the context")]
+    public async Task ConfigureLoggingCallbacksRunAndRegisterLoggingAsync()
+    {
+        var callbackRan = false;
+        ILoggerFactory? resolved = null;
+
+        using var handler = RequestHandlerBuilder.Create<string, string>()
+            .ConfigureLogging(logging =>
+            {
+                callbackRan = true;
+                _ = logging.SetMinimumLevel(LogLevel.Warning);
+            })
+            .Build()
+            .Use((context, next) =>
+            {
+                // logging infrastructure is only registered when a ConfigureLogging callback is present
+                resolved = context.Services.GetRequiredService<ILoggerFactory>();
+                return next(context);
+            });
+
+        _ = await handler.InvokeAsync("request", TestContext.Current.CancellationToken);
+
+        Assert.True(callbackRan, "the ConfigureLogging callback must run during Build");
+        Assert.NotNull(resolved);
     }
 
     private sealed class TrackingDisposable : IDisposable
@@ -207,6 +235,31 @@ public sealed class RequestContextTests
         context.Data["key"] = 99;
         Assert.False(context.TryGetValue<string>("key", out var value));
         Assert.Null(value);
+    }
+
+    [Fact]
+    public void DataReturnsTheSameDictionaryAcrossAccesses()
+    {
+        using var services = new ServiceCollection().BuildServiceProvider();
+        var context = new RequestContext<string, string>("request", Ulid.NewUlid(), TimeProvider.System, services, CancellationToken.None);
+
+        // first access creates the backing dictionary; later accesses must return that same instance so
+        // middleware can accumulate shared per-request state rather than writing into a fresh map each time
+        var first = context.Data;
+        first["key"] = "value";
+        var second = context.Data;
+
+        Assert.Same(first, second);
+        Assert.Equal("value", second["key"]);
+    }
+
+    [Fact]
+    public void ConstructorThrowsWhenServicesIsNull()
+    {
+        var ex = Assert.Throws<ArgumentNullException>(
+            () => _ = new RequestContext<string, string>("request", Ulid.NewUlid(), TimeProvider.System, null!, CancellationToken.None));
+
+        Assert.Equal("services", ex.ParamName);
     }
 }
 
