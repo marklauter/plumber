@@ -45,29 +45,33 @@ internal sealed class RequestMetricsMiddleware<TRequest, TResponse>
         ArgumentNullException.ThrowIfNull(context);
 
         var requestType = typeof(TRequest).Name;
-        var success = true;
+        if (addDefaultMetrics)
+        {
+            // Counted up front as an attempt, so a request that later cancels or fails still counts here:
+            // plumber.requests.count is throughput, and (count - errors) is not skewed by cancellation.
+            RequestCounter.Add(1, new KeyValuePair<string, object?>("request.type", requestType));
+        }
+
         try
         {
-            if (addDefaultMetrics)
-            {
-                RequestCounter.Add(1, new KeyValuePair<string, object?>("request.type", requestType));
-            }
-
             context.CancellationToken.ThrowIfCancellationRequested();
             await next(context);
-
-            if (addDefaultMetrics)
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancellation — caller-initiated or a Plumber timeout, indistinguishable at this layer — is an
+            // expected outcome, not a defect: it stays out of plumber.requests.errors and the duration
+            // histogram, and the custom-metrics hook (resolved outcomes only) does not fire. ThrowOnException
+            // still governs propagation.
+            if (throwOnException)
             {
-                // RequestContext.Elapsed is measured from the injected TimeProvider, so timing stays testable.
-                RequestDuration.Record(
-                    context.Elapsed.TotalMilliseconds,
-                    new KeyValuePair<string, object?>("request.type", requestType),
-                    new KeyValuePair<string, object?>("success", true));
+                throw;
             }
+
+            return;
         }
         catch (Exception)
         {
-            success = false;
             if (addDefaultMetrics)
             {
                 ErrorCounter.Add(1, new KeyValuePair<string, object?>("request.type", requestType));
@@ -77,14 +81,25 @@ internal sealed class RequestMetricsMiddleware<TRequest, TResponse>
                     new KeyValuePair<string, object?>("success", false));
             }
 
+            recordCustomMetrics?.Invoke(context, false);
+
             if (throwOnException)
             {
                 throw;
             }
+
+            return;
         }
-        finally
+
+        if (addDefaultMetrics)
         {
-            recordCustomMetrics?.Invoke(context, success);
+            // RequestContext.Elapsed is measured from the injected TimeProvider, so timing stays testable.
+            RequestDuration.Record(
+                context.Elapsed.TotalMilliseconds,
+                new KeyValuePair<string, object?>("request.type", requestType),
+                new KeyValuePair<string, object?>("success", true));
         }
+
+        recordCustomMetrics?.Invoke(context, true);
     }
 }

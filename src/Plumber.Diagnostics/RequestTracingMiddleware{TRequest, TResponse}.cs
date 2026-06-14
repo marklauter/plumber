@@ -69,6 +69,18 @@ internal sealed class RequestTracingMiddleware<TRequest, TResponse>
             enrichSpan?.Invoke(activity, context);
             _ = activity.SetStatus(ActivityStatusCode.Ok);
         }
+        catch (OperationCanceledException)
+        {
+            // Cancellation — caller-initiated or a Plumber timeout, indistinguishable at this layer — is an
+            // expected outcome, not a defect: leave the span Unset and record no exception event. The span's
+            // own Duration already captures timing. ThrowOnException still governs propagation.
+            enrichSpan?.Invoke(activity, context);
+
+            if (throwOnException)
+            {
+                throw;
+            }
+        }
         catch (Exception ex)
         {
             if (addDefaultAttributes)

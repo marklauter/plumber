@@ -100,7 +100,11 @@ public sealed class RequestTracingTests
         using var handler = TestPipeline.CreateHandler();
 
         _ = handler
-            .UseRequestTracing(options => options.ThrowOnException = false)
+            .UseRequestTracing(options =>
+            {
+                options.ThrowOnException = false;
+                options.EnrichSpan = (activity, _) => activity.SetTag("enriched", true);
+            })
             .Use((_, _) => throw new InvalidOperationException("boom"));
 
         var response = await handler.InvokeAsync(new TestRequest(), TestContext.Current.CancellationToken);
@@ -108,6 +112,8 @@ public sealed class RequestTracingTests
         Assert.Null(response);
         var activity = Assert.Single(spans.Activities);
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
+        // EnrichSpan runs on the failure path too.
+        Assert.Equal(true, activity.GetTagItem("enriched"));
     }
 
     [Fact]
@@ -191,6 +197,71 @@ public sealed class RequestTracingTests
         _ = await handler.InvokeAsync(new TestRequest(), TestContext.Current.CancellationToken);
 
         Assert.Equal("FromDi", Assert.Single(spans.Activities).OperationName);
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
+        Justification = "fluent UseRequestTracing/Use return the same handler instance; the using var owns disposal")]
+    public async Task CancellationLeavesSpanUnsetAndRethrowsAsync()
+    {
+        using var spans = new ActivityCollector(PlumberDiagnostics.ActivitySourceName);
+        using var handler = TestPipeline.CreateHandler();
+
+        _ = handler
+            .UseRequestTracing()
+            .Use((_, _) => throw new OperationCanceledException());
+
+        // Cancellation is not a defect: it propagates (ThrowOnException defaults true), but the span stays Unset.
+        _ = await Assert.ThrowsAsync<OperationCanceledException>(
+            () => handler.InvokeAsync(new TestRequest(), TestContext.Current.CancellationToken));
+
+        var activity = Assert.Single(spans.Activities);
+        Assert.Equal(ActivityStatusCode.Unset, activity.Status);
+        Assert.DoesNotContain(activity.Events, e => e.Name == "exception");
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
+        Justification = "fluent UseRequestTracing/Use return the same handler instance; the using var owns disposal")]
+    public async Task CancellationWithThrowOnExceptionFalseSwallowsAndLeavesSpanUnsetAsync()
+    {
+        using var spans = new ActivityCollector(PlumberDiagnostics.ActivitySourceName);
+        using var handler = TestPipeline.CreateHandler();
+
+        _ = handler
+            .UseRequestTracing(options =>
+            {
+                options.ThrowOnException = false;
+                options.EnrichSpan = (activity, _) => activity.SetTag("enriched", true);
+            })
+            .Use((_, _) => throw new OperationCanceledException());
+
+        var response = await handler.InvokeAsync(new TestRequest(), TestContext.Current.CancellationToken);
+
+        Assert.Null(response);
+        var activity = Assert.Single(spans.Activities);
+        Assert.Equal(ActivityStatusCode.Unset, activity.Status);
+        // EnrichSpan runs on cancellation too, even though the span stays Unset.
+        Assert.Equal(true, activity.GetTagItem("enriched"));
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
+        Justification = "fluent UseRequestTracing/Use return the same handler instance; the using var owns disposal")]
+    public async Task NullResponseRecordsResponseTypeNullAsync()
+    {
+        using var spans = new ActivityCollector(PlumberDiagnostics.ActivitySourceName);
+        using var handler = TestPipeline.CreateHandler();
+
+        // A middleware that completes without assigning a response leaves context.Response null.
+        _ = handler
+            .UseRequestTracing()
+            .Use((_, _) => Task.CompletedTask);
+
+        var response = await handler.InvokeAsync(new TestRequest(), TestContext.Current.CancellationToken);
+
+        Assert.Null(response);
+        Assert.Equal("null", Assert.Single(spans.Activities).GetTagItem("response.type"));
     }
 
     [Fact]

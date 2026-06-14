@@ -159,6 +159,55 @@ public sealed class RequestMetricsTests
     }
 
     [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
+        Justification = "fluent UseRequestMetrics/Use return the same handler instance; the using var owns disposal")]
+    public async Task CancellationCountsAsAttemptButNotErrorOrDurationAsync()
+    {
+        using var metrics = new MeterCollector(PlumberDiagnostics.MeterName);
+        using var handler = TestPipeline.CreateHandler();
+
+        _ = handler
+            .UseRequestMetrics()
+            .Use((_, _) => throw new OperationCanceledException());
+
+        // ThrowOnException defaults true, so the cancellation propagates unchanged.
+        _ = await Assert.ThrowsAsync<OperationCanceledException>(
+            () => handler.InvokeAsync(new TestRequest(), TestContext.Current.CancellationToken));
+
+        // Counted as an attempt, but kept out of errors and the duration histogram.
+        _ = Assert.Single(metrics.Measurements, m => m.Instrument == CountInstrument);
+        Assert.DoesNotContain(metrics.Measurements, m => m.Instrument == ErrorInstrument);
+        Assert.DoesNotContain(metrics.Measurements, m => m.Instrument == DurationInstrument);
+    }
+
+    [Fact]
+    [SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP004:Don't ignore created IDisposable",
+        Justification = "fluent UseRequestMetrics/Use return the same handler instance; the using var owns disposal")]
+    public async Task CancellationWithThrowOnExceptionFalseSwallowsAndSkipsCustomMetricsAsync()
+    {
+        using var metrics = new MeterCollector(PlumberDiagnostics.MeterName);
+        using var handler = TestPipeline.CreateHandler();
+
+        bool? observed = null;
+        _ = handler
+            .UseRequestMetrics(options =>
+            {
+                options.ThrowOnException = false;
+                options.RecordCustomMetrics = (_, success) => observed = success;
+            })
+            .Use((_, _) => throw new OperationCanceledException());
+
+        var response = await handler.InvokeAsync(new TestRequest(), TestContext.Current.CancellationToken);
+
+        // The custom hook fires only on resolved outcomes, so a cancellation leaves it untouched.
+        Assert.Null(response);
+        Assert.Null(observed);
+        _ = Assert.Single(metrics.Measurements, m => m.Instrument == CountInstrument);
+        Assert.DoesNotContain(metrics.Measurements, m => m.Instrument == ErrorInstrument);
+        Assert.DoesNotContain(metrics.Measurements, m => m.Instrument == DurationInstrument);
+    }
+
+    [Fact]
     public async Task MiddlewareGuardsAgainstNullArgumentsAsync()
     {
         var options = Options.Create(new RequestMetricsOptions<TestRequest, TestResponse>());
