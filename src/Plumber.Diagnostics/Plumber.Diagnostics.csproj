@@ -4,12 +4,12 @@
 		<PackageId>MSL.Plumber.Diagnostics</PackageId>
 		<Title>Plumber.Diagnostics: OpenTelemetry Tracing and Metrics for Plumber Pipelines</Title>
 		<Authors>Mark Lauter</Authors>
-		<Description>OpenTelemetry middleware for the Plumber pipeline framework: per-request distributed tracing spans and metrics emitted through the standard ActivitySource and Meter primitives, with configurable enrichment. Bring your own OpenTelemetry SDK exporters.</Description>
+		<Description>OpenTelemetry tracing and metrics for the Plumber pipeline framework, with no OpenTelemetry SDK dependency: per-request spans and metrics are emitted through the in-box ActivitySource and Meter primitives, so you export to any backend — OTLP, Jaeger, Prometheus, or the console — with your own SDK setup. Configurable per-request enrichment.</Description>
 		<Copyright>Copyright (c) 2024 Mark Lauter</Copyright>
 		<PackageProjectUrl>https://github.com/marklauter/Plumber</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/marklauter/Plumber</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<PackageTags>middleware;pipeline;plumber;opentelemetry;otel;observability;tracing;metrics;telemetry;dotnet;msl-armory</PackageTags>
+		<PackageTags>middleware;pipeline;plumber;opentelemetry;otel;observability;tracing;distributed-tracing;metrics;telemetry;instrumentation;monitoring;activitysource;meter;dotnet;msl-armory</PackageTags>
 		<NeutralLanguage>en-US</NeutralLanguage>
 		<IncludeContentInPack>true</IncludeContentInPack>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>

@@ -2,14 +2,14 @@
 
 	<PropertyGroup>
 		<PackageId>MSL.Plumber.Serilog.Extensions</PackageId>
-		<Title>Plumber.Serilog.Extensions: Serilog Request Logging for Plumber Pipelines</Title>
+		<Title>Plumber.Serilog.Extensions: Serilog Structured Request Logging for Plumber Pipelines</Title>
 		<Authors>Mark Lauter</Authors>
-		<Description>Serilog middleware for the Plumber pipeline framework: structured per-request logging with a Serilog DiagnosticContext, configurable level, message template, and enrichment.</Description>
+		<Description>Serilog middleware for the Plumber pipeline framework: structured per-request logging through a Serilog DiagnosticContext, with configurable level, message template, and enrichment. Completion events carry the active trace's TraceId and SpanId, so logs correlate with your Plumber.Diagnostics spans.</Description>
 		<Copyright>Copyright (c) 2024 Mark Lauter</Copyright>
 		<PackageProjectUrl>https://github.com/marklauter/Plumber</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/marklauter/Plumber</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<PackageTags>middleware;pipeline;plumber;serilog;logging;log;request-logging;structured-logging;dotnet;msl-armory</PackageTags>
+		<PackageTags>middleware;pipeline;plumber;serilog;logging;structured-logging;request-logging;diagnostic-context;observability;trace-correlation;dotnet;msl-armory</PackageTags>
 		<NeutralLanguage>en-US</NeutralLanguage>
 		<IncludeContentInPack>true</IncludeContentInPack>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
