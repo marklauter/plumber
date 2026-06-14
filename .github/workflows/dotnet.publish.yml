@@ -4,6 +4,10 @@ on:
   release:
     types: [published]
 
+concurrency:
+  group: publish-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
@@ -29,10 +33,10 @@ jobs:
       run: dotnet restore
 
     - name: Build
-      run: dotnet build -c Debug --no-restore
+      run: dotnet build -c Release --no-restore
 
     - name: Test
-      run: dotnet test --no-build
+      run: dotnet test -c Release --no-build
 
   publish:
     needs: test
@@ -59,23 +63,16 @@ jobs:
         TAG: ${{ github.event.release.tag_name }}
       run: |
         version="${TAG#v}"
+        [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] \
+          || { echo "::error::invalid version '$version' from tag '$TAG'"; exit 1; }
         echo "Publishing version $version"
         echo "PACKAGE_VERSION=$version" >> "$GITHUB_ENV"
 
     - name: Restore
       run: dotnet restore
 
-    - name: Pack Plumber
-      run: dotnet pack src/Plumber -c Release --no-restore -o nuget -p:PackageVersion=$PACKAGE_VERSION -p:Version=$PACKAGE_VERSION
-
-    - name: Pack Plumber.Testing
-      run: dotnet pack src/Plumber.Testing -c Release --no-restore -o nuget -p:PackageVersion=$PACKAGE_VERSION -p:Version=$PACKAGE_VERSION
-
-    - name: Pack Plumber.Serilog
-      run: dotnet pack src/Plumber.Serilog -c Release --no-restore -o nuget -p:PackageVersion=$PACKAGE_VERSION -p:Version=$PACKAGE_VERSION
-
-    - name: Pack Plumber.Diagnostics
-      run: dotnet pack src/Plumber.Diagnostics -c Release --no-restore -o nuget -p:PackageVersion=$PACKAGE_VERSION -p:Version=$PACKAGE_VERSION
+    - name: Pack
+      run: dotnet pack Plumber.slnx -c Release --no-restore -o nuget -p:PackageVersion=$PACKAGE_VERSION -p:Version=$PACKAGE_VERSION
 
     - name: Upload package artifacts
       uses: actions/upload-artifact@v7
