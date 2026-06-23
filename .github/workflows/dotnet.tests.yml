@@ -19,7 +19,7 @@ jobs:
   format:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - uses: ./.github/actions/setup-dotnet
 
     - name: Verify formatting
@@ -31,7 +31,7 @@ jobs:
       matrix:
         configuration: [ Debug, Release ]
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - uses: ./.github/actions/setup-dotnet
 
     - name: Restore dependencies
