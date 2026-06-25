@@ -10,7 +10,7 @@
 
 *Another weapon from the MSL Armory*
 
-Middleware pipelines for host-free .NET projects. The same shape ASP.NET Core gives web apps — request, response, a chain of steps with DI and configuration — for console apps, AWS Lambdas, Azure Functions, queue consumers, file processors, and anything else that lives outside a host.
+Middleware pipelines for host-free .NET projects. Plumber brings the ASP.NET Core middleware model — a request, a response, and a chain of steps with dependency injection and configuration — to .NET projects that run without a host: console apps, AWS Lambdas, Azure Functions, queue consumers, file processors, and similar workloads.
 
 The [wiki](https://github.com/marklauter/plumber/wiki) is the full documentation: concepts, a tutorial, per-type reference, and deployment recipes.
 
@@ -48,14 +48,14 @@ var greeting = await handler.InvokeAsync("World");
 Console.WriteLine(greeting); // Hello, World!
 ```
 
-That's the whole shape: a builder, a built handler, one or more middleware, and an `InvokeAsync` call. Each invocation gets its own DI scope and cancellation token.
+A Plumber application has four pieces: a builder, the handler it builds, one or more middleware, and an `InvokeAsync` call. Each invocation gets its own dependency injection scope and cancellation token.
 
 ## Where to go next
 
 - **New to middleware pipelines?** Start with [Concepts](https://github.com/marklauter/plumber/wiki/Concepts), then the [Tutorial](https://github.com/marklauter/plumber/wiki/Tutorial).
 - **Know the shape already?** Jump into [Building a pipeline](https://github.com/marklauter/plumber/wiki/Building-A-Pipeline), [Middleware](https://github.com/marklauter/plumber/wiki/Middleware), and [Request lifecycle](https://github.com/marklauter/plumber/wiki/Request-Lifecycle).
 - **Looking for a specific scenario?** Browse the recipes — AWS Lambda, Azure Functions, queue consumers, webhooks, and more — from the [wiki home](https://github.com/marklauter/plumber/wiki).
-- **Migrating from v2 or v3?** See [Migration](https://github.com/marklauter/plumber/wiki/Migration).
+- **Migrating from an earlier version?** See [Migration](https://github.com/marklauter/plumber/wiki/Migration). v5 makes no breaking changes; v4 and v3 are covered with before-and-after examples.
 
 ---
 [Repository](https://github.com/marklauter/plumber) · [NuGet — Pipeline](https://www.nuget.org/packages/MSL.Plumber.Pipeline/) · [NuGet — Testing](https://www.nuget.org/packages/MSL.Plumber.Pipeline.Testing/) · [MIT License](https://github.com/marklauter/plumber/blob/main/LICENSE) · [Report an issue](https://github.com/marklauter/plumber/issues)
