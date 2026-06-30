@@ -4,7 +4,8 @@ using System.Diagnostics.Metrics;
 namespace Plumber.Diagnostics;
 
 internal sealed class RequestMetricsMiddleware<TRequest, TResponse>
-    where TRequest : class
+    where TRequest : notnull
+    where TResponse : notnull
 {
     private static readonly Meter Meter = new(PlumberDiagnostics.MeterName);
 

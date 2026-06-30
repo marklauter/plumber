@@ -14,6 +14,7 @@ namespace Plumber;
 /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
 public sealed class RequestHandlerBuilder<TRequest, TResponse>
     where TRequest : notnull
+    where TResponse : notnull
 {
     private const string ProductionEnv = "Production";
     private readonly string[] args;

@@ -15,6 +15,7 @@ namespace Plumber.Testing;
 /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
 public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable, IAsyncDisposable
     where TRequest : notnull
+    where TResponse : notnull
 {
     private readonly string[] args;
     private readonly Func<string[], RequestHandlerBuilder<TRequest, TResponse>> createBuilder;
@@ -188,8 +189,8 @@ public sealed class PlumberApplicationFactory<TRequest, TResponse> : IDisposable
     /// </summary>
     /// <param name="request">The request value flowed through the pipeline.</param>
     /// <param name="cancellationToken">Caller-supplied cancellation token forwarded to <see cref="RequestHandler{TRequest, TResponse}.InvokeAsync(TRequest, CancellationToken)"/>.</param>
-    /// <returns>A task that completes with the pipeline's response, or <see langword="null"/> if no middleware assigned <c>Response</c>.</returns>
-    public Task<TResponse?> InvokeAsync(TRequest request, CancellationToken cancellationToken = default) =>
+    /// <returns>A task that completes with the pipeline's response.</returns>
+    public Task<TResponse> InvokeAsync(TRequest request, CancellationToken cancellationToken = default) =>
         CreateHandler().InvokeAsync(request, cancellationToken);
 
     /// <inheritdoc/>

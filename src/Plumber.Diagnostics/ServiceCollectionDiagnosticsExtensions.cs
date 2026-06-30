@@ -30,7 +30,8 @@ public static class ServiceCollectionDiagnosticsExtensions
         this IServiceCollection services,
         Action<RequestTracingOptions<TRequest, TResponse>>? configureTracing = null,
         Action<RequestMetricsOptions<TRequest, TResponse>>? configureMetrics = null)
-        where TRequest : class
+        where TRequest : notnull
+        where TResponse : notnull
     {
         ArgumentNullException.ThrowIfNull(services);
 

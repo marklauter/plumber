@@ -21,7 +21,8 @@ public static class RequestHandlerSerilogExtensions
     /// </remarks>
     public static RequestHandler<TRequest, TResponse> UseSerilogRequestLogging<TRequest, TResponse>(
         this RequestHandler<TRequest, TResponse> handler)
-        where TRequest : class
+        where TRequest : notnull
+        where TResponse : notnull
     {
         ArgumentNullException.ThrowIfNull(handler);
         return handler.Use<RequestLoggerMiddleware<TRequest, TResponse>>();
@@ -42,7 +43,8 @@ public static class RequestHandlerSerilogExtensions
     public static RequestHandler<TRequest, TResponse> UseSerilogRequestLogging<TRequest, TResponse>(
         this RequestHandler<TRequest, TResponse> handler,
         Action<RequestLoggerOptions<TRequest, TResponse>> configureOptions)
-        where TRequest : class
+        where TRequest : notnull
+        where TResponse : notnull
     {
         ArgumentNullException.ThrowIfNull(handler);
         ArgumentNullException.ThrowIfNull(configureOptions);

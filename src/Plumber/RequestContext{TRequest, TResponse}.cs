@@ -26,6 +26,7 @@ public sealed class RequestContext<TRequest, TResponse>(
     IServiceProvider services,
     CancellationToken cancellationToken)
     where TRequest : notnull
+    where TResponse : notnull
 {
     // Stopwatch tick captured at construction so Elapsed uses the monotonic, high-resolution clock
     // rather than DateTime arithmetic (which has ~15.6ms resolution on Windows and is exposed to
@@ -100,9 +101,9 @@ public sealed class RequestContext<TRequest, TResponse>(
     }
 
     /// <summary>
-    /// The response.
+    /// The response. Initialized to <see langword="default"/> and expected to be assigned by middleware before the pipeline returns.
     /// </summary>
-    public TResponse? Response { get; set; }
+    public TResponse Response { get; set; } = default!;
 
     /// <summary>
     /// Time since the request was created, measured against the monotonic clock exposed by the configured <see cref="TimeProvider"/>.

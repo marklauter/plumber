@@ -23,7 +23,8 @@ public static class RequestHandler
     /// <para>If a <see cref="TimeProvider"/> is registered in <paramref name="services"/> it is used; otherwise <see cref="TimeProvider.System"/> is used.</para>
     /// </remarks>
     public static RequestHandler<TRequest, TResponse> Create<TRequest, TResponse>(IServiceProvider services)
-        where TRequest : notnull =>
+        where TRequest : notnull
+        where TResponse : notnull =>
         Create<TRequest, TResponse>(services, Timeout.InfiniteTimeSpan);
 
     /// <summary>
@@ -40,6 +41,7 @@ public static class RequestHandler
     /// </remarks>
     public static RequestHandler<TRequest, TResponse> Create<TRequest, TResponse>(IServiceProvider services, TimeSpan timeout)
         where TRequest : notnull
+        where TResponse : notnull
     {
         ArgumentNullException.ThrowIfNull(services);
         return new RequestHandler<TRequest, TResponse>(services, timeout);
