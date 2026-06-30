@@ -15,12 +15,6 @@ using var meterProvider = Telemetry.CreateMeterProvider(metrics);
 using var handler = Pipeline.Build(args);
 var report = await handler.InvokeAsync(input);
 
-if (report is null)
-{
-    await Console.Error.WriteLineAsync("pipeline returned no response");
-    return 1;
-}
-
 if (report.ErrorMessage is { } error)
 {
     await Console.Error.WriteLineAsync($"error: {error}");
