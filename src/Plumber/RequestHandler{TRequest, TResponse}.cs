@@ -14,6 +14,7 @@ public sealed class RequestHandler<TRequest, TResponse>
     : IDisposable
     , IAsyncDisposable
     where TRequest : notnull
+    where TResponse : notnull
 {
     private readonly List<Func<RequestMiddleware<TRequest, TResponse>, RequestMiddleware<TRequest, TResponse>>> components = [];
     private readonly List<MiddlewareDescriptor> descriptors = [];
@@ -99,14 +100,14 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// Invokes the request handler's pipeline.
     /// </summary>
     /// <param name="request">The request value flowed through the pipeline as <see cref="RequestContext{TRequest, TResponse}.Request"/>.</param>
-    /// <returns>A task that completes with the value of <see cref="RequestContext{TRequest, TResponse}.Response"/> after the pipeline returns; <see langword="null"/> if no middleware assigned <c>Response</c>.</returns>
+    /// <returns>A task that completes with the value of <see cref="RequestContext{TRequest, TResponse}.Response"/> after the pipeline returns.</returns>
     /// <remarks>
     /// Each invocation creates a new DI scope; <see cref="RequestContext{TRequest, TResponse}.Services"/> is the per-request scoped provider and is disposed when the pipeline returns.
     /// Consumers of <c>RequestContext.Services</c> do not need to call <c>CreateScope()</c>.
     /// </remarks>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="request"/> is <see langword="null"/>.</exception>
     /// <exception cref="TimeoutException">Thrown when <see cref="Timeout"/> elapses before the pipeline completes.</exception>
-    public Task<TResponse?> InvokeAsync(TRequest request)
+    public Task<TResponse> InvokeAsync(TRequest request)
     {
         ThrowIfRequestNull(request);
         return ThrowIfDisposed()
@@ -120,7 +121,7 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// </summary>
     /// <param name="request">The request value flowed through the pipeline as <see cref="RequestContext{TRequest, TResponse}.Request"/>.</param>
     /// <param name="cancellationToken">Caller-supplied cancellation token. Linked with the internal timeout source when <see cref="Timeout"/> is finite.</param>
-    /// <returns>A task that completes with the value of <see cref="RequestContext{TRequest, TResponse}.Response"/> after the pipeline returns; <see langword="null"/> if no middleware assigned <c>Response</c>.</returns>
+    /// <returns>A task that completes with the value of <see cref="RequestContext{TRequest, TResponse}.Response"/> after the pipeline returns.</returns>
     /// <remarks>
     /// Each invocation creates a new DI scope; <see cref="RequestContext{TRequest, TResponse}.Services"/> is the per-request scoped provider and is disposed when the pipeline returns.
     /// Consumers of <c>RequestContext.Services</c> do not need to call <c>CreateScope()</c>.
@@ -129,7 +130,7 @@ public sealed class RequestHandler<TRequest, TResponse>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="request"/> is <see langword="null"/>.</exception>
     /// <exception cref="TimeoutException">Thrown when <see cref="Timeout"/> elapses before the pipeline completes and <paramref name="cancellationToken"/> was not cancelled.</exception>
     /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is cancelled.</exception>
-    public Task<TResponse?> InvokeAsync(TRequest request, CancellationToken cancellationToken)
+    public Task<TResponse> InvokeAsync(TRequest request, CancellationToken cancellationToken)
     {
         ThrowIfRequestNull(request);
         return ThrowIfDisposed()
@@ -273,7 +274,7 @@ public sealed class RequestHandler<TRequest, TResponse>
         return this;
     }
 
-    private async Task<TResponse?> InvokeInternalAsync(TRequest request, TimeSpan timeout)
+    private async Task<TResponse> InvokeInternalAsync(TRequest request, TimeSpan timeout)
     {
         using var timeoutTokenSource = new CancellationTokenSource(timeout, timeProvider);
         try
@@ -286,7 +287,7 @@ public sealed class RequestHandler<TRequest, TResponse>
         }
     }
 
-    private async Task<TResponse?> InvokeInternalAsync(TRequest request, TimeSpan timeout, CancellationToken cancellationToken)
+    private async Task<TResponse> InvokeInternalAsync(TRequest request, TimeSpan timeout, CancellationToken cancellationToken)
     {
         using var timeoutTokenSource = new CancellationTokenSource(timeout, timeProvider);
         using var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
@@ -303,7 +304,7 @@ public sealed class RequestHandler<TRequest, TResponse>
         }
     }
 
-    private async Task<TResponse?> InvokeInternalAsync(TRequest request, CancellationToken cancellationToken)
+    private async Task<TResponse> InvokeInternalAsync(TRequest request, CancellationToken cancellationToken)
     {
         await using var serviceScope = Services.CreateAsyncScope();
         var context = new RequestContext<TRequest, TResponse>(

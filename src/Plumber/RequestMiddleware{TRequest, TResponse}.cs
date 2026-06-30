@@ -9,4 +9,5 @@
 /// <returns>A <see cref="Task"/> that completes when this middleware (and any downstream middleware it calls) finishes.</returns>
 public delegate Task RequestMiddleware<TRequest, TResponse>(
     RequestContext<TRequest, TResponse> context)
-    where TRequest : notnull;
+    where TRequest : notnull
+    where TResponse : notnull;

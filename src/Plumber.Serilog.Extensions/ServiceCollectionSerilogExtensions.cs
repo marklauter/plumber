@@ -29,7 +29,8 @@ public static class ServiceCollectionSerilogExtensions
         this IServiceCollection services,
         Action<LoggerConfiguration> configureLogger,
         Action<RequestLoggerOptions<TRequest, TResponse>>? configureOptions = null)
-        where TRequest : class
+        where TRequest : notnull
+        where TResponse : notnull
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configureLogger);

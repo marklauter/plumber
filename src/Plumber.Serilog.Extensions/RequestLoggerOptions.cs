@@ -9,7 +9,8 @@ namespace Plumber.Serilog.Extensions;
 /// <typeparam name="TRequest">The pipeline request type.</typeparam>
 /// <typeparam name="TResponse">The pipeline response type.</typeparam>
 public sealed class RequestLoggerOptions<TRequest, TResponse>
-    where TRequest : class
+    where TRequest : notnull
+    where TResponse : notnull
 {
     private const string DefaultCompletedMessage =
         "Request {RequestId} completed in {Elapsed:0.0000} ms";

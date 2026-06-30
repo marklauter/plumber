@@ -22,7 +22,8 @@ public static class RequestHandlerDiagnosticsExtensions
     /// </remarks>
     public static RequestHandler<TRequest, TResponse> UseRequestTracing<TRequest, TResponse>(
         this RequestHandler<TRequest, TResponse> handler)
-        where TRequest : class
+        where TRequest : notnull
+        where TResponse : notnull
     {
         ArgumentNullException.ThrowIfNull(handler);
         return handler.Use<RequestTracingMiddleware<TRequest, TResponse>>();
@@ -43,7 +44,8 @@ public static class RequestHandlerDiagnosticsExtensions
     public static RequestHandler<TRequest, TResponse> UseRequestTracing<TRequest, TResponse>(
         this RequestHandler<TRequest, TResponse> handler,
         Action<RequestTracingOptions<TRequest, TResponse>> configureOptions)
-        where TRequest : class
+        where TRequest : notnull
+        where TResponse : notnull
     {
         ArgumentNullException.ThrowIfNull(handler);
         ArgumentNullException.ThrowIfNull(configureOptions);
@@ -67,7 +69,8 @@ public static class RequestHandlerDiagnosticsExtensions
     /// </remarks>
     public static RequestHandler<TRequest, TResponse> UseRequestMetrics<TRequest, TResponse>(
         this RequestHandler<TRequest, TResponse> handler)
-        where TRequest : class
+        where TRequest : notnull
+        where TResponse : notnull
     {
         ArgumentNullException.ThrowIfNull(handler);
         return handler.Use<RequestMetricsMiddleware<TRequest, TResponse>>();
@@ -88,7 +91,8 @@ public static class RequestHandlerDiagnosticsExtensions
     public static RequestHandler<TRequest, TResponse> UseRequestMetrics<TRequest, TResponse>(
         this RequestHandler<TRequest, TResponse> handler,
         Action<RequestMetricsOptions<TRequest, TResponse>> configureOptions)
-        where TRequest : class
+        where TRequest : notnull
+        where TResponse : notnull
     {
         ArgumentNullException.ThrowIfNull(handler);
         ArgumentNullException.ThrowIfNull(configureOptions);
@@ -107,7 +111,8 @@ public static class RequestHandlerDiagnosticsExtensions
     /// <returns>The same <see cref="RequestHandler{TRequest, TResponse}"/> for chaining.</returns>
     public static RequestHandler<TRequest, TResponse> UseRequestDiagnostics<TRequest, TResponse>(
         this RequestHandler<TRequest, TResponse> handler)
-        where TRequest : class
+        where TRequest : notnull
+        where TResponse : notnull
     {
         ArgumentNullException.ThrowIfNull(handler);
         return handler
@@ -129,7 +134,8 @@ public static class RequestHandlerDiagnosticsExtensions
         this RequestHandler<TRequest, TResponse> handler,
         Action<RequestTracingOptions<TRequest, TResponse>> configureTracingOptions,
         Action<RequestMetricsOptions<TRequest, TResponse>> configureMetricsOptions)
-        where TRequest : class
+        where TRequest : notnull
+        where TResponse : notnull
     {
         ArgumentNullException.ThrowIfNull(handler);
         ArgumentNullException.ThrowIfNull(configureTracingOptions);

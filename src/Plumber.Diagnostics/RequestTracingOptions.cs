@@ -8,7 +8,8 @@ namespace Plumber.Diagnostics;
 /// <typeparam name="TRequest">The pipeline request type.</typeparam>
 /// <typeparam name="TResponse">The pipeline response type.</typeparam>
 public sealed class RequestTracingOptions<TRequest, TResponse>
-    where TRequest : class
+    where TRequest : notnull
+    where TResponse : notnull
 {
     private const string DefaultOperationName = "Plumber.HandleRequest";
 

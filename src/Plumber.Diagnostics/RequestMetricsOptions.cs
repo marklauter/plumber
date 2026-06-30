@@ -6,7 +6,8 @@ namespace Plumber.Diagnostics;
 /// <typeparam name="TRequest">The pipeline request type.</typeparam>
 /// <typeparam name="TResponse">The pipeline response type.</typeparam>
 public sealed class RequestMetricsOptions<TRequest, TResponse>
-    where TRequest : class
+    where TRequest : notnull
+    where TResponse : notnull
 {
     /// <summary>
     /// ThrowOnException lets you set whether the middleware should rethrow exceptions thrown by downstream middleware components.

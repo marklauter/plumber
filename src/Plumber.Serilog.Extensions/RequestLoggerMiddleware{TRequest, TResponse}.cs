@@ -8,7 +8,8 @@ using System.Diagnostics;
 namespace Plumber.Serilog.Extensions;
 
 internal sealed class RequestLoggerMiddleware<TRequest, TResponse>
-    where TRequest : class
+    where TRequest : notnull
+    where TResponse : notnull
 {
     private readonly RequestMiddleware<TRequest, TResponse> next;
     private readonly DiagnosticContext diagnosticContext;

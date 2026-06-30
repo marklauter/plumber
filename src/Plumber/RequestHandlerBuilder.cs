@@ -16,7 +16,8 @@ public static class RequestHandlerBuilder
     /// <typeparam name="TResponse">The type of response handled by the pipeline.</typeparam>
     /// <returns>A new <see cref="RequestHandlerBuilder{TRequest, TResponse}"/>.</returns>
     public static RequestHandlerBuilder<TRequest, TResponse> Create<TRequest, TResponse>()
-        where TRequest : notnull =>
+        where TRequest : notnull
+        where TResponse : notnull =>
         new([]);
 
     /// <summary>
@@ -29,6 +30,7 @@ public static class RequestHandlerBuilder
     /// <param name="args">Program args passed into <c>Main</c>. Appended to the per-build configuration via <see cref="CommandLineConfigurationExtensions.AddCommandLine(IConfigurationBuilder, string[])"/> at the end of <see cref="RequestHandlerBuilder{TRequest, TResponse}.Build()"/>.</param>
     /// <returns>A new <see cref="RequestHandlerBuilder{TRequest, TResponse}"/>.</returns>
     public static RequestHandlerBuilder<TRequest, TResponse> Create<TRequest, TResponse>(string[] args)
-        where TRequest : notnull =>
+        where TRequest : notnull
+        where TResponse : notnull =>
         new(args);
 }

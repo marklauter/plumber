@@ -4,7 +4,8 @@ using System.Diagnostics;
 namespace Plumber.Diagnostics;
 
 internal sealed class RequestTracingMiddleware<TRequest, TResponse>
-    where TRequest : class
+    where TRequest : notnull
+    where TResponse : notnull
 {
     private static readonly ActivitySource ActivitySource = new(PlumberDiagnostics.ActivitySourceName);
 
