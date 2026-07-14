@@ -1124,10 +1124,7 @@ public sealed class PlumberTests
     {
         public static int Constructions;
 
-        static BuildCounterMiddleware()
-        {
-            Constructions = 0;
-        }
+        static BuildCounterMiddleware() => Constructions = 0;
 
         private readonly RequestMiddleware<string, string> next = ConstructionTracker(next);
 
