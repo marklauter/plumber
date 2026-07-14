@@ -21,7 +21,7 @@
 		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.300" />
 
 		<!-- Plumber.Serilog.Extensions library -->
-		<PackageVersion Include="Serilog" Version="4.3.1" />
+		<PackageVersion Include="Serilog" Version="4.4.0" />
 		<PackageVersion Include="Serilog.Extensions.Hosting" Version="10.0.0" />
 
 		<!-- Serilog test + sample support -->
