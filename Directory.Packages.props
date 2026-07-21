@@ -32,8 +32,8 @@
 
 		<!-- OpenTelemetry SDK for the sample (the library instruments via the BCL ActivitySource/Meter
 		     and does not reference these; collecting/exporting telemetry is a consumer concern) -->
-		<PackageVersion Include="OpenTelemetry" Version="1.16.0" />
-		<PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.16.0" />
+		<PackageVersion Include="OpenTelemetry" Version="1.17.0" />
+		<PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.17.0" />
 
 		<!-- Test infrastructure -->
 		<PackageVersion Include="coverlet.collector" Version="10.0.1" />
