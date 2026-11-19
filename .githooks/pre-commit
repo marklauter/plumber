@@ -1,0 +1,16 @@
+#!/bin/sh
+# Mirrors the CI format check, limited to staged C# files.
+# Enable once per clone: git config core.hooksPath .githooks
+set -eu
+
+staged() {
+    git diff --cached --name-only -z --diff-filter=ACMR -- '*.cs'
+}
+
+staged | grep -qz . || exit 0
+
+# Prefix ./ so no path can be read as an option; -0 keeps spaces and odd characters intact.
+if ! staged | sed -z 's|^|./|' | xargs -0 dotnet format Plumber.slnx --severity info --verify-no-changes --include; then
+    echo "pre-commit: dotnet format found issues. Run: dotnet format Plumber.slnx --severity info" >&2
+    exit 1
+fi
