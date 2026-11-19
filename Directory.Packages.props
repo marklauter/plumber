@@ -22,7 +22,7 @@
 
 		<!-- Plumber.Serilog.Extensions library -->
 		<PackageVersion Include="Serilog" Version="4.4.0" />
-		<PackageVersion Include="Serilog.Extensions.Hosting" Version="10.0.0" />
+		<PackageVersion Include="Serilog.Extensions.Hosting" Version="11.0.0" />
 
 		<!-- Serilog test + sample support -->
 		<PackageVersion Include="Serilog.Exceptions" Version="8.4.0" />
