@@ -36,6 +36,8 @@
 		<ThresholdStat>minimum</ThresholdStat>
 		<!-- Exception types are plumbing; exclude from coverage to avoid noise. -->
 		<Exclude>[*]*Exception</Exclude>
+		<!-- xunit.v3 4.x defaults to the Microsoft.Testing.Platform runner; keep the VSTest entry point so coverlet.msbuild's coverage ratchet still runs under `dotnet test`. -->
+		<IsTestingPlatformApplication>false</IsTestingPlatformApplication>
 	</PropertyGroup>
 
 	<ItemGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">

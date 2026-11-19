@@ -7,16 +7,16 @@
 
 	<ItemGroup>
 		<!-- Plumber library -->
-		<PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.14" />
-		<PackageVersion Include="Microsoft.Extensions.Configuration.CommandLine" Version="10.0.14" />
-		<PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.14" />
-		<PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.14" />
-		<PackageVersion Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.14" />
-		<PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
-		<PackageVersion Include="Microsoft.Extensions.Diagnostics.Abstractions" Version="10.0.14" />
-		<PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.14" />
-		<PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.14" />
-		<PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.9" />
+		<PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.15" />
+		<PackageVersion Include="Microsoft.Extensions.Configuration.CommandLine" Version="10.0.15" />
+		<PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.15" />
+		<PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.15" />
+		<PackageVersion Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.15" />
+		<PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.15" />
+		<PackageVersion Include="Microsoft.Extensions.Diagnostics.Abstractions" Version="10.0.15" />
+		<PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.15" />
+		<PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.15" />
+		<PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.15" />
 		<PackageVersion Include="Ulid" Version="1.4.1" />
 		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.403" />
 
@@ -40,11 +40,11 @@
 		<PackageVersion Include="coverlet.msbuild" Version="10.1.0" />
 		<PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.11.0" />
 		<PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
-		<PackageVersion Include="xunit.v3" Version="3.2.2" />
+		<PackageVersion Include="xunit.v3" Version="4.0.3" />
 		<!-- Granular xunit.v3 libs for the shared arch-test base (a class library, not an executable test project) -->
-		<PackageVersion Include="xunit.v3.extensibility.core" Version="3.2.2" />
-		<PackageVersion Include="xunit.v3.assert" Version="3.2.2" />
-		<PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+		<PackageVersion Include="xunit.v3.extensibility.core" Version="4.0.3" />
+		<PackageVersion Include="xunit.v3.assert" Version="4.0.3" />
+		<PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
 		<PackageVersion Include="TngTech.ArchUnitNET" Version="0.13.5" />
 	</ItemGroup>
 
